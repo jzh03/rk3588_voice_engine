@@ -200,24 +200,31 @@ P1 音频、P2-03 CPU TTS 可在 NPU 兼容调查期间独立推进。P2-04 必�
 
 板端主工程：`/home/jzh/projects/rk3588_voice_engine`，作为唯一日常 Git 工作目录。Windows 参考副本：`F:\AI\RK3588音频引擎`，本次文档推送完成后停止作为提交端。通过 Windows 的 SSH 终端编辑/构建板端工程，并由板端直接使用 GitHub CLI 的 jzh03 登录执行 HTTPS 拉取与推送。模型使用配套预转换产物；板端不安装模型训练环境。
 
+2026-10-16 已按以下布局整理项目；目录用途与完整文件入口见 [README](README.md#项目目录)。
+
 ```text
 rk3588_voice_engine/
+├── README.md
 ├── EXECUTION_PLAN.md
-├── CMakeLists.txt                 # 待 P1 创建
-├── src/{audio,asr,llm,tts,engine}/
-├── include/
-├── config/default.yaml            # 通用默认值
-├── config/local.yaml              # 本机设备名/路径，Git 忽略
-├── scripts/                       # 构建、检查、启动、回退
-├── docs/                          # 规划、环境、兼容性、部署、验收
-├── tests/{fixtures,unit,integration}/
-├── models/manifest.json           # 提交清单，不提交权重
-├── models/                        # 本机模型和词典
-├── deps/manifest.json             # SDK/源码/库版本及许可证
-├── deps/                          # 固定版本运行库，按组合分目录
-├── build/                         # Git 忽略
-└── output/                        # 日志/测试结果，受配额限制
+├── src/{audio,asr,llm,tts,engine}/  # 应用实现，目录骨架
+├── include/                       # 公共头文件，目录骨架
+├── tools/env_check.cpp            # 已有的基础依赖检查工具
+├── scripts/                       # 构建、检查、启动、回退，目录骨架
+├── config/                        # 通用配置与本机配置，目录骨架
+├── tests/{fixtures,unit,integration}/ # 固定用例与测试，目录骨架
+├── docs/                          # 环境、兼容性、验收及审阅记录
+│   ├── archive/                   # 历史计划
+│   └── evidence/
+│       ├── environment/           # 环境与设备原始快照
+│       └── sdk/                   # 官方 SDK 手册
+├── models/                        # 本机模型和词典，目录骨架
+├── deps/                          # 固定版本运行库，目录骨架
+├── build/                         # 编译产物，Git 忽略
+├── output/                        # 日志/测试结果，Git 忽略且受配额限制
+└── tmp/                           # 临时文件，Git 忽略
 ```
+
+空目录通过 `.gitkeep` 纳入版本管理。`CMakeLists.txt`、`config/default.yaml`、`config/local.yaml`、`models/manifest.json` 和 `deps/manifest.json` 尚未创建；目录骨架不表示 P1 工程实现或模型准备已完成。通用配置和资产清单后续提交，本机设备名/路径写入被忽略的 `config/local.yaml`。`tools/` 保存独立 C++ 工具源码，`scripts/` 保存自动化脚本，编译产物统一放在 `build/`。旧的 `env-check-Ca991G/` 已原样迁入 `tmp/` 保留。
 
 配置字段必须在 P1 定义类型、单位、范围和缺省值，至少覆盖：设备 source/sink/profile、采样率/帧长、VAD 时间参数、模型路径、线程数、2048/128 token 限额、队列容量、各段超时、日志配额、唤醒和语音打断开关。设备名或必需模型未填写时失败退出；禁用 KWS 时不要求下载 KWS 模型。`--check-config` 仅校验配置和资产，不打开录音。
 

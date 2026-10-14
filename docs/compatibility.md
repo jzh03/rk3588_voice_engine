@@ -26,7 +26,7 @@
 
 ## 留存证据
 
-- [已下载的官方手册](evidence/Rockchip_RKLLM_SDK_CN_1.3.1.pdf)：61 页，3,902,489 字节。
+- [已下载的官方手册](evidence/sdk/Rockchip_RKLLM_SDK_CN_1.3.1.pdf)：61 页，3,902,489 字节。
 - 下载地址：`https://raw.githubusercontent.com/airockchip/rknn-llm/main/doc/Rockchip_RKLLM_SDK_CN_1.3.1.pdf`。
 - SHA-256：`b05da74d3e6b6f47d940e962266b4f3079a087e9a3eb628329743b32e1a67146`。
 - 已阅读第 12～13 页完整正文；驱动 0.9.7 来自本对话此前完成的 SSH 盘点，见 [environment.md](environment.md)。

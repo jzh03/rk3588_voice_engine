@@ -19,6 +19,49 @@
 - [验收用例](docs/ACCEPTANCE.md)：功能、延迟、资源和恢复验证。
 - [规划审阅记录](docs/PLAN_REVIEW.md)：问题和修订依据。
 
+## 项目目录
+
+目录按应用源码、开发工具、文档、测试和本机资产划分：
+
+```text
+rk3588_voice_engine/
+├── README.md                     # 项目入口、目录说明和检查命令
+├── EXECUTION_PLAN.md             # 当前执行计划
+├── src/                          # 应用实现，按模块划分
+│   ├── audio/                    # 音频采集、播放、格式转换
+│   ├── asr/                      # VAD、语音识别适配
+│   ├── llm/                      # 本地语言模型适配
+│   ├── tts/                      # 语音合成与文本前处理
+│   └── engine/                   # 状态机、会话和任务编排
+├── include/                      # 公共头文件
+├── tools/                        # 独立的 C++ 检查与诊断工具
+│   └── env_check.cpp             # 已通过的基础依赖检查源码
+├── scripts/                      # 构建、检查、启动、回退脚本
+├── config/                       # 通用配置；local.yaml 为本机配置
+├── tests/
+│   ├── fixtures/                 # 固定输入、参考结果和用例清单
+│   ├── unit/                     # 单元测试
+│   └── integration/              # 模块联调与完整链路测试
+├── docs/
+│   ├── environment.md            # 开发环境与已完成基线
+│   ├── compatibility.md          # SDK、驱动和模型兼容性
+│   ├── ACCEPTANCE.md             # 验收用例
+│   ├── PLAN_REVIEW.md            # 规划审阅记录
+│   ├── archive/                  # 历史计划，保留原始内容
+│   └── evidence/
+│       ├── environment/          # 板端音频、电脑资源 JSON 快照
+│       └── sdk/                  # 已引用的官方 SDK 手册
+├── models/                       # 模型、词典与 manifest.json
+├── deps/                         # 私有 SDK、运行库与 manifest.json
+├── build/                        # 本机编译产物（Git 忽略）
+├── output/                       # 运行日志、验收结果（Git 忽略）
+└── tmp/                          # 临时检查和中间文件（Git 忽略）
+```
+
+当前 `src/`、`include/`、`scripts/`、`config/`、`tests/`、`models/` 和 `deps/` 仅建立目录骨架，叶目录用 `.gitkeep` 保留。`CMakeLists.txt`、配置文件、测试用例、资产清单和引擎实现仍按执行计划逐步创建。
+
+模型权重和依赖文件放在 `models/`、`deps/`，这两个目录只跟踪清单及目录占位文件；`tests/fixtures/` 用于可版本化的固定用例，临时录音及运行结果放在 `output/runs/<run_id>/`。旧环境检查目录已原样归入 `tmp/env-check-Ca991G/`，后续检查统一使用 `tools/env_check.cpp`，产物写入 `build/`。
+
 ## 基础环境检查
 
 在开发板仓库根目录执行：

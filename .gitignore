@@ -13,8 +13,10 @@
 *.pem
 *.key
 
-# Model and runtime files; track manifests only
+# Model and runtime files; track manifests and directory placeholders only
 /models/*
+!/models/.gitkeep
 !/models/manifest.json
 /deps/*
+!/deps/.gitkeep
 !/deps/manifest.json

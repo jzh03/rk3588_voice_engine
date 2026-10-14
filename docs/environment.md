@@ -54,7 +54,7 @@
 
 `pactl info` 成功连接 `/run/user/1000/pulse/native`，服务名称为 `PulseAudio (on PipeWire 1.0.5)`。上述查询证明工具可用、包元数据可发现，C++17 与依赖实际编译链接已由后续检查通过。安装前 apt 提示下载 95.2 MB、新增 262 MB、升级 43 包、新装 66 包；这不是安装后实测磁盘占用。
 
-`ldconfig -p` 可见 `libpulse.so.0`、`libpulse-simple.so.0` 和 `libsamplerate.so.0`。常规系统库位置及 ldconfig 缓存未发现 `librknnrt`、`librkllmrt`；这不等于扫描过整块磁盘，不排除其他路径有用户保存的副本。板端工程目录 `/home/jzh/projects/rk3588_voice_engine` 已由用户创建；检查程序位于 `env-check-Ca991G` 子目录。用户早先提供的初始化结果为 main 尚无提交；随后已导入并推送提交历史。最新 SSH 复核为 main 跟踪 origin/main、工作区干净。
+`ldconfig -p` 可见 `libpulse.so.0`、`libpulse-simple.so.0` 和 `libsamplerate.so.0`。常规系统库位置及 ldconfig 缓存未发现 `librknnrt`、`librkllmrt`；这不等于扫描过整块磁盘，不排除其他路径有用户保存的副本。板端工程目录 `/home/jzh/projects/rk3588_voice_engine` 已由用户创建；早期检查程序现保存在 `tmp/env-check-Ca991G/`，目录整理说明见 §7。用户早先提供的初始化结果为 main 尚无提交；随后已导入并推送提交历史。最新 SSH 复核为 main 跟踪 origin/main、工作区干净。
 
 ## 3. 耳机当前配置与历史音频快照
 
@@ -64,7 +64,7 @@ PipeWire、pipewire-pulse、WirePlumber 用户服务均为 active；PipeWire 和
 
 `bluetoothctl show/devices` 的初次非交互查询超时，后改用有界 D-Bus、服务和 PipeWire 枚举取得快照。没有据此重配设备、改 profile 或启动录音。
 
-原始精简结果：[board-audio-2026-10-16.json](evidence/board-audio-2026-10-16.json)。该文件记录当时的状态，不是录放验收日志。
+原始精简结果：[board-audio-2026-10-16.json](evidence/environment/board-audio-2026-10-16.json)。该文件记录当时的状态，不是录放验收日志。
 
 用户后续提供的 vivo TWS 4 配置（2026-10-16）：
 
@@ -95,7 +95,7 @@ PipeWire、pipewire-pulse、WirePlumber 用户服务均为 active；PipeWire 和
 | F 盘空闲 | 575,062,822,912 B（约 535.57 GiB） | 可保存模型下载和校验文件 |
 | 其他 Linux 主机/GPU | 未核实 | 不假设已具备可用转换服务器或 CUDA |
 
-原始资源结果：[pc-resources-2026-10-16.json](evidence/pc-resources-2026-10-16.json)。仅说明当前资源，不代表自行转换模型的环境或工具已经具备。
+原始资源结果：[pc-resources-2026-10-16.json](evidence/environment/pc-resources-2026-10-16.json)。仅说明当前资源，不代表自行转换模型的环境或工具已经具备。
 
 ## 5. 复查命令
 
@@ -159,6 +159,8 @@ ENV_CHECK_OK
 
 结论：该最小程序的 C++17 编译、libpulse/libsamplerate/libsndfile/yaml-cpp 链接和运行、YAML 解析及 JSON 序列化通过。未打开音频流，未测试 NPU，也尚未验证 CMake/Ninja 工程构建。Git 初始化和忽略规则随后已完成，云端首次提交已推送；之后进入工程构建与 SDK 准备。
 
+2026-10-16 目录整理：原 `env-check-Ca991G/` 已整体移入 `tmp/env-check-Ca991G/`，保留其中的源码和历史可执行文件。此前已纳入版本管理的 `tools/env_check.cpp` 与临时目录中的 `main.cpp` 内容相同，后续统一使用该源码，并将编译结果输出到 `build/env_check`；复现命令见 [README](../README.md#基础环境检查)。本次已按该命令重新编译并运行，输出 `ENV_CHECK_OK`。上方保留了用户当时执行检查的原路径和命令。
+
 ## 8. Git 与云端托管
 
 用户已在板端 `/home/jzh/projects/rk3588_voice_engine` 执行 `git init -b main`，并创建忽略构建/模型/运行库/本机配置的 `.gitignore`。云端配置前的 SSH 复核为尚无提交和远程地址；这条记录保留配置前状态。
@@ -170,7 +172,7 @@ Windows 规划文件与板端检查源码整理为同一首次提交，模型、
 - 云端仓库：[jzh03/rk3588_voice_engine](https://github.com/jzh03/rk3588_voice_engine)，可见性 private。
 - 远程地址：`https://github.com/jzh03/rk3588_voice_engine.git`，默认分支 `main`。
 - Windows 参考副本：`F:\AI\RK3588音频引擎`，曾使用本机 Git Credential Manager 推送。本次按用户要求再推送一次进度记录，此后停止作为日常修改或提交端。
-- 板端主工作目录：`/home/jzh/projects/rk3588_voice_engine`；首次曾以 Git bundle 导入同一提交历史，现已可直接通过 HTTPS 拉取/推送，保留 env-check-Ca991G 临时目录。后续代码和文档都在此更新。
+- 板端主工作目录：`/home/jzh/projects/rk3588_voice_engine`；首次曾以 Git bundle 导入同一提交历史，现已可直接通过 HTTPS 拉取/推送；早期 `env-check-Ca991G/` 临时目录现保存在 `tmp/env-check-Ca991G/`。后续代码和文档都在此更新。
 - Git 提交身份为 `jzh03 <1053442572@qq.com>`。开发板已使用 `gh auth login --hostname github.com --git-protocol https --web` 登录，并执行 `gh auth setup-git`；凭据助手为 `!/usr/bin/gh auth git-credential`。不再需要部署密钥或 Windows 中转认证。
 - `tools/env_check.cpp` 保留了用户已运行通过的环境检查源码；本轮未新增运行模型或录放测试。
 
