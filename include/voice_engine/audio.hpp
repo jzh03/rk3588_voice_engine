@@ -13,7 +13,9 @@ struct AudioContext {
     std::uint64_t generation_id = 0;
 };
 
-// Internal frames use 16 kHz, mono float32: 320 samples are 20 ms.
+// Internal frames use normalized finite [-1,1] float32 at 16 kHz, mono:
+// 320 samples are 20 ms, with a valid_samples count in 1..320.
+// The final capture frame may be zero padded; valid_samples excludes padding.
 struct AudioFrame {
     AudioContext context;
     std::uint64_t seq = 0;
@@ -21,6 +23,7 @@ struct AudioFrame {
     int sample_rate = 16000;
     int channels = 1;
     std::vector<float> samples;
+    std::size_t valid_samples = 320;
 };
 
 class AudioError : public std::runtime_error {

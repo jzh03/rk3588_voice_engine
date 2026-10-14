@@ -27,7 +27,7 @@ public:
 class JsonlLogger {
 public:
     JsonlLogger(const std::filesystem::path& run_dir, std::string run_id,
-                LogLimits limits = {});
+                LogLimits limits = {}, std::string mode = "mock");
     ~JsonlLogger() noexcept;
 
     JsonlLogger(const JsonlLogger&) = delete;
@@ -45,6 +45,7 @@ private:
 
     std::filesystem::path run_dir_;
     std::string run_id_;
+    std::string mode_;
     LogLimits limits_;
     std::ofstream stream_;
     std::size_t current_bytes_ = 0;

@@ -55,12 +55,19 @@ public:
             throw AudioError("mock playback frame has an inactive session or generation");
         }
         if (frame.sample_rate != 16000 || frame.channels != 1 ||
-            frame.samples.size() != 320) {
+            frame.samples.size() != 320 || frame.valid_samples == 0 ||
+            frame.valid_samples > frame.samples.size()) {
             throw AudioError("mock playback requires 320 mono float32 samples at 16000 Hz");
         }
         if (std::any_of(frame.samples.begin(), frame.samples.end(),
-                        [](float sample) { return !std::isfinite(sample); })) {
-            throw AudioError("mock playback frame contains non-finite samples");
+                        [](float sample) {
+                            return !std::isfinite(sample) || sample < -1.0F || sample > 1.0F;
+                        })) {
+            throw AudioError("mock playback frame samples must be normalized finite floats in [-1,1]");
+        }
+        if (std::any_of(frame.samples.begin() + frame.valid_samples, frame.samples.end(),
+                        [](float sample) { return sample != 0.0F; })) {
+            throw AudioError("mock playback padding must contain zero samples");
         }
         if (playback_.size() >= playback_capacity_frames_) {
             throw AudioError("mock playback queue is full");

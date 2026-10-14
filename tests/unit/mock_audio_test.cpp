@@ -42,7 +42,8 @@ void check_capture_and_context() {
     require(first.seq == 1 && second.seq == 2, "frame sequence did not advance");
     require(first.monotonic_ns > 0 && second.monotonic_ns >= first.monotonic_ns,
             "frame timestamp is not monotonic");
-    require(first.sample_rate == 16000 && first.channels == 1 && first.samples.size() == 320,
+    require(first.sample_rate == 16000 && first.channels == 1 && first.samples.size() == 320 &&
+            first.valid_samples == 320,
             "capture frame has the wrong format or duration");
     require(std::all_of(first.samples.begin(), first.samples.end(),
                         [](float sample) { return sample == 0.0F; }),
@@ -90,6 +91,22 @@ void check_playback_validation_and_bounds() {
     require_audio_error([&] { audio->submit_playback(invalid); }, "NaN sample accepted");
     invalid.samples[10] = std::numeric_limits<float>::infinity();
     require_audio_error([&] { audio->submit_playback(invalid); }, "infinite sample accepted");
+    invalid.samples[10] = 1.01F;
+    require_audio_error([&] { audio->submit_playback(invalid); }, "sample above normalized range accepted");
+    invalid.samples[10] = -1.01F;
+    require_audio_error([&] { audio->submit_playback(invalid); }, "sample below normalized range accepted");
+    invalid = valid;
+    invalid.valid_samples = 0;
+    require_audio_error([&] { audio->submit_playback(invalid); }, "empty valid region accepted");
+    invalid.valid_samples = 321;
+    require_audio_error([&] { audio->submit_playback(invalid); }, "oversized valid region accepted");
+    invalid = valid;
+    invalid.valid_samples = 17;
+    invalid.samples[20] = 0.5F;
+    require_audio_error([&] { audio->submit_playback(invalid); }, "nonzero padding accepted");
+    invalid.samples[20] = 0.0F;
+    audio->submit_playback(invalid);
+    audio->flush_playback();
 
     for (int index = 0; index < 100; ++index) {
         audio->submit_playback(valid);

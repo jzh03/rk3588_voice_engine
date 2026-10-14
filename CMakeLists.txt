@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 project(rk3588_voice_engine LANGUAGES CXX)
 
 option(VOICE_ENGINE_BUILD_ENGINE "Build the engine and its CLI" ON)
-option(VOICE_ENGINE_BUILD_AUDIO "Build the independent mock audio backend" ON)
+option(VOICE_ENGINE_BUILD_AUDIO "Build the independent audio implementations" ON)
+option(VOICE_ENGINE_BUILD_PULSE_AUDIO "Build native PulseAudio and streaming DSP" ON)
 option(VOICE_ENGINE_BUILD_ENV_CHECK "Build the system dependency check" ON)
 
 include(CTest)
@@ -24,13 +25,33 @@ if(VOICE_ENGINE_BUILD_AUDIO)
     target_link_libraries(voice_engine_audio PUBLIC voice_engine_audio_interface)
 endif()
 
-if(VOICE_ENGINE_BUILD_ENGINE OR VOICE_ENGINE_BUILD_ENV_CHECK)
+if(VOICE_ENGINE_BUILD_ENGINE OR VOICE_ENGINE_BUILD_ENV_CHECK OR
+   (VOICE_ENGINE_BUILD_AUDIO AND VOICE_ENGINE_BUILD_PULSE_AUDIO))
     find_package(PkgConfig REQUIRED)
+endif()
+
+if(VOICE_ENGINE_BUILD_ENGINE OR VOICE_ENGINE_BUILD_ENV_CHECK)
     find_package(nlohmann_json CONFIG REQUIRED)
 endif()
 
+if(VOICE_ENGINE_BUILD_AUDIO AND VOICE_ENGINE_BUILD_PULSE_AUDIO)
+    pkg_check_modules(PULSE_AUDIO REQUIRED IMPORTED_TARGET libpulse)
+    pkg_check_modules(SAMPLERATE REQUIRED IMPORTED_TARGET samplerate)
+    find_package(Threads REQUIRED)
+
+    add_library(voice_engine_audio_dsp STATIC src/audio/audio_dsp.cpp)
+    voice_engine_cpp_target(voice_engine_audio_dsp)
+    target_link_libraries(voice_engine_audio_dsp PUBLIC voice_engine_audio_interface
+        PRIVATE PkgConfig::SAMPLERATE)
+
+    add_library(voice_engine_pulse_audio STATIC src/audio/pulse_audio.cpp)
+    voice_engine_cpp_target(voice_engine_pulse_audio)
+    target_link_libraries(voice_engine_pulse_audio PUBLIC voice_engine_audio_interface
+        PRIVATE voice_engine_audio_dsp PkgConfig::PULSE_AUDIO Threads::Threads)
+endif()
+
 if(VOICE_ENGINE_BUILD_ENV_CHECK)
-    # PulseAudio, libsamplerate and libsndfile are confined to this diagnostic.
+    # Dependency checks have no device access; libsndfile is also used by the probe.
     pkg_check_modules(ENV_DEPS REQUIRED IMPORTED_TARGET
         libpulse samplerate sndfile yaml-cpp
     )
@@ -84,6 +105,19 @@ if(VOICE_ENGINE_BUILD_ENGINE)
     endif()
     set_target_properties(voice_engine PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
+    if(VOICE_ENGINE_BUILD_AUDIO AND VOICE_ENGINE_BUILD_PULSE_AUDIO)
+        # File I/O and configuration belong to the diagnostic application;
+        # the independently usable native backend has neither dependency.
+        pkg_check_modules(SNDFILE REQUIRED IMPORTED_TARGET sndfile)
+        add_executable(audio_probe tools/audio_probe.cpp)
+        voice_engine_cpp_target(audio_probe)
+        target_link_libraries(audio_probe PRIVATE voice_engine_config
+            voice_engine_logging voice_engine_assets voice_engine_pulse_audio voice_engine_audio_dsp
+            PkgConfig::SNDFILE)
+        set_target_properties(audio_probe PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    endif()
 endif()
 
 if(BUILD_TESTING)
@@ -93,6 +127,14 @@ if(BUILD_TESTING)
         target_link_libraries(mock_audio_test PRIVATE voice_engine_audio)
         add_test(NAME mock_audio COMMAND mock_audio_test)
         set_tests_properties(mock_audio PROPERTIES TIMEOUT 30)
+    endif()
+
+    if(VOICE_ENGINE_BUILD_AUDIO AND VOICE_ENGINE_BUILD_PULSE_AUDIO)
+        add_executable(audio_dsp_test tests/unit/audio_dsp_test.cpp)
+        voice_engine_cpp_target(audio_dsp_test)
+        target_link_libraries(audio_dsp_test PRIVATE voice_engine_audio_dsp)
+        add_test(NAME audio_dsp COMMAND audio_dsp_test)
+        set_tests_properties(audio_dsp PROPERTIES TIMEOUT 30)
     endif()
 
     if(VOICE_ENGINE_BUILD_ENGINE)
@@ -110,6 +152,14 @@ if(BUILD_TESTING)
         target_link_libraries(logger_test PRIVATE voice_engine_logging)
         add_test(NAME jsonl_logger COMMAND logger_test)
         set_tests_properties(jsonl_logger PROPERTIES TIMEOUT 60)
+
+        if(VOICE_ENGINE_BUILD_AUDIO AND VOICE_ENGINE_BUILD_PULSE_AUDIO)
+            add_test(NAME audio_probe
+                COMMAND "${Python3_EXECUTABLE}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/audio_probe.py"
+                        "$<TARGET_FILE:audio_probe>")
+            set_tests_properties(audio_probe PROPERTIES TIMEOUT 120)
+        endif()
 
         add_test(NAME build_boundaries
             COMMAND "${Python3_EXECUTABLE}"

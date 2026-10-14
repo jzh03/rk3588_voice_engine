@@ -104,6 +104,15 @@ std::size_t check_quotas(const fs::path& directory, LogLimits limits) {
 }
 
 void test_records_and_escaping(const fs::path& root) {
+    {
+        JsonlLogger audio_logger(root / "audio-mode", "unit-audio", {}, "audio_probe");
+        audio_logger.write("info", "audio_status", 1, 2, "READY");
+        require(read_records(root / "audio-mode/events.jsonl")[0].at("mode") == "audio_probe",
+                "real audio events must identify their run mode");
+    }
+    require_log_error([&] { JsonlLogger logger(root / "bad-mode", "unit", {}, "bad"); },
+                      "unknown run modes must fail before creating a directory");
+    require(!fs::exists(root / "bad-mode"), "invalid mode must not create output");
     const auto run = root / "parents" / "records";
     const std::string escaped = "quote\" slash\\ newline\n tab\t";
     JsonlLogger logger(run, "unit-records");

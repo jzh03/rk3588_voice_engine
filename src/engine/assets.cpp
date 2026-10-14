@@ -460,4 +460,12 @@ AssetCheckResult validate_assets(const Config& config) {
     return result;
 }
 
+std::string file_sha256(const std::filesystem::path& path) {
+    std::error_code error;
+    if (!std::filesystem::is_regular_file(path, error) || error) {
+        fail("checksum", "not a regular file: " + path.string());
+    }
+    return sha256(path, "checksum (" + path.string() + ")");
+}
+
 }  // namespace voice_engine

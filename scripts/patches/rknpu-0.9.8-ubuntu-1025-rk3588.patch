@@ -1,0 +1,24 @@
+From: RK3588 voice engine project
+Subject: [PATCH] rknpu: adapt 0.9.8 to Ubuntu Rockchip 1025 on RK3588
+
+Apply after extracting Rockchip's rknpu_driver_0.9.8_20241009.tar.bz2
+over Joshua-Riek/linux-rockchip at Ubuntu-rockchip-6.1.0-1025.25
+(7348ed5de414cc11a9831d269963d4a62f60b00e).
+
+That kernel lacks rockchip_opp_set_low_length. The reference is in the
+RK3576 OPP data; RK3588 uses rk3588_npu_set_soc_info instead. Omit the
+RK3576 callback for this RK3588/RK3588S-only backport. This patch is not
+a supported RK3576 adaptation and does not establish runtime compatibility.
+
+The original driver archive SHA-256 is:
+188306a3eba7ca48c186fe2a39acf232dec8536484581e54e9b96c3f65677eba
+
+--- a/drivers/rknpu/rknpu_devfreq.c
++++ b/drivers/rknpu/rknpu_devfreq.c
+@@ -235,6 +235,5 @@
+ static const struct rockchip_opp_data rk3576_npu_opp_data = {
+ 	.set_read_margin = rk3576_npu_set_read_margin,
+-	.set_soc_info = rockchip_opp_set_low_length,
+ #if KERNEL_VERSION(6, 1, 0) <= LINUX_VERSION_CODE
+ 	.config_regulators = npu_opp_config_regulators,
+ 	.config_clks = npu_opp_config_clks,

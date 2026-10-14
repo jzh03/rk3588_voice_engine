@@ -18,4 +18,9 @@ struct AssetCheckResult {
 // Throws ConfigError for invalid metadata or missing/mismatched local assets.
 AssetCheckResult validate_assets(const Config& config);
 
+// Streams a local regular file through the same SHA-256 checker used for
+// assets. Diagnostic reports use this to identify code and configuration.
+// Throws ConfigError on invalid paths or checksum process failures.
+std::string file_sha256(const std::filesystem::path& path);
+
 }  // namespace voice_engine

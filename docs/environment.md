@@ -1,10 +1,12 @@
 # 开发环境与已完成基线
 
-更新日期：2026-10-17（Asia/Shanghai）。系统与设备基线来自 2026-10-16 的 Windows 本机只读检查、现有 `ssh orangepi5` 会话的只读命令，以及用户明确确认；后续工程验证按下文日期记录。
+更新日期：2026-10-19（Asia/Shanghai）。系统与设备基线来自 2026-10-16 的 Windows 本机只读检查、现有 `ssh orangepi5` 会话的只读命令，以及用户明确确认；后续工程验证按下文日期记录。重装前最新盘点与 Windows Codex 交接见 [§25](#25-重装镜像与-windows-codex-交接)。
 
 ## 1. 记录范围与证据边界
 
 本文件保存系统、工具库和设备快照，以及 Git 交接与工程验证的历史证据。当前任务状态与后续动作统一见 [执行计划](../EXECUTION_PLAN.md#5-工作分解依赖与交付)，构建和使用方法见 [README](../README.md#基础环境检查)，SDK 官方前提见 [兼容性依据](compatibility.md)。
+
+后续留存说明：用户已授权删除此前列出的 10 个旧运行目录，清单与结果见[§22.1](#221-旧排查运行目录清理)。下文对这些目录的路径引用为历史记录，其原始本机文件现已不再留存；其余保留目录及 `docs/evidence/` 不受本次删除影响。
 
 蓝牙连接和耳机同时录放基线由用户于 2026-10-16 明确确认完成，无需重复基础验证。用户未提供测试时长或测量文件，因此不补造“已连续测 10 分钟”等细节；后续 `audio_probe` 验收针对新程序，不替代或改写这条系统基线记录。
 
@@ -163,6 +165,8 @@ ENV_CHECK_OK
 3. **板端认证。**安装 GitHub CLI 2.45.0（Ubuntu 2.45.0-1ubuntu0.3），使用 `gh auth login --hostname github.com --git-protocol https --web` 和 `gh auth setup-git`。SSH 只读复核中，`gh api user --jq .login` 返回 `jzh03`，凭据助手为 `!/usr/bin/gh auth git-credential`；未读取或记录令牌。用户确认 fetch 成功，`git push --dry-run origin main` 显示 `Everything up-to-date`。
 4. **工作目录交接。**交接前 Windows 与板端 main 均为 `b345e545080d023289bdf41e9dfee3ae884ef96d`，工作区均干净；板端 main 跟踪 origin/main。约定由 Windows 最后推送认证及进度说明，随后板端 fast-forward 拉取完成交接，之后由板端直接通过 HTTPS 拉取/推送。该时点尚未开始 P1-01，后续构建验证见 §9。
 
+2026-10-17 推送排查：本机 main 为 `bd759b5`，领先远端 `1262803` 两个提交。VS Code Git 日志报告 `Invalid username or token` / `Authentication failed`；`gh auth status` 判定现存凭据无效，`gh api user` 返回 HTTP 401。匿名读取远端 main 成功，推送 dry-run 因缺少可用凭据失败，未实际推送。当前代理下 GitHub 可达；本机直接 DNS 查询失败是附加观察，未阻止上述代理请求。尚需用户重新完成浏览器授权，恢复步骤见 [README](../README.md#版本管理约定)。脱敏证据位于被忽略的本机目录 `output/runs/git-push-auth-2026-10-17/diagnosis.json`；未读取或保存凭据，未更改代理、凭据或 Git 配置。
+
 ## 9. CMake 构建与首批音频配置校验
 
 2026-10-16，用户已建立 CMake/Ninja 构建入口，并确认 `build/bin/env_check` 输出 `ENV_CHECK_OK`；随后保存 `config/default.yaml` 和被 Git 忽略的 `config/local.yaml`。当前配置命令、字段约束与退出码见 [README 配置检查](../README.md#配置检查)。
@@ -204,3 +208,385 @@ Release 配置和 `cmake --build build -j2` 成功。分两次运行 CTest：先
 本机证据保存在被 Git 忽略的 `output/runs/p1-01-complete-2026-10-14/`：`regression.log`、`build-boundaries.log`、`check-config.log`、`env-check.log`、`mock-control.log`、`mock-control/events.jsonl` 和 `verification.json`。报告包含实际命令、退出码、测试结果、代码/配置 SHA-256 与工作区状态；这些本机产物不随仓库分发。
 
 上述结果满足 P1-01 工程骨架交付条件。尚未打开真实音频设备或加载模型，未验证 A01～A14、NPU 兼容或模型推理；下一步及相关前置条件见[执行计划](../EXECUTION_PLAN.md#9-下一次实施的首批动作)。
+
+## 12. P1-02 真实音频开发与待验收项
+
+2026-10-17（客户端日期，Asia/Shanghai），完成真实音频后端、流式 DSP、`audio_probe` 及相关自动回归。产物中的 UTC 时间保留板端时钟读数。当前用法与配置契约见 [README 真实音频诊断](../README.md#真实音频诊断)，实机标准及操作见 [A01/A02](ACCEPTANCE.md#a01a02-实机执行步骤)。
+
+沿用已安装的 libpulse 16.1、libsamplerate 0.2.2、libsndfile 1.2.2 及 PipeWire 服务，本轮没有安装依赖、更改驱动/耳机 profile 或修改系统音频路由。原有 `config/local.yaml`、默认参数和历史原始证据保留。
+
+Release 构建成功；最终执行 `ctest --test-dir build --output-on-failure -V`，9/9 组通过，耗时 43.37 s。配置、完整配置、资产、控制分别通过 62/149/93/39 项检查；mock、DSP 和日志单元测试通过。私有音频集成检查与引擎/纯 mock/原生音频三种独立构建均通过。
+
+音频集成测试启动完全独立的 PipeWire、Pulse 协议服务和最小连接策略，只含合成输入与空输出。已验证真实协议数据流、格式转换、正常停止保尾、WAV 保存/回放、显式设备拒绝、快速取消后新 generation、服务断开后重建且等待新触发，以及 SIGINT/SIGTERM 收尾。该测试没有访问物理音频设备。
+
+另保存一轮 10 s 合成双向运行：输入为 48 kHz，输出到内部 16 kHz 单声道，累计 160000 个有效采样、500 个播放帧；有效采集时间 9.997947 s，时长误差约 0.0205%，采集/播放溢出、采集 hole 和播放 underrun 均为 0。正常停止后的内部采样数与原生输入换算相差不超过 1 个采样。
+
+开发期间由私有测试发现并修复了协议处理积压：原来每次只处理一个事件便等待，导致有数据排队时仍断流和排空超时；现在每轮有界处理当前可运行的协议事件。保留的标准 `paplay` 对照在同一私有服务中正常播放并结束，修复后的后端也通过回归。
+
+本机证据位于被 Git 忽略的 `output/runs/p1-02-dev-2026-10-17/`：
+
+- `ctest.log` 与 `verification.json`：最终回归及源码/配置/程序 SHA-256。
+- `synthetic-config.yaml`、`synthetic-duplex/{run.json,events.jsonl,summary.json}`、`synthetic-duplex.log` 和 `synthetic-server/`：可追溯的合成运行及私有服务配置/日志。
+- `device-availability.json`：只读枚举设备的快照；该次未发现本机配置的耳机 source/sink。
+- `debug/native-drain-before-fix/`、`debug/standard-client-control/`：修复前失败现场和标准播放器对照，均为合成数据。
+
+**P1-02 保持进行中，A01/A02 尚未验收。** 已提醒用户连接 vivo TWS 4；用户选择稍后验收。届时先进行短试听，再按规范执行 600 s 连续录放及空闲/录音/播放三种状态的物理断线重连。声音听感、耳机路由、真实重连恢复和蓝牙尾音仍待用户配合确认；合成测试不代替这些结果。
+
+同日用户尝试 10 s 双向诊断，run 为 `audio-1791996975422-18997`，实际在设备等待阶段以 `3/device_unavailable` 结束，采集和播放均为 0。日志明确为配置中的 source/sink 不可用；只读复核显示蓝牙服务 active、适配器 Powered=true，目标耳机 Paired/Trusted=true，但 Connected/ServicesResolved=false，音频服务没有对应 bluez 节点。对已配对耳机执行一次有界重连，12 s 后仍未连接，已提醒用户将耳机开机并准备连接。未修改本机配置、profile 或默认路由，B01 历史结论保留；本次不计为短试听或 A01/A02 通过。原始日志、报告及补充诊断保存在 `output/runs/audio-1791996975422-18997/`，恢复步骤见 [README](../README.md#真实音频诊断)。
+
+用户随后确认可以重连，并说明 Ubuntu 蓝牙界面显示 Disconnect。再次执行 18 s、20 s 的有界连接仍未成功；BlueZ 日志包含 `Host is down` 和连接超时。枚举确认只有一个蓝牙控制器、目标地址与配置一致，目标仍为 Connected/ServicesResolved=false，没有 bluez 音频节点；8 s BR/EDR 搜索期间未发现该地址，搜索已结束。执行一次断开结束未完成连接，配对和信任记录仍保留，未运行新的音频试听。现场保存在 `output/runs/headset-reconnect-2026-10-17/{reconnect.json,discovery.json}`。已请用户让耳机进入可发现状态后继续；物理步骤参考 [vivo 客服 TWS 系列通用配对说明](https://kefu.vivo.com.cn/robot/imgmsgData/f60dfccb31c8465e8be88c037d85ac7e/index_1.html)，该页面不是 TWS 4 专属手册。
+
+后续耳机进入可发现状态后，扫描发现目标，RSSI 约 −32～−28 dBm。经用户明确授权，仅删除并重建该耳机配对；配对成功，期间出现 ServicesResolved=true，重新设置信任成功，但随后音频连接仍超时。适配器识别为 Realtek RTL8821C（USB `0bda:c820`），当前绑定 `btusb`，固件版本 `0x75b8f098`。内核此前出现两次 `command 0x0c03 tx timeout` 及一次 `unexpected event for opcode 0xfc19`；这些记录不能单独确定硬件损坏。板端时间 2026-10-15 01:10:56 的 USB 断开、01:10:59 的重新枚举，经用户确认是手动拔插造成，不能归为自发故障；重新枚举后固件加载成功。
+
+用户确认双耳已取出、手机蓝牙已关闭后，再次连接返回 `org.bluez.Error.Failed br-connection-page-timeout`。随后间隔约 3 s 的五次快照均为 Paired/Bonded/Trusted=true、Connected/ServicesResolved=false，无目标 card/source/sink，未启动录放。用户没有另一台蓝牙音频设备，选择先记录当前结果；目前证据不足以判断模块物理故障。后续有条件时交叉测试耳机与另一正常主机、开发板与另一正常音频设备，再决定是否进一步比较适配器或驱动；稳定连接后继续短试听与 A01/A02，不改写 B01 历史结论。
+
+本次状态、用户确认、先前操作摘要、配置/程序哈希及服务/内核日志保存在 `output/runs/headset-isolation-2026-10-15/{diagnosis.json,bluetooth-journal.log,kernel-journal.log}`，目录日期和快照时间保留本次会话及板端读数。已结束交互式蓝牙客户端，扫描关闭、Pairable 恢复为 false、Powered 保持 true，耳机配对和信任记录保留；本机音频配置、profile、默认路由及驱动均未修改。P1-02 继续进行中，A01/A02 未验收。
+
+按用户最新安排，本轮结束现场蓝牙排查，完成 P1-02 软件与文档交付；后续实机测试由用户自行进行。用户此前确认的 B01 结论保留，本次连接失败不改写历史结果。自测从 README 的 10 s 双向诊断开始，连接及短试听正常后，再按验收文档执行 A01/A02；未取得结果前不标为通过。
+
+## 13. RKNPU 0.9.8 升级预检查
+
+2026-10-18（客户端日期，Asia/Shanghai），按用户安排优先调查 RKNPU 0.9.7 → 0.9.8。用户明确要求安装前先确认；本轮只做系统只读检查、源码下载与隔离编译，没有安装依赖、替换系统文件、切换启动项或重启。**运行中的内核仍为 `6.1.0-1025-rockchip`，驱动仍为 `0.9.7`。**
+
+| 检查 | 结果与限制 |
+|---|---|
+| 驱动部署形式 | `modinfo rknpu` 为 `(builtin)`，内核配置 `CONFIG_ROCKCHIP_RKNPU=y`；NPU 设备树 compatible 为 `rockchip,rk3588-rknpu` |
+| 软件源 | 重新下载当前 PPA Noble arm64 索引；`gpgv` 用系统已信任的 PPA key 验签成功，Packages.gz 的 SHA-256 与签名 Release 一致；元包仍指向 1025，1026 源码驱动仍为 0.9.7 |
+| 安装模拟 | `apt-get -s --no-install-recommends install linux-rockchip` 返回 0，未计划任何安装或升级；仅为模拟，没有安装操作 |
+| 内核来源 | 找到原版 1025 tag；其 `rockchip_opp_select.h` 与本机已安装 headers 逐字节一致；未下载或构建完整内核 |
+| 原始驱动编译 | 首次因 headers 缺少内部 `drivers/devfreq/governor.h` 失败；从固定内核提交补齐隔离 include 后，复现 RK3576 的 `rockchip_opp_set_low_length` 未声明错误 |
+| 候选补丁 | 零 fuzz 应用后，7 个驱动 C 文件编译并合并为 AArch64 `rknpu.o`，返回 0；ELF `.modinfo` 含 `version=0.9.8` |
+| 编译器 | 预检查用 GCC 13.3.0；当前系统内核由 GCC 13.2.0 构建，日志保留版本差异提示；不构成完整内核兼容验证 |
+| 完整构建条件 | 本机尚无 bison、flex、pahole、libelf-dev、libssl-dev；根分区当次约 18 GiB 可用，原配置开启 DWARF5 / BTF，完整构建空间仍待核算 |
+| 启动与恢复 | 发现通用内核包 DTB 安装位置与本机默认启动查找位置不同，需解决后再评审安装；现有镜像仅 root 可读，`sudo -n` 要求密码，本轮未完成启动备份或恢复演练 |
+
+驱动目标文件大小为 2,234,664 B，SHA-256 `86b98348de8b055e4b76101052c5c0da9b1b05009a76b9d83b1b37bd4b1c6535`。这是隔离编译产物，不是可直接部署的 `.ko` 或内核镜像；未执行 modpost / vmlinux 最终链接、启动、模型推理或外围设备回归，不据此标记 P0-02 完成。
+
+本机证据位于被 Git 忽略的 `output/runs/rknpu098-preflight-2026-10-18/`，不随仓库分发：
+
+- `run.json`、`verification.json`、`before/`：初始 Git HEAD、工作区 diff 哈希、相关文件/配置哈希、命令和验证边界；原有未提交的音频工作保留。
+- `sources.json`、`ppa-noble-inrelease`、`ppa-noble-packages.gz`、`ppa-signature.txt`、`apt-verification.json` 和 `apt-simulation.txt`：在线原始资料、哈希、签名核验与模拟结果。
+- `compile-original.log`、`compile-with-private-header.log`、`compile-patched.log` 及对应 `*-command.json`：两次失败和补丁后的目标文件编译结果；`object-header.txt` / `object-modinfo.txt` 保存 ELF 检查。
+- `compile-original/`、`compile-patched/`、`kernel-private/`、原始驱动归档及固定版本源码片段：本次隔离输入与产物；`manual-pages-12-13.txt` 为留存手册的对应页文本。
+- `boot_config.txt`、`kernel_config.txt`、`original-kernel-package-status.txt` 和 `sudo-availability.txt`：当前启动配置、原内核配置/包状态及权限限制；不是启动备份。
+
+固定来源、候选补丁和安装/恢复前置条件集中见[兼容性记录](compatibility.md#rknpu-098-升级评估)。本次仅支持“具备进一步构建评估的依据”，不表示已经可以安全安装或完成升级。
+
+## 14. 内核重编译资源复核
+
+2026-10-18（客户端日期，Asia/Shanghai），补做板端资源、构建依赖和发行版打包规则的只读核对。没有下载完整内核、安装软件、修改候选配置、开始完整编译或重启；当前内核和 RKNPU 版本不变。
+
+| 项目 | 本次快照与边界 |
+|---|---|
+| CPU | 8 核在线，RK3588S；可以低并发试编，尚无完整内核编译耗时/负载实测 |
+| 内存 | MemTotal 8,307,392,512 B（7.74 GiB），MemAvailable 6,723,878,912 B（6.26 GiB）；空闲快照不能代表编译峰值 |
+| swap | 1,073,737,728 B，当前未使用；没有调整 swap |
+| 磁盘 | `/dev/mmcblk1p1` 可用 19,055,251,456 B（17.75 GiB）；`/`、`/tmp`、`/boot` 共用该分区，不能分别计算三份余量 |
+| 存储介质 | `mmcblk1` 为 SD，设备容量约 31.27 GB（十进制）；本次 `lsblk` 未见外接块设备，不代表用户手边没有可用存储 |
+| 温度 | `soc-thermal` 当次约 41.6 ℃；未进行持续编译/散热测试 |
+| 原配置 | DWARF5、BTF、BTF modules、GDB scripts 开启；这些会影响构建空间与依赖要求，尚未修改 |
+| 依赖 | bc、rsync 已安装；bison、flex、libelf-dev、libssl-dev、pahole、fakeroot 等缺失，发行版打包还需另核对完整 Build-Depends |
+| 基础依赖模拟 | 对 bc/bison/flex/libelf-dev/libssl-dev/pahole/fakeroot/rsync 执行 `apt-get -s --no-install-recommends install`，返回 0；模拟为 9 个新包、7 个升级，含 OpenSSL、rsync 等连带升级；未实际执行安装，不能作为最终安装清单 |
+| DTB 打包规则 | 固定源码 `debian/rules.d/2-binary-arch.mk` 的 `dtbs_install` 使用 `/lib/firmware/<abi_release>-<flavour>/device-tree`，匹配本机启动布局；通用 `bindeb-pkg` 的路径不同，后续优先评估发行版规则。尚未生成完整包 |
+
+CPU 与内存具备低并发尝试条件，当前主要限制是原调试配置的磁盘预算。量化的构建额度、并发约束和下一步选择集中维护在[执行计划 §8.1](../EXECUTION_PLAN.md#81-资源控制)，不能把语音应用的原有空间预算用于完整内核构建。
+
+本机证据位于被 Git 忽略的 `output/runs/rknpu098-resources-2026-10-18/`，不随仓库分发：`run.json`、`resources.json`、内存/磁盘/CPU/SD/温度快照、`package-status.txt`、`dependency-simulation.txt`、原版打包规则片段及 `sources.json`。`before/` 保留本轮修改前的相关文档；在线资料仅作为通用依据，不替代本板构建峰值实测。未进行压力测试或运行无关的语音程序回归。
+
+## 15. 免板端重编路线核对
+
+2026-10-18（客户端日期，Asia/Shanghai），补充核对预编译产物与其他部署路线，纠正“升级内置驱动只能在板端重编”的表述。只读取本机驱动状态、公开发布说明和 API 资产列表；没有下载完整镜像或内核二进制、安装软件、写入启动介质、切换内核或重启。运行中的驱动仍为 0.9.7，`modinfo` 仍为 `(builtin)`。
+
+| 来源 / 检查 | 核对结果与边界 |
+|---|---|
+| [darkice9x master 发布](https://github.com/darkice9x/ubuntu-rockchip-modified/releases/tag/master) | 发布于 2025-03-04；作者标注 Orange Pi 5 / 5 Plus、Ubuntu Noble、内核 6.1.0-1027、NPU 0.9.8。API 仅列两份对应板型 `.img.xz`，没有独立 Noble 内核 `.deb`；源码 zip/tar 链接不是内核安装包 |
+| Orange Pi 5 镜像资产 | `ubuntu-24.04-preinstalled-desktop-arm64-orangepi-5.img.xz`，1,842,807,668 B；API digest 为空，当前资产列表未列独立校验文件；未下载，不掌握实际文件哈希、配置或启动结果 |
+| [同仓库 OrangePi5Max 发布](https://github.com/darkice9x/ubuntu-rockchip-modified/releases/tag/OrangePi5Max) | 有 image/modules/headers 等 `.deb` 及 5 Max U-Boot 包，但发布注明 5 Max、Ubuntu 22.04 Jammy、5.10-1012；与本板现状不匹配，不作直接安装候选 |
+| [PR #36 作者说明](https://github.com/Joshua-Riek/linux-rockchip/pull/36#issuecomment-3510316860) | 作者称该镜像面向 Orange Pi 5 和 5 Plus，并链接上述发布；这是第三方作者的适用声明，不是本板验证或官方 SDK 认证 |
+| 独立预编译包 | 当前 PPA 及本次核对的第三方发布中，没有核实到可在当前系统原地安装的配套 Noble / 0.9.8 包；不据此推断所有来源都没有该产物 |
+| 旧 SDK 分支 | 读取官方 tag 列表及固定版 CHANGELOG，确认 Qwen3.5 支持始于 1.3.0；没有核实并冻结适配 0.9.7 的旧 SDK/模型组合，不把降版本视为当前目标的等价替代 |
+
+本次结论是存在免板端自行编译的具体镜像来源，仍需对候选产物做实际校验和部署评估。提取镜像内核/模块/DTB、在备用介质启动或外部构建均尚未执行；不声称已解决模块 ABI、启动、外围设备或模型兼容性。路线比较与下一步要求集中见[兼容性记录](compatibility.md#免板端重编的候选路线)。
+
+本机证据保存在被 Git 忽略的 `output/runs/rknpu098-alternatives-2026-10-18/`：`run.json`、`alternatives.json`、`darkice-releases.json`、`pr36-comments.json`、`issue1093-comments.json`、固定 SDK tag/CHANGELOG 记录、`sources.json` 和文档修改前副本。记录包含来源 URL、响应哈希及未验证项；未新增模型/依赖 manifest，因为没有取得或部署真实推理资产。
+
+## 16. 预编译产物实取与离线评估
+
+2026-10-18（客户端日期，Asia/Shanghai），按用户要求实际取得并评估独立内核包及镜像提取路线。所有下载、解包、`depmod` 索引生成和校验均在 `output/runs/rknpu098-prebuilt-eval-2026-10-18/` 内完成；`debugfs` 使用默认只读模式，没有挂载镜像或执行其中程序。没有安装软件、增加系统软件源/密钥、修改启动配置、写卡或重启；运行中的内核仍为 6.1.0-1025-rockchip，驱动仍为 0.9.7。
+
+### 本板预编译镜像
+
+原始来源及内容锁集中见[兼容性记录](compatibility.md#预编译产物与镜像提取评估)。通过 HTTP Range 读取头尾，核对 GPT 和 XZ 索引后下载完整镜像：压缩输入 1,842,807,668 B，展开逻辑长度 7,352,614,912 B；根分区起始偏移 16,777,216 B，分区长度 7,334,789,120 B。下载耗时约 237 s；流式解压、XZ 完整性检查与根分区提取约 447 s，期间 SD I/O 是主要等待来源，未做性能基准测试。
+
+| 检查 | 结果与限制 |
+|---|---|
+| 文件系统与系统版本 | 根分区 ext4，超级块标记 clean；镜像内 `/usr/lib/os-release` 为 Ubuntu 24.04.1 Noble。未执行完整文件系统扫描或启动 |
+| 内核配套 | 实际提取 `vmlinuz`、config、System.map、modules 和版本目录下的 DTB；版本为 6.1.0-1027-rockchip / 6.1.0-1027.27，基础 Linux 6.1.75 |
+| NPU 静态信息 | `CONFIG_ROCKCHIP_RKNPU=y`，内置模块元数据及隔离 `modinfo` 报 0.9.8；没有加载到运行中内核 |
+| 设备树 | Orange Pi 5 型号/compatible 正确，NPU compatible 为本板对应值；本板 DTB 与当前 1025 版本文件逐字节一致 |
+| 模块集合 | 共 2242 个 `.ko`，逐个读取 ELF 架构与 vermagic，全部为 AArch64 且匹配 6.1.0-1027-rockchip；当前快照中 31 个已加载模块名称均有对应项。名称覆盖不代表设备实测通过 |
+| 符号依赖 | 用配套 System.map 对隔离目录执行 `depmod -n -e -F`，返回 0、无警告；这不是启动验证或完整 CRC/ABI 验收。镜像未提供对应 arch headers 的 Module.symvers |
+| 配置差异 | 与当前配置比较有 19 项差异，完整差异保存为 JSON；CFG80211、MAC80211 等从内置改为模块，需在后续启动/网络回归覆盖 |
+| 包 MD5 对照 | 检查 2948 个相关载荷文件，无缺失，2947 项一致；`rtl8812au/88XXau.ko` 一项不符。独立重新 dump 得到相同实际 MD5，排除首次提取复制错误；未找到解释其变更的包记录/作者说明，保留失败项 |
+| 原始安装包 | 镜像 apt 缓存只有 lock/partial，没有可直接提取的原始 `.deb`；安装记录中的 image/modules/buildinfo/common headers 为 6.1.0-1027.27，状态为 hold。不会把镜像中的 hold 状态应用到本机 |
+| 候选载荷 | 最终隔离目录含 2958 个普通文件，合计 282,677,914 B，包含本地生成的模块索引；逐文件 SHA-256 清单已保存。没有生成独立安装包或本机 initramfs |
+
+完整性检查脚本保留退出码 1，因为单项 MD5 差异未通过；后续模块及符号检查的通过结果不覆盖该失败。未执行 A01/A02、NPU 推理或其他语音程序回归。
+
+### 独立 PPA 内核包
+
+找到 Wang Haoyang 的 `rockchip-bsp` Noble 源，取得 `linux-image-6.1.0-1005-rockchip`、`linux-modules-6.1.0-1005-rockchip`、`linux-modules-extra-6.1.0-1005-rockchip` 三包，包版本均为 6.1.0-1005.5。压缩大小分别为 42,997,952 / 14,370,402 / 5,914 B。用 Launchpad API 公布的指纹 `860B23D6BDDFF94E8788AB42D786860960965BEC` 在隔离目录验证 InRelease，再核对索引及包 SHA-256，均一致；没有向系统添加该源或密钥。这是第三方发布验证，不是官方适配认证。
+
+解包后核实其内核为 Linux 6.1.115、内置 RKNPU 元数据为 0.9.8。包内有 388 份 DTB，但没有 `rk3588s-orangepi-5.dtb`；与当前配置有 2234 项差异，当前已加载模块名称中 8821cu、rtw88_8821cu、rtw88_usb、joydev、uio_pdrv_genirq、uio 无对应项。尚未建立替代驱动关系，不能据名称缺失断言硬件绝不支持，但这套包不构成本板可直接安装的完整组合，本轮不采用它部署。
+
+### 证据、空间与后续边界
+
+本机目录 `output/runs/rknpu098-prebuilt-eval-2026-10-18/` 被 Git 忽略，不随仓库分发：
+
+- `assessment-summary.json`：两条路线的结论、未验证项及未安装状态；`run.json`、`before/` 保存起始代码/配置标识和文档快照。
+- 原始 `.img.xz`、`image-download.json`、`image-layout.json`、`partition-extraction.json`：实际输入、下载哈希、分区和流完整性结果。
+- `image-candidate-root/`、`image-payload-manifest.json`、`image-assessment.json`：实际提取的候选载荷、逐文件 SHA-256、含失败项的校验报告。
+- `image-config-diff.json`、`image-all-module-vermagic.json`、`image-depmod-*`、`image-package-info/`、`88XXau-mismatch-review.json`：配置、模块、符号依赖、包记录和单项差异复核。
+- `ppa-debs/`、`ppa-candidate-root/`、`ppa-control/`、`ppa-package-verification.json`、`ppa-assessment.json`、`ppa-config-diff.json`、`sources.json`：第三方包、签名链、索引/包哈希、只读来源及限制。
+- 本轮下载/提取/检查脚本、命令日志、`storage-cleanup.json`：可重现流程。解压中间文件 `candidate-rootfs.img` 已在检查后删除，原逻辑长度、分配空间和哈希仍留存；原始压缩输入及候选载荷保留，可重新提取。清理后根分区当次约 16.21 GiB 可用，不套用为后续安装余量保证。
+
+**评估已完成，部署条件未满足。** 保留镜像提取路线继续调查 MD5 差异及独立打包/回退方案；未把候选写成 verified，也未建立已验证 SDK/模型组合。安装、启动切换和重启仍须先提交具体方案并经用户明确确认。
+
+## 17. 开发板闲置文件清理
+
+2026-10-18（客户端日期，Asia/Shanghai），按用户要求清理开发板垃圾文件。先检查目录占用及用户进程的可执行文件、参数路径、映射和打开文件，再逐项删除闲置文件；系统保护的 systemd、sd-pam、sshd 部分进程信息不可读，限制已记录。板端时钟仍显示 2026-10-15，原始观测时间与客户端日期分别保存在证据中。
+
+| 已清理内容 | 删除前实际占用 |
+|---|---:|
+| 闲置 VS Code Server 1.141.1，commit `7baac39ec3ca969dab74ac12c097f6a486e46593` | 630.29 MiB |
+| 两个闲置 `code-07f806…`、`code-7baac3…` 启动程序 | 55.54 MiB |
+| 对应启动日志和 8 份已结束的 VS Code 会话日志 | 6.52 MiB |
+| 已退出的 Chromium HTTP/代码缓存及桌面缩略图缓存 | 25.46 MiB |
+| **合计** | **752,680,960 B，约 717.81 MiB** |
+
+当前使用的 VS Code Server 1.142.0（commit `6d62b1d5dace93a33b3a6d3eca1317bd5e15bcb1`）、Codex 扩展、编辑器配置/历史与当前会话日志保留。清理后原 13 个 VS Code/Codex 可执行进程仍存在，受保护的程序及配置 SHA-256 一致；Bluetooth、PipeWire、pipewire-pulse 和 WirePlumber 前后均为 active。文档更新前，清单内 56 份项目文件及本机配置哈希均未改变。内核仍为 `6.1.0-1025-rockchip`，RKNPU 仍为 `0.9.7`。
+
+清理后的根分区一次快照可用 19,002,748,928 B（约 17.70 GiB）。同期另一个 Python 进程正写入 `output/runs/rknpu098-prebuilt-eval-2026-10-18/` 下的候选镜像 `.img.xz.part`，已确认打开文件并保留，因此整盘可用空间差不能直接作为本轮释放量；上表按删除对象的分配块计量。项目源码、构建产物、既有运行证据、模型/依赖、凭据和系统文件均未列入删除范围。
+
+尚未清理：`snap list --all` 中 disabled 的 `core22` revision `1624`、`lxd` revision `30134` 和 `snapd` revision `21761`，文件大小合计约 197.34 MiB。它们由 root 所有，`sudo -n true` 提示需要密码；后续需在板端终端认证后逐项执行 `sudo snap remove <名称> --revision=<上述版本>`，执行前复查仍为 disabled。APT archives 没有待清理的 `.deb`，未删除包索引或系统日志。
+
+本机证据位于被 Git 忽略的 `output/runs/board-cleanup-2026-10-18/`：`run.json` 保存代码/配置标识与初始磁盘快照，`cleanup.py` 为本次实际检查/清理脚本，`cleanup-plan.json`、`cleanup-result.json` 保存逐项大小、操作与核验结果，`active-paths-{before,after}.json` 保存进程路径引用，`concurrent-activity.json` 记录并发下载，`df-after.txt` 保存清理后磁盘读数，`before/environment.md` 保存本轮文档修改前副本。仅更新环境记录，任务阶段未改变；未运行无关的构建或 CTest。
+
+## 18. 官方固件与 Ubuntu 26.04 只读核对
+
+2026-10-18（客户端日期，Asia/Shanghai），按用户要求核对瑞芯微官方固件、Orange Pi 5 板厂镜像及 Ubuntu 26.04 是否能解除当前驱动兼容阻塞。只取得公开网页、目录 API 元数据和源码文本；没有下载本节涉及的完整固件或系统镜像、安装依赖/内核、变更系统源/密钥、修改启动配置、写卡或重启。运行中仍为 `6.1.0-1025-rockchip`、RKNPU `0.9.7`，板型 compatible 仍为 `rockchip,rk3588s-orangepi-5`。
+
+| 实际检查 | 证据与边界 |
+|---|---|
+| 手册官方链接 | 对仓库留存 PDF 执行 `pdfinfo -url`，取得第 12 页官方固件超链接；解析入口 HTML 内嵌的目录 JSON，不将页面未渲染的空表误判为无固件 |
+| 瑞芯微固件目录 | 访问入口公开链接，按页面 JavaScript 使用的只读 metadata GET 展开 Linux6.1 / Linux6.12 → RK3588 → RK3588S-EVB1-V10；目录响应均已留存。确认是参考板固件分类，未取得二进制内容，不声称核实了归档中的驱动版本 |
+| 本板官方镜像目录 | 从 Orange Pi 5 下载页的 Official Images → Ubuntu 链接读取公开目录；解析文件名、文件 ID、列示大小及时间。确有 Resolute / 6.18.49 和 Focal、Jammy / 6.1.99 项，未请求镜像文件内容，目录大小不是实取大小或哈希 |
+| 板厂构建与内核源码 | 保存固定提交下的板型配置、family 配置、两套内核配置、Makefile、厂商驱动头文件及 next 的 drivers 目录 API。源码支持“26.04 next 为 Rocket、BSP 6.1.99 为厂商 RKNPU 0.9.8”的判断，但未建立已发布镜像与精确源码的可复现构建对应关系 |
+| 结论与下一步 | Ubuntu 版本升级不直接等于当前 RKLLM 驱动要求达标；优先核验新增的板厂 BSP 产物。具体来源、版本锁与兼容性理由集中见[兼容性记录](compatibility.md#官方固件与-ubuntu-2604-镜像核对)，不把候选写成已部署或已验证 |
+
+本机证据目录 `output/runs/rknpu098-official-images-ubuntu2604-2026-10-18/` 被 Git 忽略，不随仓库分发：
+
+- `run.json`、`before/`：初始 Git HEAD、工作区 diff / 文档哈希、内核/驱动/板型与只读范围；保留原有音频代码和清理记录。
+- `manual-hyperlinks.txt`、`rockchip-firmware.html`、`rockchip-firmware-catalog.json`、`rockchip-linux*-metadata.txt`：官方入口、SDK 及参考板目录原始响应；相关网盘页面和元数据获取依据同时保留。网页模板中的“链接失效”隐藏文案不作为失效结论，实际公开目录 API 可读。
+- `orangepi5-downloads-http.html`、`orangepi5-ubuntu-folder.html`、`orangepi5-image-catalog.json`、`orangepi*.txt`：板卡厂商下载链、公开文件元数据及固定源码。官方站 HTTPS 在本次环境握手失败，HTTP 页面读取成功；来源链和限制均记录，未据此声称完成发布者签名验证。
+- `sources.json`：逐次来源 URL、状态、留存响应字节数、SHA-256 和失败尝试；包含最初路径猜测的 404，不把单个猜测路径不存在作为整个驱动不存在的证据。
+- `assessment.json`、`verification.json`：检查方法、源码与二进制的区别、结论、未验证项、文档检查及本轮完成时的系统状态。未进行模型、外围设备或启动验收，也未运行无关的构建 / CTest。
+
+P0-02 保持进行中。此前第三方产物的单项 MD5 差异仍未解决；新增官方来源不会覆盖历史失败记录。本轮同步入口、兼容性及计划，并将原重复的清理章节编号顺延为 §17，清理原文保持不变。
+
+## 19. 方案 2 准备条件与驱动资料空间盘点
+
+2026-10-18（客户端日期，Asia/Shanghai），按用户要求说明镜像提取路线，并只读盘点此前驱动排查的下载及衍生产物。统计范围为既有五个 `output/runs/rknpu098-*` 目录及留存的 RKLLM 官方 PDF；不代表整个项目或系统的全部占用，不含本轮新盘点目录的小额开销。没有新下载镜像、安装软件、解包/挂载镜像、删除文件、修改启动项或重启；运行中仍为 `6.1.0-1025-rockchip` / RKNPU `0.9.7`。
+
+按 `lstat.st_blocks × 512` 统计实际分配空间，同一 `(st_dev, st_ino)` 只计一次，包含目录块，不跟随符号链接；使用 `du -B1 -s` 逐目录交叉核对一致。文件逻辑长度另存 JSON，不将压缩大小、展开逻辑长度和实际占盘混为一项，也不根据两次整盘空闲差推算下载量。
+
+| 现存内容 | 性质 / 来源 | 实际占盘 |
+|---|---|---:|
+| `ubuntu-24.04-preinstalled-desktop-arm64-orangepi-5.img.xz` | 已下载的 darkice9x 第三方本板镜像；文件逻辑长度、来源与哈希见兼容性记录 | 1,842,814,976 B，约 **1.72 GiB** |
+| `image-candidate-root/` | 从上述镜像提取的内核、模块、DTB 等，含本地模块索引，属于衍生产物 | 290,811,904 B，约 **277.34 MiB** |
+| `ppa-debs/` 三个内核包 | 已下载的 haoyangw/rockchip-bsp image、modules、modules-extra；本次已评估为不直接用于本板 | 57,384,960 B，约 **54.73 MiB** |
+| `ppa-candidate-root/` | 上述三个包的解包内容，属于衍生产物 | 186,032,128 B，约 **177.41 MiB** |
+| 官方驱动源码归档 | `rknpu_driver_0.9.8_20241009.tar.bz2`，原文件 36,877 B；只是驱动源码，没有下载完整内核源码 | 40,960 B |
+| 官方 RKLLM PDF | `docs/evidence/sdk/Rockchip_RKLLM_SDK_CN_1.3.1.pdf`，原文件 3,902,489 B | 3,903,488 B，约 **3.72 MiB** |
+| 源码预检查产物及证据 | preflight 中的源码片段、目标文件、编译日志及文档副本等，不含上列驱动归档 | 9,854,976 B，约 **9.40 MiB** |
+| 其他只读资料与检查记录 | API/网页/源码文本、目录快照、配置与模块检查报告、局部探测片段及文档副本 | 15,011,840 B，约 **14.32 MiB** |
+| **合计** | 既有驱动资料及手册，包含原始下载和提取/解包结果 | **2,405,855,232 B，约 2.24 GiB** |
+
+根分区当次用户可用 17,404,813,312 B（约 **16.21 GiB**）；`/`、`/boot`、`/tmp` 仍共用同一分区。此前删除的 `candidate-rootfs.img` 当前不存在，历史上分配约 5.20 GiB，未计入本次现存占用。保留的 `image-head.xz.part` / `image-tail.xz.part` 各为 65,536 B 的 Range 探测片段，并非未完成的整镜像下载。
+
+用户打开的 `rknpu098-resources-2026-10-18/kernel-config.txt` 是配置快照，逻辑长度 243,090 B、实际分配 245,760 B；整个 resources 证据目录实际约 592 KiB，不是完整内核源码或系统镜像。香橙派官方 BSP 6.1.99 镜像与 Ubuntu 26.04 整镜像均尚未下载；先前只有其目录/源码资料。官方下一候选的来源及列示大小统一见[实施顺序](compatibility.md#镜像提取路线的实施顺序)，其展开大小尚未核实。
+
+解包工具检查：本板有 `xz`、`debugfs`、`dpkg-deb`、`mkinitramfs`、`depmod`、`modinfo`，没有 `7z`、`7zz`、`bsdtar` 或 Python `py7zr`。用现有 APT 索引执行 `apt-get -s --no-install-recommends install 7zip`，返回 0，模拟为新增 `7zip 23.01+dfsg-11` 一个包、无升级或删除；没有刷新索引、下载或安装。模拟清单只说明当次依赖解析结果，实际安装前须复核并取得用户确认。
+
+证据位于被 Git 忽略的 `output/runs/rknpu098-route2-storage-2026-10-18/`：`run.json`、`before/` 保存初始代码/配置标识与文档；`inventory.json` 保存分类/逐目录汇总、统计范围和文件系统快照；`file-inventory.json` 保存逐项逻辑长度、分配块和 inode；`du-crosscheck.txt`、`df.txt` 保存交叉核对原文；`inspection-tools.json`、`7zip-install-simulation*.json` / `.txt` 保存工具与模拟依据；`verification.json` 保存文档检查及状态边界。P0-02 阶段不变，安装包、initramfs、启动和模型验证仍未完成；本轮未运行无关构建或 CTest。
+
+## 20. 方案 2 启动与旧产物清理
+
+2026-10-18（客户端日期，Asia/Shanghai；原始主机时钟读数保留）。用户选择方案 2，并明确要求删除截图中的四类旧产物。本阶段清理指定内容、准备隔离工具和尝试公开下载，没有安装系统依赖或内核、写入启动介质、切换启动项或重启。运行中仍为 `6.1.0-1025-rockchip` / RKNPU `0.9.7`。
+
+下表路径均相对于 `output/runs/rknpu098-prebuilt-eval-2026-10-18/`，四项均已删除：
+
+| 已清理内容 | 实际释放的分配空间 |
+|---|---|
+| `ubuntu-24.04-preinstalled-desktop-arm64-orangepi-5.img.xz` | 1,842,814,976 B |
+| `image-candidate-root/` | 290,811,904 B |
+| `ppa-debs/` | 57,384,960 B |
+| `ppa-candidate-root/` | 186,032,128 B |
+| **合计** | **2,377,043,968 B，约 2.21 GiB** |
+
+清理按四条固定路径执行，核对 inode、文件系统、符号链接及当前用户可读的进程引用；没有发现可读进程占用。部分受保护的 systemd / sd-pam / sshd 进程无法完整读取，限制已记入证据，不声称完成系统所有进程检查。旧目录其余 **132 份原有证据文件**按 SHA-256 核对未变，另新增 `artifact-availability.json` 说明大产物已清理；历史单项 MD5 失败仍保留。§16、§19 的旧占用及“当时保留”描述属于历史快照；此前约 5.20 GiB 中间文件的释放不计入本次合计。
+
+隔离工具：用现有 APT 索引下载 `7zip 23.01+dfsg-11` arm64 包，文件为 1,803,596 B，SHA-256 `b85ce28f0c61e9fb5655e2426b72107b83385f62f0c79c91688509e01dec1159`，与索引一致。通过 `dpkg-deb --extract` 解包到本次运行目录，实际可执行文件为 `tool-root/usr/lib/7zip/7za`，`7za i` 成功、动态依赖可解析。没有执行安装或维护脚本，没有刷新/修改软件源、信任密钥或全局工具路径。
+
+下载状态：官方 Google Drive 的四份 Ubuntu 6.1.99 镜像及一份 Debian Bookworm server 6.1.99 镜像均在取得正文前返回下载限额页，没有下载完整镜像。板厂[中文官方下载页](http://www.orangepi.cn/html/hardWare/computerAndMicrocontrollers/service-and-support/Orange-pi-5.html)提供的百度目录可读取公开文件名和大小；正常公开下载接口返回 `errno=0`，但载荷为不透明字符串，未取得可用文件流。不据此推断必须登录，没有使用私人账号或绕过下载限制。
+
+用户随后决定自行从百度下载。交接前建立空 `input/` 目录和 `handoff.json` 记录预期输入，当时归档哈希为空、等待文件。用户实际放入此前的 storage 运行目录后，继续完成的离线检查、候选包与当前交接状态见下一节；`handoff.json` 已随之更新。安装前仍须提交具体方案并取得用户确认。
+
+镜像交接前，准备工具及保存下载元数据后的根分区用户可用快照为 19,768,172,544 B（约 **18.41 GiB**）；本次新增工作目录当次实际分配约 **9.55 MiB**，主要为工具包、隔离工具及文本证据，无整镜像。这些是当时快照，交接及处理后的占用见下一节。
+
+本机证据位于被 Git 忽略的 `output/runs/rknpu098-official-extract-2026-10-18/`：`run.json`、`before/` 保存初始代码/配置标识与文档；`cleanup_selected.py`、`cleanup-plan.json`、`cleanup-result.json` 保存授权范围、执行与保留文件哈希；`isolated-tool.json`、`isolated-tool-info.txt`、工具包和 `tool-root/` 保存隔离工具依据；`google-download-attempts.json`、公开响应、百度目录及 `baidu-public-download-result.json` 保存下载结果与限制；`assessment.json`、`handoff.json` 保存当前状态，`verification.json` 保存最终检查。原有音频实现、配置和构建文件未改动，P0-02 保持进行中；本轮未运行无关构建或 CTest。
+
+## 21. 官方 BSP 镜像实取与离线候选包
+
+2026-10-18（客户端日期，Asia/Shanghai），用户将官方 Jammy server / 6.1.99 归档放到 `output/runs/rknpu098-route2-storage-2026-10-18/Orangepi5_1.2.4_ubuntu_jammy_server_linux6.1.99.7z`，随后要求继续。最初观察文件约 320 MiB，复查时已传完整，大小为 621,852,720 B；哈希期间大小和修改时间稳定。没有移动、覆盖或删除用户提供的归档。
+
+已用前节的隔离工具列目录并解包，7z CRC 通过；展开镜像为 3,091,202,048 B，与归档内 SHA-256 记录一致。MBR 只有一个 Linux 分区，偏移 31,457,280 B、长度 3,059,744,768 B；以稀疏副本和只读 `debugfs` 提取，未挂载、未执行镜像内程序。实际文件内容锁、驱动和包版本、完整性/模块/设备树结果及兼容差异集中见[官方候选核验](compatibility.md#官方-bsp-6199-离线核验与候选包)，没有据此宣称已启动或推理通过。
+
+候选内核、778 个模块、设备树和两份未压缩 RTL8821C 固件已放入本次运行目录的 `candidate-root/`；固件来自同一官方镜像，分别为 51,700 B 和 10 B，源包 MD5 核验通过。准备过程中曾尝试使用现有压缩固件：固件主体可解压，配置的符号链接目标未能用 zstd 解压，未修改系统；暂存主体最终改为官方镜像的配套文件。原始候选索引与本地 `depmod` 生成索引分别留证，源包校验在原始索引状态下完成。
+
+已生成 `packages/voice-engine-kernel-6.1.99-rockchip-rk3588_1.2.4+voice1_arm64.deb`，实际 34,902,652 B。包内 919 个普通文件的内容哈希、root 归属及当前目标文件冲突检查通过，不含维护脚本。`install-review.json` 列出备份、第一阶段并存安装/本机 initramfs、第二阶段恢复确认/试启动的具体边界；`extlinux-trial.conf.preview` 仅为预览，保留现有根 UUID 和旧默认入口，未写入系统。当前 root 权限下的完整备份尚未执行，本机 initramfs 尚未生成，恢复入口尚未确认或演练。
+
+离线处理后，删除了本轮生成的完整 `.img`、`rootfs.ext4` 和 `package-root/` 三项临时内容，实际分配合计 5,739,016,192 B（约 5.34 GiB）；保留用户原始 `.7z`、归档内校验文本、候选组件、独立包和证据。此临时释放量与前节用户指定四类旧产物的 2.21 GiB 分别记录。清理后本次运行目录实际占用快照约 **163.36 MiB**，另有用户归档约 **593.04 MiB**；根分区用户可用为 18,963,509,248 B（约 **17.66 GiB**）。后续备份、安装及 initramfs 仍须复核峰值和余量。
+
+同日按用户追问只读核算两套内核并存占用，记录于同目录 `coexisting-kernel-storage.json`：现有版本的内核、配置、System.map、initramfs、模块和版本专用固件/设备树合计实际分配 **309,280,768 B（294.95 MiB）**；候选组件暂存树实际分配 **121,647,104 B（116.01 MiB）**，安装后占用以此估算，另计包记录等小额开销。新 initramfs 尚未生成，暂按 **128 MiB** 预算，则两套运行组件合计约 **539 MiB（0.53 GiB）**。第一阶段备份归档另按 **320 MiB** 预算，相对当前新增持久文件约 **564 MiB（0.55 GiB）**；这两个额度均非实测大小或硬上限，未包含生成 initramfs 时的临时工作空间。现有归档与离线目录已占用的空间不重复计入新增量；本次根分区用户可用快照 **18,943,164,416 B（17.64 GiB）**。统计不含共享固件、headers/编译工具或系统应用；安装前仍须复核峰值及 3 GiB 余量，未据此授权安装。
+
+本机证据仍位于被 Git 忽略的 `output/runs/rknpu098-official-extract-2026-10-18/`，本阶段新增：`continued-baseline.json` 与主机启动配置/设备绑定快照；`input-archive.json`、`archive-list.txt`、`extraction-space-plan.json`、解包与分区脚本/日志、`image-verification.json`；组件提取脚本/命令、原包元数据、`candidate-assessment.json`、配置差异与载荷清单；`original-module-indexes/`、索引差异/恢复记录、`firmware-preparation.json`；`prepare_candidate.py`、包内容与 `package-assessment.json`；`install-review.json`、启动项预览、`intermediate-cleanup.json`。重现被清理的中间步骤须从保留的用户归档重新开始，不把已清理文件写成现存证据。
+
+`verification.json` 记录文档链接/差异、用户原有代码及配置哈希、旧证据保留、包及系统状态等最终检查。当前仍为 `6.1.0-1025-rockchip` / RKNPU `0.9.7`，原默认启动配置和设备树未改动；没有安装依赖或内核、切换启动项、刷写或重启。P0-02 保持进行中，GPU、无线、蓝牙音频和 SDK/模型待试启动后验收；本轮未运行无关应用构建或 CTest。
+
+## 22. 可重建中间产物清理与整目录取舍
+
+2026-10-18（客户端日期，Asia/Shanghai；原始主机时钟读数单独保留），用户明确要求先删除前次列出的约 128 MiB 中间产物，并询问哪些运行目录可以整个删除。本轮只删除下表四处授权内容，未删除任何完整运行目录。
+
+| 已删除路径（相对于 `output/runs/`） | 删除前实际分配 |
+|---|---:|
+| `rknpu098-official-extract-2026-10-18/candidate-root/` | 121,647,104 B，约 116.01 MiB |
+| `rknpu098-preflight-2026-10-18/compile-original/` | 2,682,880 B，约 2.56 MiB |
+| `rknpu098-preflight-2026-10-18/compile-patched/` | 5,287,936 B，约 5.04 MiB |
+| `rknpu098-prebuilt-eval-2026-10-18/image-88XXau-redump.ko` | 4,304,896 B，约 4.11 MiB |
+| **合计** | **133,922,816 B，约 127.72 MiB** |
+
+删除前复核独立包和用户原始 `.7z` 的 SHA-256，与 §21 的内容锁一致；候选副本全部 916 个普通文件与保留 `.deb` 的对应内容一致。检查 inode、属主、文件系统、链接及当前用户可读的进程引用，未发现选中路径被占用；systemd / sd-pam / sshd 的受保护字段不可完整读取，限制已留证。删除后四处路径均不存在，其他 637 份既有产物文件哈希未变，源码、本机配置、安装包、原始归档和源码补丁均保留。清理后根分区用户可用快照为 19,076,722,688 B（约 17.77 GiB）；实际磁盘差另受新增证据和后台写入影响。
+
+后续需要恢复 `candidate-root/` 时，先按 §21 或 `install-review.json` 校验包哈希，再在仓库根目录对不存在的新目标执行：
+
+```bash
+dpkg-deb --extract \
+  output/runs/rknpu098-official-extract-2026-10-18/packages/voice-engine-kernel-6.1.99-rockchip-rk3588_1.2.4+voice1_arm64.deb \
+  output/runs/rknpu098-official-extract-2026-10-18/candidate-root
+```
+
+该操作仅恢复隔离副本，不安装系统文件。`verify_components.py`、`prepare_candidate.py` 等使用副本的历史处理脚本应先恢复对应输入，再按原流程运行；完整镜像提取仍需保留的 `.7z`。源码路线的目标文件可用保留的固定源码、驱动归档和补丁重新编译。旧第三方模块的原镜像此前已清理，重现其提取需重新取得历史输入；MD5 失败的原始报告仍保留。§13、§16、§21 中产物“当时存在”的记录不改写，当前可用性以本节及新增清理记录为准。
+
+整目录盘点结果（约 128 MiB 清理轮次时的快照）：以下 10 个目录当时尚未删除，合计约 9.93 MiB。用户随后已确认删除，执行结果及证据可用性见[§22.1](#221-旧排查运行目录清理)。
+
+| 类型 | 可整目录删除的候选 |
+|---|---|
+| 旧配置检查、控制和现场诊断 | `config-check-2026-10-16`、`config-check-2026-10-17`、`p1-01-control-2026-10-17`、`git-push-auth-2026-10-17`、`audio-1791996975422-18997`、`headset-reconnect-2026-10-17`、`board-cleanup-2026-10-18` |
+| 旧驱动候选路线记录 | `rknpu098-alternatives-2026-10-18`、`rknpu098-official-images-ubuntu2604-2026-10-18`、`rknpu098-prebuilt-eval-2026-10-18` |
+
+建议继续保留其余 7 个目录：`rknpu098-official-extract-2026-10-18` 保存当前独立包、安装评审与复现工具；`rknpu098-route2-storage-2026-10-18` 保存用户原始 `.7z`，尚未确认板外存在校验一致的备份；`rknpu098-preflight-2026-10-18` 与 `rknpu098-resources-2026-10-18` 保存源码备选路线的输入及资源依据；`p1-01-complete-2026-10-14`、`p1-02-dev-2026-10-17` 保存当前工程/音频回归证据；`headset-isolation-2026-10-15` 保存尚未解决的蓝牙排查结果。
+
+本轮证据复用 `output/runs/rknpu098-official-extract-2026-10-18/`：`cleanup_intermediates.py` 为实际清理脚本，`cleanup-128mib-plan.json` 保存代码/配置标识、逐项占用、进程检查和保留文件哈希，`cleanup-128mib-result.json` 保存操作结果与恢复条件，`folder-cleanup-options.json` 保存整目录分类及文档引用，`before/cleanup-128mib/` 保存相关文档修改前副本，`cleanup-128mib-verification.json` 保存交付检查。旧 preflight 和 prebuilt-eval 目录另新增 `cleanup-128mib-availability.json` 标明本次删除项；既有报告未修改。当前仍运行 `6.1.0-1025-rockchip` / RKNPU `0.9.7`，未安装、改启动项或重启，任务阶段不变；本轮未运行无关构建或 CTest。
+
+### 22.1 旧排查运行目录清理
+
+2026-10-18（客户端日期，Asia/Shanghai），用户确认删除上文列出的 10 个旧运行目录。十个目录均已整目录删除，删除前实际分配合计 **10,416,128 B（约 9.93 MiB）**，涉及 240 个普通文件；不重复计算此前已清理的中间产物、旧镜像或 VS Code Server。
+
+删除前逐项检查路径、inode、属主、文件系统、链接及当前用户可读的进程引用，未发现选中目录被占用。systemd / sd-pam / sshd 的部分受保护进程字段不可完整读取，限制留证。删除完成时项目源码与本机配置未变，保留目录内 439 份既有文件哈希均一致；原始 `.7z`、独立 `.deb`、源码补丁、最新回归和蓝牙排查记录保留。本轮没有移动、重新命名或删除其余运行目录。
+
+原先建议保留的 7 个目录及随后新增的 `rknpu098-phase1-2026-10-18/` 第一阶段安装记录均保留，清理完成时共剩 8 个运行目录。第三方镜像/PPA 的详细命令、逐文件清单和原始失败报告已随旧目录删除；文档中的历史结论与 MD5 差异摘要保留，不能再将原目录写成可取得的本机证据。此前的 `folder-cleanup-options.json` 和旧清理报告保存其生成时的状态，当前可用性以本节与本轮结果为准。
+
+本轮继续复用 `output/runs/rknpu098-official-extract-2026-10-18/`：`cleanup_old_runs.py` 为实际清理脚本，`old-run-cleanup-plan.json` 保存授权路径、逐项大小、进程检查、代码/配置标识和保留文件哈希，`old-run-cleanup-result.json` 保存逐项删除及验证结果，`old-run-cleanup-verification.json` 保存交付检查，`before/old-run-cleanup/` 保存清理前文档，`before/old-run-cleanup-documentation-current/` 保存同步说明前的最新文档快照。本次清理不改变项目阶段，不执行系统安装、启动切换或重启；未运行无关的程序构建或 CTest。
+
+## 23. 第一阶段授权与安装执行
+
+2026-10-18（客户端日期，Asia/Shanghai；主机时钟仍另行记录），用户明确要求“开始进行第一阶段吧，有问题随时问我”。本阶段范围为旧内核备份、独立候选包并存安装及本机 initramfs 生成/检查；保持原默认启动项，不重启。初次 `sudo -n true` 返回需要密码；完成可读预检查与固定执行脚本后，用户在开发板终端通过 sudo 执行，未在聊天中提供密码。
+
+**第一阶段已完成并核验。** 原内核及启动配置备份通过安装前后两次 `tar --compare`，候选包安装成功，919 个包内文件与安装后文件的 SHA-256 一致。`depmod -e -F` 返回 0、无符号警告；本机 `mkinitramfs -c gzip` 返回 0、日志为空。initramfs 包含 `init`、本地根文件系统启动脚本、busybox、udev 和新版本模块索引，模块版本集合仅为 `6.1.99-rockchip-rk3588`。已独立复核安装包状态、六项关键内核/设备树/固件哈希和 initramfs 哈希。
+
+| 已完成产物或检查 | 结果 |
+|---|---|
+| 旧内核完整备份 | `/var/backups/voice-engine/rknpu098-20261018/original-kernel-and-boot.tar`，307,159,040 B（292.93 MiB）；SHA-256 `47ee64ed60280d8e068b6ef0adc9674558dfdcdb17d923ec37cd536acea25c4a`，同目录保存 `SHA256SUMS` |
+| 已安装包 | `voice-engine-kernel-6.1.99-rockchip-rk3588` / `1.2.4+voice1`，dpkg 状态 `install ok installed`；备份目录另保留一份 root 所有、哈希复核通过的 34,902,652 B 安装包副本 |
+| 本机 initramfs | `/boot/initrd.img-6.1.99-rockchip-rk3588`，16,022,312 B（15.28 MiB）；SHA-256 `aa77add0fbdea493dc890937de121b263bfcd3fd4f4d53ce02440bc5b84287d4` |
+| 新版本驱动元数据 | `modinfo -k 6.1.99-rockchip-rk3588 -F version rknpu` 为 `0.9.8`；表示已安装候选的内置元数据，不是运行中新驱动验证 |
+| 当前运行版本 | `uname -r` 仍为 `6.1.0-1025-rockchip`，默认 `modinfo` 的 RKNPU 为 `0.9.7` |
+| 启动配置与旧文件 | extlinux、`/etc/default/u-boot` 哈希与基线一致；`vmlinuz`、`initrd.img`、`initrd.img.old` 链接仍指向旧内核；原内核、模块及版本固件与备份逐项比较通过 |
+| 包管理状态 | 安装前后 `dpkg --audit` 均为空；安装前无 pending/awaited triggers，候选路径不触发已注册的文件 triggers；没有运行 `update-initramfs`、`u-boot-update` 或镜像维护脚本 |
+
+initramfs 是前置未压缩 CPIO 加 gzip 主 CPIO 的组合。直接对整个文件执行 `gzip -t` 曾返回“not in gzip format”，该命令不适用于其前置 CPIO 格式；随后解析前置归档，定位偏移 49,664 B 的 gzip 主流，其 CRC、流结束及解压后的 CPIO 格式均通过。主 CPIO 解压长度为 44,524,544 B。没有因此修改或重新生成 initramfs。
+
+实际分配：新版本内核/模块/设备树/固件、包内文档及 initramfs 合计 **137,682,944 B（131.30 MiB）**；旧版本合计 **309,280,768 B（294.95 MiB）**，两套运行组件合计约 **426.26 MiB**，备份归档与安装包副本另计。执行步骤按约 250 ms 采样的最低用户可用空间约 **17.27 GiB**，不等同连续峰值测量；安装后复核快照为 **18,594,144,256 B（17.32 GiB）**。实际 initramfs 大小低于 §21 的预留额度，当前空间满足计划的 3 GiB 余量要求。
+
+本机证据位于被 Git 忽略的 `output/runs/rknpu098-phase1-2026-10-18/`：`baseline.json`、`before/` 保存授权、代码标识与文档快照；`phase1_install.py` 为实际执行脚本，`script-validation.json` 保存语法、错误包哈希/启动配置拒绝检查；`phase1-check-result.json` 为非 root 预检查；`phase1-execute-result.json` 和 `execute-*.log` 保存实际命令、返回码、备份及 initramfs 哈希、剩余空间采样；`post-install-verification.json` 保存独立复核。脚本已执行，已有备份与新版本路径，**不要再次执行安装命令**；需要修复时先看结果与日志。原 official-extract 目录的 `install-review.json`、`assessment.json`、`handoff.json` 已更新为第一阶段完成并关联本阶段证据，离线历史报告保持原时点语义。
+
+39 份原有源码、头文件、测试、构建及受 Git 管理/列示的配置文件哈希未变。没有修改启动菜单、试启动、重启、刷写 U-Boot/SPI 或迁移发行版；恢复入口仍未确认或演练。下一步先确认可操作的启动菜单、串口或恢复介质，再单独确认第二阶段试启动。GPU、无线、蓝牙音频及 SDK/runtime ABI 和模型推理仍待验收，P0-02 保持进行中。本阶段未运行无关应用构建或 CTest。
+
+## 24. 第二阶段显示与恢复方式准备
+
+2026-10-18（客户端日期，Asia/Shanghai），用户确认具有显示器、键盘、USB 转 TTL 串口和 SD 读卡器；后续说明电脑是 Windows，串口型号、电平与速率支持不清楚，并要求尽量不用串口。按该偏好准备 HDMI/键盘菜单路线。本阶段尚未获启动配置写入或重启授权。
+
+只读复核：当前根分区为 `/dev/mmcblk1p1`、ext4，内核报告介质类型为 SD；根 UUID 仍与 extlinux 一致。运行内核/RKNPU 仍为 `6.1.0-1025-rockchip` / `0.9.7`，第一阶段原启动配置 SHA-256 保持不变。实际启用控制台为 `ttyFIQ0 tty1`，两套设备树的 FIQ debugger 均使用 UART2 / 1500000，旧内核的 `serial-getty@ttyFIQ0.service` active；命令行虽有 `ttyS2`，不能据此认定 `serial-getty@ttyS2` 可用。本阶段没有连接或测试串口。
+
+最初 HDMI 报 disconnected；用户接线后短暂报告无画面，此时系统已读到 256 B EDID，HDMI 为 connected/enabled、DPMS On，日志显示启用 2560×1440@60，GDM 与用户桌面会话 active。热插拔时存在 VOP power-domain timeout 等日志，但尚未建立根因；随后用户明确回复“有画面”“一切正常”。没有调整分辨率、重启桌面服务或修改显示配置，当前桌面与键盘以用户确认记录。此结果不代表 U-Boot 阶段能显示菜单或接受键盘输入。
+
+已准备两份未应用的配置：`extlinux-probe.conf.preview` 仅把 `timeout 20` 改为 `timeout 200`，保留 `default l0` 以及原来的旧内核普通/恢复入口；此次菜单测试不包含新内核入口。`extlinux-trial.conf.preview` 则另含后续新内核试启动项，须在恢复入口可用并获得单独授权后使用。U-Boot 文档将 timeout 单位定义为十分之一秒，因此对应 2 秒改为 20 秒；实际显示及输入仍须现场测试。[U-Boot 文档](https://docs.u-boot-project.org/en/latest/usage/pxe.html)
+
+具体待授权步骤：使用已准备的 `apply_menu_probe.py --apply` 先保存 `/boot/extlinux/extlinux.conf.pre-npu098-probe`，核验原配置哈希，再原子写入仅变更等待时间的配置；脚本自身不重启。之后仅在用户明确确认的范围内进行一次现场重启，验证 HDMI 上能看到菜单、键盘能够选择旧内核并回到原系统。若没有菜单或键盘无效，允许旧默认项自动启动，继续准备其他恢复方法，不改为新内核默认项。脚本的只读预检查、语法检查、拒绝原配置变更/默认项变更/额外入口的验证均已通过，实际写入未执行。
+
+Windows 原生不能直接挂载 ext4，Microsoft 文档列出的 `wsl --mount` 流程也不直接支持 USB/SD 读卡器，不能把现有读卡器视为已验证的系统恢复环境。如 HDMI 菜单不可用，再准备可操作的 Linux 恢复环境或其他实际验证过的方案；本阶段没有下载/制作恢复系统或刷写存储。[Microsoft 文档](https://learn.microsoft.com/windows/wsl/wsl2-mount-disk)
+
+证据位于被 Git 忽略的 `output/runs/rknpu098-phase2-2026-10-18/`：`baseline.json` 与 `before/` 为工作区/启动/设备基线，`display-readiness.json` 与 `hdmi-kernel-log.txt` 为显示观察及用户确认，`extlinux.original.conf` 为原始配置副本，两份 `.preview` 与对应 `.diff` 为未应用方案，`phase2-review.json` 为权限及恢复边界，`apply_menu_probe.py` 和 `script-validation.json` 为待授权执行脚本与验证。原 `install-review.json`、`assessment.json`、`handoff.json` 已关联此准备记录。系统启动文件未改动，没有重启；P0-02 继续进行中，真实新内核、外围及推理验收仍待后续完成。
+
+### 24.1 旧内核菜单测试授权与执行
+
+2026-10-18（客户端日期，Asia/Shanghai），用户对上节提出的“延长菜单等待时间＋旧内核重启测试”明确回复“确认执行”。授权范围为写入仅延长等待时间的配置，随后一次现场观察的重启并用键盘选择原普通启动项；不包含新增候选入口、新内核试启动或变更默认内核。授权记录保存为 `rknpu098-phase2-2026-10-18/probe-authorization.json`。
+
+执行前复核通过：当前仍为 `6.1.0-1025-rockchip` / RKNPU `0.9.7`，HDMI connected；原 extlinux 和 `/etc/default/u-boot` 哈希未变，待建备份和临时文件均不存在。已复核原脚本与预览哈希，并再次通过只读预检查。重启前 boot ID 为 `229cd3cb-7807-4980-a38b-625f06068f6c`，后续据此区分是否确实发生重启；不会仅凭旧内核版本相同宣称完成重启测试。
+
+本次 `sudo -n true` 仍返回需要密码，用户已在开发板终端执行 `apply_menu_probe.py --apply` 并返回 `MENU_PROBE_APPLIED`。实际写入及备份已独立核验：`/boot/extlinux/extlinux.conf` SHA-256 为 `60a69ab93da2891ee3ee6fce6a253510036d46ef5f65176e48849491be36fc20`，与已审预览逐字节一致；`/boot/extlinux/extlinux.conf.pre-npu098-probe` SHA-256 为原配置的 `2f1faee463e1c3dd756d045f11e529a20ba8d6c4fd75eea2270f368c7d7dc120`。差异仅为 `timeout 20` → `timeout 200`，`default l0`、普通旧内核和旧恢复入口均保留，未加入候选入口；`/etc/default/u-boot` 未变，原子写入临时文件已不存在。
+
+写入后 boot ID 仍与上述重启前标识相同，尚未记录重启完成。下一步由用户按已获授权范围在显示器旁执行 `sudo reboot`，按实际菜单提示用键盘选择普通 `Ubuntu 24.04.1 LTS 6.1.0-1025-rockchip` 项（不选 rescue），观察是否正常回到旧桌面。若看不到菜单或键盘无效，让旧默认项自动启动并报告现象；不将自动回到旧系统写成菜单恢复能力已通过。重连后同时核对 boot ID 已变化、旧内核/驱动和配置哈希，并记录用户观察；候选入口及新内核启动仍未授权。
+
+证据仍统一在 phase2 运行目录：`before/probe-execution/` 为本次修改前文档与评审，`probe-authorization.json` 为授权/重启前基线，root 生成的 `menu-probe-apply-result.json` 为执行结果，`menu-probe-write-verification.json` 为独立差异与备份核验，`reboot-handoff.json` 为现场操作及重连核验要求。项目入口、计划、兼容性及现有交接 JSON 已同步；P0-02 保持进行中。
+
+### 24.2 旧内核重启复核与菜单观察
+
+本次按当前会话日期 **2026-10-15（Asia/Shanghai）** 记录，主机原始时钟也为 2026-10-15；沿用既有 `rknpu098-phase2-2026-10-18/` 证据目录，不改写先前记录的日期或当时执行状态。用户重连后报告“打开直接就进桌面了”，经询问补充“看到过启动画面，但没注意是否有菜单”。因此本次菜单观察结果为未确认，不能记成菜单未显示，也不能记成恢复入口验证通过。
+
+**一次旧内核重启已完成并返回桌面；新内核未启动。** boot ID 从 §24.1 的 `229cd3cb-7807-4980-a38b-625f06068f6c` 变为 `6c1b6a00-3144-4868-8a92-65574da090c6`。当前 `uname -r` 为 `6.1.0-1025-rockchip`，RKNPU 元数据与本次内核日志均为 `0.9.7`；根分区仍为原 SD 的 ext4，显示管理器 active、HDMI connected，SSH 已可用。
+
+extlinux 与已批准的菜单测试预览逐字节一致，SHA-256 仍为 §24.1 的 `60a69ab9…36fc20`，原配置备份和 `/etc/default/u-boot` 哈希也未变。配置仍为 `default l0`、`prompt 1`、`timeout 200`，仅有旧普通和旧恢复两个入口，未添加候选项。`timeout 200` 表示配置等待 20 秒；本次没有现场计时或 U-Boot 输出记录，不能据此宣称实际停留时间已验证。[U-Boot extlinux 文档](https://docs.u-boot-project.org/en/latest/usage/pxe.html)
+
+只读检查未发现当前根文件系统中的 `/extlinux/extlinux.conf`、`/boot.scr` 或 `/boot/boot.scr`。已安装的 `u-boot-orangepi-5` 版本为 `2017.09+20240806.gitf73b1eed-2`，包内 `/usr/lib/u-boot/u-boot.itb` 包含 `stdout=serial,vidconsole`、`stderr=serial,vidconsole` 及 extlinux 扫描字符串，说明不能直接断言此构建只支持串口输出。但没有读取运行固件的实时环境或核对存储中的固件字节，包内字符串不能证明这次 HDMI 菜单/键盘实际可用；Linux 控制台、启动画面与桌面也不能替代该验证。U-Boot 环境可有保存值和默认值之分，须区分包内默认内容与运行状态。[U-Boot 环境文档](https://docs.u-boot.org/en/latest/usage/environment.html)
+
+本次只读复核，没有安装、下载内核/镜像、改动系统启动文件、刷写固件或发起重启。下一步可在用户确认后，沿用现有配置再做一次现场旧内核重启观察，从重启前一直观察到桌面，辨认 `U-Boot menu` 和旧普通启动项，并按实际提示尝试选择；未确认菜单或输入能力时，仍需准备可验证的恢复方式。一次旧内核重启授权已使用，再次重启及候选启动不自动包含在本次检查范围内。P0-02 保持进行中。
+
+证据：同一 phase2 目录内 `post-reboot-verification.json` 保存命令、boot ID、完整哈希、用户补充和限制，`post-reboot-kernel-display-log.txt` 为本次内核显示相关日志，`post-reboot-uboot-strings.txt` 为包内静态字符串；`before/probe-reboot-check/` 保存更新前文档及当前交接。`phase2-review.json`、`reboot-handoff.json` 和 official-extract 目录的三个当前交接 JSON 已同步为旧内核重启已验证、菜单观察未确认；先前安装和写入结果保留原时点语义。39 份项目源码/构建/配置文件哈希保持不变；本轮仅同步记录，未重复运行应用构建或 CTest。
+
+## 25. 重装镜像与 Windows Codex 交接
+
+2026-10-19（客户端日期，Asia/Shanghai），用户决定自行重装香橙派官方 Ubuntu 26.04 LTS，要求在根目录保存当前配置、依赖与 Windows SSH 恢复说明，供 Windows Codex 接手。用户只有现用系统卡，明确不安排整卡备份，工程由用户上传 GitHub。本轮主机时钟读数仍为 2026-10-15，原始读数留在证据中，不覆盖客户端日期或先前历史。
+
+用户已再次完整观察启动过程并报告没有内核选项；因此不能将 §24.2 的“未注意菜单”继续作为最新状态，也未取得可用的 HDMI 菜单恢复证明。本轮 boot ID 为 `c98fb265-baa3-4306-b1bb-4fc22971415f`，仍运行 `6.1.0-1025-rockchip` / aarch64，sysfs 与 modinfo 的 RKNPU 版本均为 `0.9.7`。NPU `renderD129` 绑定 `fdab0000.npu` / `RKNPU`；原默认项及等待配置保持，extlinux SHA-256 仍为 `60a69ab93da2891ee3ee6fce6a253510036d46ef5f65176e48849491be36fc20`。没有启动此前安装的候选，本轮未发起重启。
+
+只读补充盘点确认：有线连接使用 NetworkManager 的 `Wired connection 1`、`end1`，IPv4 manual、`192.168.137.2/24`，网关/DNS `192.168.137.1`；环境代理为该 Windows 地址的 HTTP 17897 端口，配置位于 `/etc/environment` 与 `/etc/profile.d/orangepi-proxy.sh`。没有读取 Wi-Fi 密码、GitHub 令牌或私钥。SSH 日志证实客户端 `192.168.137.1` 通过 RSA 公钥登录 `jzh`，服务监听 22；用户提供的 Windows `ssh -G orangepi5` 输出确认同一目标和默认 identityfile 候选列表。实际私钥文件路径未在 Windows 实机核验；完整恢复参数、路径和指纹区别集中维护在[迁移文档 §4](../MIGRATION_GUIDE.md#4-恢复网络与远程入口)。普通用户 `sshd -T` 因没有可读主机密钥而失败，不将默认密码策略写成已验证。
+
+当前内存总量 8,307,392,512 B，1,073,737,728 B 文件 swap；根分区当时可用 18,550,231,040 B，资源会随运行变化。库/工具版本继续为 G++ 13.3.0、CMake 3.28.3、Ninja 1.11.1、libpulse 16.1、libsamplerate 0.2.2、libsndfile 1.2.2、yaml-cpp 0.8.0；本次补齐 nlohmann-json 3.11.3、Python 3.12.3、WirePlumber 0.4.17 与 glibc 2.39。已安装包的完整精确版本保存在本轮 `baseline.json`；新系统按自身发行版补依赖，不锁定这些旧版本。
+
+PipeWire / pipewire-pulse / WirePlumber、SSH 和蓝牙服务均 active，Linger=no；本次音频枚举没有 bluez 耳机节点，默认输入为 monitor，不作为迁移后的录音 source。用户及 `/etc` 的 PipeWire/WirePlumber 配置目录未发现自定义文件，未发现工程专用用户服务；现有 local.yaml 保留原耳机意图。`deps/`、`models/` 只有占位文件，系统动态库缓存无 RKNN/RKLLM runtime 记录。当前工程含尚未提交/跟踪的音频实现，Git 上传需连同 CMake、源码、测试及文档一起处理；没有替用户暂存、提交或推送。
+
+已创建根目录 [MIGRATION_GUIDE.md](../MIGRATION_GUIDE.md)：记录 Windows PowerShell 与板端 Bash 的操作边界、SSH alias/公钥/主机指纹、网络/代理、依赖包、耳机配置、构建/测试入口及 SDK 接手顺序。新镜像的 Rocket/RKNPU 区别与 WirePlumber 0.5 测试迁移边界见[兼容性记录](compatibility.md#重装-2604-的交接与核验边界)。未接收最终 26.04 镜像，未验证新系统编译、音频或模型；旧 P1-01、B01 的历史完成记录保留，P0-02 与 P1-02 继续进行中。
+
+本轮本机证据位于被 Git 忽略的 `output/runs/new-image-handoff-2026-10-19/`：`before/` 保存修改前文档及当前交接 JSON，`baseline.json` 保存代码标识、系统/包/服务命令和保护文件哈希，`configuration-details.json` 保存网络/NPU 绑定及资产目录，`ssh-inventory.json` 保存 SSH 只读结果及用户补充，`verification.json` 保存交付检查。目录不会随 Git 克隆恢复；必要摘要已进入版本管理文档，不将新机缺少历史 output 视为工程损坏。本轮仅文档/交接同步，不重复运行应用构建或 CTest；未下载镜像、安装包、改动系统配置、录音或刷卡。

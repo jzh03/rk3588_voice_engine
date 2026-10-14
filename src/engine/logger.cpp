@@ -38,8 +38,12 @@ std::string timestamp_utc() {
 }  // namespace
 
 JsonlLogger::JsonlLogger(const std::filesystem::path& run_dir, std::string run_id,
-                         LogLimits limits)
-    : run_dir_(run_dir.lexically_normal()), run_id_(std::move(run_id)), limits_(limits) {
+                         LogLimits limits, std::string mode)
+    : run_dir_(run_dir.lexically_normal()), run_id_(std::move(run_id)),
+      mode_(std::move(mode)), limits_(limits) {
+    if (mode_ != "mock" && mode_ != "audio_probe") {
+        throw LogError("unsupported JSONL run mode");
+    }
     if (limits_.max_file_bytes == 0 || limits_.max_files == 0) {
         throw LogError("log byte and file limits must be greater than zero");
     }
@@ -124,7 +128,7 @@ void JsonlLogger::write(std::string_view level, std::string_view event,
             {"session_id", session_id},
             {"generation_id", generation_id},
             {"state", std::string(state)},
-            {"mode", "mock"},
+            {"mode", mode_},
             {"data", data},
         };
         line = record.dump();

@@ -1,6 +1,6 @@
 # 验收用例与测量规则
 
-日期：2026-10-14。对应 [执行计划](../EXECUTION_PLAN.md) v1.6。A01～A14 全部为**待实施的应用验收**；用户已完成的蓝牙连接与系统同时录放基线 B01 不在本表重复验收。当前实现进度见执行计划；配置与 mock 检查不代表实机应用验收通过。
+日期：2026-10-17（Asia/Shanghai）。对应 [执行计划](../EXECUTION_PLAN.md) v1.7。A01～A14 均未通过应用验收；A01/A02 的 `audio_probe` 构建和自动回归已通过，待用户配合实机验证。用户已完成的蓝牙连接与系统同时录放基线 B01 不在本表重复验收。当前实现进度见执行计划；配置、mock 及合成音频协议检查不代表实机应用验收通过。
 
 ## 1. 通过规则
 
@@ -75,6 +75,7 @@ LLM 短答评分由实施者逐项记录“切题、无明显事实矛盾、符�
 - [配置检查](../README.md#配置检查)：配置加载、字段约束、默认值与检查范围。
 - [资产清单](../README.md#资产清单)：按功能启用的本地文件、元数据与版本匹配规则。
 - [终端控制与 JSONL 日志](../README.md#终端控制与-jsonl-日志)：mock 命令、运行目录、日志格式、轮转及现有退出码。
+- [真实音频诊断](../README.md#真实音频诊断)：已实现的 `audio_probe` 模式、命令、报告与退出码。
 
 P1-01 的无硬件检查保留为后续模块回归入口，覆盖以下类别；具体接口契约以 README 和配置模板为准：
 
@@ -83,20 +84,29 @@ P1-01 的无硬件检查保留为后续模块回归入口，覆盖以下类别�
 | 配置与 CLI | 旧配置兼容、必填字段、类型/范围、重复/未知字段、跨字段约束及错误退出；[check_config.py](../tests/integration/check_config.py)、[full_config.py](../tests/integration/full_config.py) |
 | 资产 | 缺失与损坏文件、大小/哈希、路径逃逸、重复键/ID、清单限额、声明依赖的版本匹配、禁用功能不读取资产及 mock 跳过；[check_assets.py](../tests/integration/check_assets.py) |
 | 音频 mock | 合成帧格式、序号/时间、会话与 generation 失效、停止/清空、播放格式与有限队列；[mock_audio_test.cpp](../tests/unit/mock_audio_test.cpp) |
+| 流式 DSP | 连续分块重采样、声道转换、归一化幅度、20 ms 分帧、尾部有效样本及 reset；[audio_dsp_test.cpp](../tests/unit/audio_dsp_test.cpp) |
+| 真实音频接口 | CLI 约束、报告、显式设备/profile、队列、取消与重建；[audio_probe.py](../tests/integration/audio_probe.py) 使用本机私有合成服务，不计为耳机验收 |
 | 终端控制 | 会话/generation、重复命令、非法输入、EOF/信号收尾与可选音频后端；[control_stdin.py](../tests/integration/control_stdin.py) |
 | 日志 | JSONL 有效性、关联字段、轮转和 I/O 失败；[logger_test.cpp](../tests/unit/logger_test.cpp) |
-| 独立构建 | 关闭音频与环境检查后引擎独立构建并回归；关闭引擎与环境检查后，仅用标准库构建/测试音频 mock；[build_boundaries.py](../tests/integration/build_boundaries.py) |
+| 独立构建 | 引擎、仅标准库音频 mock、原生音频三种独立构建及对应测试；[build_boundaries.py](../tests/integration/build_boundaries.py) |
 
-独立构建验收要求引擎构建不查询 libpulse/libsamplerate/libsndfile，也不依赖 OpenSSL 开发包；音频独立构建不查找引擎的配置/JSON/线程库及 Python 测试解释器。两种构建均须运行对应测试，命令集中在 [README](../README.md#基础环境检查)。
+独立构建验收要求引擎构建不查询 libpulse/libsamplerate/libsndfile，也不依赖 OpenSSL 开发包；仅 mock 的音频构建不查找配置/JSON/线程库及 Python 测试解释器；原生音频独立构建只增加 libpulse/libsamplerate/线程依赖，不查询 yaml-cpp、JSON 或 libsndfile。三种构建均须运行对应测试，命令集中在 [README](../README.md#基础环境检查)。
 
 这些检查不验证真实录放、模型推理/取消、异步模型竞态或实机延迟，不计入 A01～A14 通过数。
 
 已执行检查的结果、证据路径与限制统一记录在 [环境记录](environment.md)，不在本验收规范重复维护通过数量。
 
-以下为 P1～P4 后续要实现的命令，**尚不可作为已可运行程序**：
+### A01/A02 实机执行步骤
+
+`audio_probe` 已可运行。A01 按 [README](../README.md#真实音频诊断)使用本机配置，以非交互模式执行 600 s 双向录放，期间确认耳机确实出声、无异常断流，结束检查本次报告的队列、有效时长、profile 和错误计数，按矩阵完整标准判断；不添加 `--control stdin` 或用短 WAV 提前结束。无需重新做系统基线 B01。
+
+A02 使用交互诊断：在 READY 空闲时、`start` 后录音时、提示音或测试 WAV 播放时各断开并接回一次。每次等待设备重新出现及程序 READY，记录设备可用至 READY 的间隔，再显式输入 `start` 验证一轮。核对断开使旧 generation 失效、没有切换到其他输出，也没有恢复旧 PCM。播放状态宜使用连续测试 WAV，避免将提示音间的静音当作播放测试。时长参数要覆盖三次实际操作，必要时调大至允许上限。
+
+保留每个 run 的 `run.json`、轮转后的完整事件日志及 `summary.json`，补充用户听感/路由确认和三次重连结果，在 [环境记录](environment.md)登记。工具始终将 A01/A02 标为 `not_run`，软件退出码为 0 只表示当前软件检查未失败；用户与客观证据均满足矩阵条件后，才更新任务完成状态。`--record-wav` 仅在确需试听/检查且用户明确选择时启用，私有录音不提交仓库。
+
+以下为 P2～P4 后续要实现的命令，**尚不可作为已可运行程序**：
 
 ```bash
-./build/bin/audio_probe --config config/local.yaml --duplex --duration-sec 600
 ./build/bin/asr_probe --config config/local.yaml --manifest tests/fixtures/manifest.json
 ./build/bin/llm_probe --config config/local.yaml --cases tests/fixtures/llm_cases.json
 ./build/bin/tts_probe --config config/local.yaml --cases tests/fixtures/tts_cases.json

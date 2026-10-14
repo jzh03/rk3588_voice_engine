@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build engine-only and audio-only while excluding unrelated dependencies."""
+"""Build engine, mock audio, and native audio without unrelated dependencies."""
 
 from pathlib import Path
 import shlex
@@ -54,6 +54,7 @@ def main():
         audio = root / "audio"
         run([cmake, "-S", str(source), "-B", str(audio), "-G", "Ninja",
              "-DVOICE_ENGINE_BUILD_ENGINE=OFF", "-DVOICE_ENGINE_BUILD_AUDIO=ON",
+             "-DVOICE_ENGINE_BUILD_PULSE_AUDIO=OFF",
              "-DVOICE_ENGINE_BUILD_ENV_CHECK=OFF", "-DBUILD_TESTING=ON",
              "-DCMAKE_DISABLE_FIND_PACKAGE_PkgConfig=TRUE",
              "-DCMAKE_DISABLE_FIND_PACKAGE_nlohmann_json=TRUE",
@@ -63,7 +64,35 @@ def main():
         run([cmake, "--build", str(audio), "--parallel", "2"])
         run([ctest, "--test-dir", str(audio), "--output-on-failure"])
 
-    print("BUILD_BOUNDARIES_OK: engine-only and audio-only build and test independently")
+        native_wrapper = root / "pkg-config-without-application-deps"
+        native_blocked = root / "blocked-application-dependency"
+        native_wrapper.write_text(
+            f"#!{sys.executable}\n"
+            "import os, pathlib, sys\n"
+            "if any(name in arg for arg in sys.argv[1:] "
+            "for name in ('yaml', 'sndfile')):\n"
+            f"    pathlib.Path({str(native_blocked)!r}).touch()\n"
+            "    sys.exit(1)\n"
+            f"os.execv({pkg_config!r}, [{pkg_config!r}, *sys.argv[1:]])\n",
+            encoding="utf-8",
+        )
+        native_wrapper.chmod(0o755)
+        native = root / "native-audio"
+        run([cmake, "-S", str(source), "-B", str(native), "-G", "Ninja",
+             "-DVOICE_ENGINE_BUILD_ENGINE=OFF", "-DVOICE_ENGINE_BUILD_AUDIO=ON",
+             "-DVOICE_ENGINE_BUILD_PULSE_AUDIO=ON",
+             "-DVOICE_ENGINE_BUILD_ENV_CHECK=OFF", "-DBUILD_TESTING=ON",
+             "-DCMAKE_DISABLE_FIND_PACKAGE_nlohmann_json=TRUE",
+             "-DCMAKE_DISABLE_FIND_PACKAGE_OpenSSL=TRUE",
+             "-DCMAKE_DISABLE_FIND_PACKAGE_Python3=TRUE",
+             f"-DPKG_CONFIG_EXECUTABLE={native_wrapper}"])
+        run([cmake, "--build", str(native), "--parallel", "2"])
+        run([ctest, "--test-dir", str(native), "--output-on-failure"])
+        if native_blocked.exists():
+            raise RuntimeError("native-audio-only build attempted to discover yaml or libsndfile")
+
+    print("BUILD_BOUNDARIES_OK: engine-only, mock-audio-only, and native-audio-only "
+          "build and test independently")
 
 
 if __name__ == "__main__":

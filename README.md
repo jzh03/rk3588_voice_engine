@@ -1,15 +1,18 @@
 # RK3588 原生语音引擎
 
-面向 Orange Pi 5（RK3588S）的本地语音助手，使用 C++17 / CMake，在板端 Ubuntu 24.04 上原生编译。
+面向 Orange Pi 5（RK3588S）的本地语音助手，使用 C++17 / CMake，在板端原生编译。已验证的开发环境为 Ubuntu 24.04；现准备迁移至香橙派官方 Ubuntu 26.04 镜像，见[新镜像迁移交接](MIGRATION_GUIDE.md)。
 
 ## 当前进度
 
-**P1-01 已完成并验证**：完整配置与按功能启用的资产校验、JSONL 日志、终端控制、独立 audio/engine 构建及无硬件音频 mock 均可运行。下一步为 P1-02 真实录放及 P1-03 固定语料准备；应用录放与模型推理尚未接入。完整任务状态见 [执行计划](EXECUTION_PLAN.md#5-工作分解依赖与交付)，实测与验证结果见 [环境记录](docs/environment.md#11-p1-01-完整工程骨架验证)。
+**P0-02 驱动兼容进行中**：官方 BSP 6.1.99 / RKNPU 0.9.8 候选的第一阶段并存安装已完成，但尚未启动；当前仍运行旧内核 / RKNPU 0.9.7。用户再次完整观察启动过程未看到内核菜单，现计划自行重装官方 Ubuntu 26.04，并通过 GitHub 迁移工程。已编写[迁移交接](MIGRATION_GUIDE.md)，包含 Windows SSH/公钥恢复、板端网络/代理、依赖安装及新环境验证顺序。实际镜像的厂商 RKNPU 与 SDK 配套仍待核验，不能由 26.04 或 Rocket 的存在推断兼容；见[兼容性记录](docs/compatibility.md#重装-2604-的交接与核验边界)和[本轮环境记录](docs/environment.md#25-重装镜像与-windows-codex-交接)。本轮未刷卡、安装或推送。
+
+**P1-01 已完成旧环境验证；P1-02 进行中**：真实音频后端与 `audio_probe` 已实现，支持显式设备绑定、异步录放、重采样及断线后重建；旧系统构建和自动回归已通过。耳机连接超时问题及 A01/A02 实机验收仍待完成，新系统需重新构建并核验音频服务版本。模型推理尚未接入。完整任务状态见 [执行计划](EXECUTION_PLAN.md#5-工作分解依赖与交付)，实测与验证结果见 [环境记录](docs/environment.md#12-p1-02-真实音频开发与待验收项)。
 
 ## 文档入口
 
 - [协作与文件同步规范](AGENTS.md)：各类文件归属、每次更新的同步要求与交付检查。
 - [执行计划](EXECUTION_PLAN.md)：任务依赖、里程碑与交付条件。
+- [新镜像迁移交接](MIGRATION_GUIDE.md)：Windows Codex 的 SSH 配置、板端依赖与工程恢复步骤。
 - [环境记录](docs/environment.md)：系统、依赖版本和音频设备设置。
 - [SDK 兼容性](docs/compatibility.md)：驱动与 RKLLM 要求。
 - [验收用例](docs/ACCEPTANCE.md)：功能、延迟、资源和恢复验证。
@@ -24,18 +27,21 @@ rk3588_voice_engine/
 ├── README.md                     # 项目入口、目录说明和检查命令
 ├── AGENTS.md                     # 项目协作与变更同步规范
 ├── EXECUTION_PLAN.md             # 当前执行计划
+├── MIGRATION_GUIDE.md            # 重装后 Windows/板端配置与 Codex 交接
 ├── CMakeLists.txt                # CMake/Ninja 构建入口
 ├── src/                          # 应用实现，按模块划分
 │   ├── main.cpp                  # 配置/资产检查与 mock 控制 CLI 入口
-│   ├── audio/                    # 独立音频 mock；真实录放待开发
+│   ├── audio/                    # 音频 mock、流式 DSP 与 PulseAudio 异步录放
 │   ├── asr/                      # VAD、语音识别适配
 │   ├── llm/                      # 本地语言模型适配
 │   ├── tts/                      # 语音合成与文本前处理
 │   └── engine/                   # 配置、资产、JSONL 日志、mock 状态机
 ├── include/voice_engine/         # 配置、资产、音频、日志和控制接口
 ├── tools/                        # 独立的 C++ 检查与诊断工具
-│   └── env_check.cpp             # 已通过的基础依赖检查源码
-├── scripts/                      # 构建、检查、启动、回退脚本
+│   ├── env_check.cpp             # 基础依赖检查
+│   └── audio_probe.cpp           # 真实录放、格式转换与设备恢复诊断
+├── scripts/                      # 构建、检查、启动、回退脚本与适配补丁
+│   └── patches/                  # 固定源码版本的候选驱动补丁
 ├── config/                       # 通用配置；local.yaml 为本机配置
 ├── tests/
 │   ├── fixtures/                 # 固定输入、参考结果和用例清单
@@ -77,10 +83,11 @@ CMake 提供以下开关，默认均为 `ON`：
 | 开关 | 构建内容与依赖 |
 |---|---|
 | `VOICE_ENGINE_BUILD_ENGINE` | `voice_engine` 与配置、资产、日志、控制库；依赖 yaml-cpp、nlohmann-json、pthread 和 coreutils 的 `sha256sum`，无需 OpenSSL 开发包 |
-| `VOICE_ENGINE_BUILD_AUDIO` | `voice_engine_audio` 内存 mock，仅依赖 C++17 标准库；不依赖原生音频库 |
+| `VOICE_ENGINE_BUILD_AUDIO` | `voice_engine_audio` 内存 mock，仅依赖 C++17 标准库；与下一开关共同决定是否构建真实后端 |
+| `VOICE_ENGINE_BUILD_PULSE_AUDIO` | 音频模块开启时构建 `voice_engine_audio_dsp` 和 `voice_engine_pulse_audio`，依赖 libpulse、libsamplerate 和 pthread；引擎也开启时构建 `audio_probe`，另需 libsndfile |
 | `VOICE_ENGINE_BUILD_ENV_CHECK` | `env_check`，单独检查 libpulse、libsamplerate、libsndfile、yaml-cpp 和 nlohmann-json |
 
-构建工具使用现有 CMake/Ninja 与 C++17 编译器；引擎依赖通过 pkg-config/CMake 查找。启用引擎测试时还需要 Python 3；`BUILD_TESTING=OFF` 可关闭测试目标。仅构建引擎并运行纯状态 mock：
+构建工具使用现有 CMake/Ninja 与 C++17 编译器；引擎依赖通过 pkg-config/CMake 查找。启用引擎测试时还需要 Python 3；真实音频集成测试另需 `pipewire`、`pipewire-pulse`、`wireplumber`、`pactl`，测试服务在独立临时目录运行。`BUILD_TESTING=OFF` 可关闭测试目标。仅构建引擎并运行纯状态 mock：
 
 ```bash
 cmake -S . -B build/engine-only -G Ninja \
@@ -94,12 +101,22 @@ ctest --test-dir build/engine-only --output-on-failure -E '^build_boundaries$'
 
 ```bash
 cmake -S . -B build/audio-only -G Ninja \
-  -DVOICE_ENGINE_BUILD_ENGINE=OFF -DVOICE_ENGINE_BUILD_ENV_CHECK=OFF
+  -DVOICE_ENGINE_BUILD_ENGINE=OFF -DVOICE_ENGINE_BUILD_PULSE_AUDIO=OFF \
+  -DVOICE_ENGINE_BUILD_ENV_CHECK=OFF
 cmake --build build/audio-only -j2
 ctest --test-dir build/audio-only --output-on-failure
 ```
 
-`voice_engine_audio_interface` 是共享帧格式与抽象接口；音频实现和引擎实现分别链接，不要求在禁用模块后仍查找其依赖。
+保留真实音频、关闭引擎和环境检查，可独立构建原生后端及 DSP 测试：
+
+```bash
+cmake -S . -B build/native-audio-only -G Ninja \
+  -DVOICE_ENGINE_BUILD_ENGINE=OFF -DVOICE_ENGINE_BUILD_ENV_CHECK=OFF
+cmake --build build/native-audio-only -j2
+ctest --test-dir build/native-audio-only --output-on-failure
+```
+
+该构建不需要 yaml-cpp、nlohmann-json 或 libsndfile，也不生成 `audio_probe`。`voice_engine_audio_interface` 是共享帧格式与抽象接口；音频实现和引擎实现分别链接，不要求在禁用模块后仍查找其依赖。
 
 ## 配置检查
 
@@ -177,13 +194,50 @@ printf 'status\nstart\nstop\nstart\ncancel\nnew-session\nquit\n' | \
 
 日志写入 `output/runs/<run_id>/events.jsonl`，启动信息给出本次目录。可用 `--output-dir ROOT` 更换根目录，或用 `--run-id ID` 指定 ID；ID 为 1～64 个 ASCII 字符，以字母或数字开头，其余只允许字母、数字、`_`、`.`、`-`。`ROOT/ID` 必须新建，已有目录会报错，以免覆盖旧记录。
 
-每个事件独占一行 JSON 并立即 flush，字段为 `timestamp_utc`、`monotonic_ns`、`run_id`、`seq`、`level`、`event`、`session_id`、`generation_id`、`state`、`mode` 和 `data`；当前 `mode` 为 `mock`。到达大小限制前按需轮转，旧文件依次为 `events.1.jsonl`、`events.2.jsonl` 等。默认每次运行最多保留 10 份、每份 10 MiB；多次运行目录的总量尚无自动清理。日志不保存音频或对话内容；未知命令及超过 128 字节的输入会被拒绝，原文不写入日志。
+每个事件独占一行 JSON 并立即 flush，字段为 `timestamp_utc`、`monotonic_ns`、`run_id`、`seq`、`level`、`event`、`session_id`、`generation_id`、`state`、`mode` 和 `data`；控制 mock 的 `mode=mock`，真实音频诊断的 `mode=audio_probe`。到达大小限制前按需轮转，旧文件依次为 `events.1.jsonl`、`events.2.jsonl` 等。默认每次运行最多保留 10 份、每份 10 MiB；多次运行目录的总量尚无自动清理。日志不保存音频或对话内容；未知命令及超过 128 字节的输入会被拒绝，原文不写入日志。
 
 正常 quit/EOF 返回 `0`，参数、配置或资产错误返回 `2`，运行目录创建、日志、输入 I/O 或音频 mock 运行错误返回 `1`。运行中收到 `SIGINT`（如 Ctrl+C）或 `SIGTERM` 时先记录 shutdown 事件，再分别退出 `130` 或 `143`。
 
+## 真实音频诊断
+
+使用现有 `config/local.yaml` 的耳机参数，在开发板终端执行：
+
+```bash
+./build/bin/audio_probe --config config/local.yaml --duplex --duration-sec 10
+```
+
+`--duplex` 同时采集与播放，另可选择 `--capture-only` 或 `--playback-only`，三者必须且只能指定一个。默认运行 10 s，`--duration-sec` 接受 1～3600 s，从首次设备就绪时开始计时；`--wait-device-sec` 设置首次等待设备的上限，范围 1～60 s、默认 10 s。自动模式在设备首次就绪后开始录放。
+
+若输出 `exit_code=3 reason=device_unavailable`，先在系统中连接耳机，确认蓝牙设备的 `Connected` 为 `yes`；已配对、已信任仍可能处于断开状态。再用 `pactl list short sources` 和 `pactl list short sinks` 核对配置中的两个节点均已出现、活动 profile 与配置一致，随后重试。具体等待原因记录在本次 `events.jsonl` 的 `device_wait` 事件中。
+
+程序只连接配置中的 source/sink，并核验设备身份及当前 profile；禁止 monitor，不修改系统默认路由或 profile，不回退到 HDMI/其他声卡。即使只录音或只播放，也核验完整设备对。原生设备采样率/声道与内部 16 kHz、单声道、20 ms、归一化 float32 帧之间执行流式转换；最后不足一帧时补零并保留有效样本数。采集与播放使用配置中的有界队列，采集回调不推理或写磁盘。
+
+播放默认每 5 s 发出一段 300 ms 的低音量提示音；也可用 `--play-wav FILE` 播放本机测试 WAV。默认采集仅在内存中处理，只有显式添加 `--record-wav` 才保存本次目录内的 `capture.wav`（16 kHz 单声道 PCM16）；交互模式的多次录音会连续写入同一文件。
+
+交互诊断从空闲状态启动，便于检查重连：
+
+```bash
+./build/bin/audio_probe --config config/local.yaml --duplex \
+  --duration-sec 600 --control stdin
+```
+
+| 命令 | 真实音频诊断行为 |
+|---|---|
+| `start` | 设备 READY 后启动新 generation，清空旧缓冲并开始所选模式 |
+| `stop` | 停止采集和生产新播放帧，排空已提交音频后回到空闲 |
+| `cancel` | 使旧 generation 失效并 flush 待播放音频 |
+| `status` / `help` | 输出设备、格式、队列及计数 / 查看命令 |
+| `quit` | 结束本次诊断；EOF 也正常结束 |
+
+断线或 profile 变化后取消旧轮次、清空 PCM 和转换状态，按 1/2/5 s 退避重新查找；重建流后回到 READY，必须重新输入 `start`，不续播旧音频。非交互模式中途断线会使本次诊断失败，即使设备重连也不计为连续录放完成。
+
+运行目录沿用上文的 `--run-id`、`--output-dir` 和不覆盖旧目录规则。`run.json` 保存配置/可执行文件哈希及参数；`events.jsonl` 保存设备属性、协商格式/缓冲、状态事件与每秒计数；`summary.json` 汇总有效样本、时长误差、RMS/峰值、队列峰值及溢出/断流/重连计数。成功返回 `0`，参数/配置错误 `2`，设备不可用或非交互模式中途断线 `3`，排空超时 `5`，软件计数异常或长录音时长误差超标 `6`，其他运行错误 `1`；信号退出沿用 `130/143`。
+
+报告中的 A01/A02 保持 `not_run`，软件检查通过不会自动确认耳机听感、物理路由或蓝牙尾音。用户需按 [A01/A02 验收步骤](docs/ACCEPTANCE.md#6-当前命令与后续约定)完成 10 min 实机录放与空闲/录音/播放三种状态的重连；结果与证据记入 [环境记录](docs/environment.md)。
+
 ## 版本管理约定
 
-开发板 `/home/jzh/projects/rk3588_voice_engine` 是唯一日常代码、文档和 Git 工作目录；Windows 用作 SSH 入口及参考副本。远程版本保存在 [GitHub 公开仓库](https://github.com/jzh03/rk3588_voice_engine)，板端使用已登录的 GitHub CLI 通过 HTTPS 认证。账号配置和交接历史见 [环境记录](docs/environment.md#8-git-与云端托管)。
+开发板 `/home/jzh/projects/rk3588_voice_engine` 是唯一日常代码、文档和 Git 工作目录；Windows 用作 SSH 入口及参考副本。远程版本保存在 [GitHub 公开仓库](https://github.com/jzh03/rk3588_voice_engine)，板端使用 GitHub CLI 通过 HTTPS 认证。账号配置和交接历史见 [环境记录](docs/environment.md#8-git-与云端托管)。
 
 模型权重、运行库、录音、构建产物、临时文件和本机配置按 `.gitignore` 排除，资产只提交清单。开始工作先检查状态；工作区干净且需要同步远程时执行拉取。完成修改并验证后，只暂存本次相关文件，按用户授权提交和推送；日常 Git 命令不使用 sudo：
 
@@ -193,3 +247,14 @@ git status --short --branch
 git pull --ff-only
 # 编辑并验证后，按具体文件名执行 git add、git commit 和 git push
 ```
+
+推送出现 `Invalid username or token` 或 `Authentication failed` 时，在开发板终端重新认证：
+
+```bash
+gh auth login --hostname github.com --git-protocol https --web
+gh auth setup-git
+gh api user --jq .login
+git push --dry-run origin main
+```
+
+按终端提示在电脑浏览器打开授权页面，使用 `jzh03` 完成授权；登录过程需要账号本人操作。确认用户名正确、dry-run 成功后，再从 VS Code 推送或执行 `git push origin main`。公开仓库 fetch 成功不能说明写入凭据仍有效；无需删除仓库或重新提交已有改动。
