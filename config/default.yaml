@@ -1,0 +1,71 @@
+audio:
+  source: ""
+  sink: ""
+  profile: ""
+  sample_rate: 16000  # 采样率，单位 Hz
+  channels: 1        # 单声道
+  frame_ms: 20       # 每帧 20 毫秒
+
+logging:
+  max_file_bytes: 10485760  # 单个 JSONL 文件上限，10 MiB
+  max_files: 10            # 包含当前文件在内的总份数
+
+# 以下分组均可省略；旧 local.yaml 沿用这些缺省值，无需复制模板。
+# 仅定义参数和启动校验；mock 不执行录放、模型、端点或超时处理。
+models:
+  vad: {enabled: false, id: ""}
+  asr: {enabled: false, id: ""}
+  llm: {enabled: false, id: ""}
+  tts: {enabled: false, id: ""}
+  kws: {enabled: false, id: ""}
+
+assets:
+  # 路径相对于本 YAML 所在目录；仅检查已启用模型及其声明的依赖。
+  models_manifest: "../models/manifest.json"
+  deps_manifest: "../deps/manifest.json"
+
+vad:
+  pre_roll_ms: 500         # 0～10000，且不超过 queues.capture_ms
+  min_speech_ms: 200       # 20～30000，且不超过 max_speech_ms
+  end_silence_ms: 600      # 20～10000
+  start_timeout_ms: 5000   # 20～60000
+  max_speech_ms: 15000     # 20～60000
+
+threads:
+  vad: 1                  # 各模块均为 1～16；尚未启动模型线程
+  asr: 1
+  llm: 1
+  tts: 2
+  kws: 1
+
+llm:
+  context_tokens: 2048     # 128～2048，总上下文
+  max_output_tokens: 128  # 1～128
+  margin_tokens: 64        # 0～1024；output + margin 必须小于 context
+
+tts:
+  min_chars: 8             # 1～256，且不超过 max_chars
+  max_chars: 40            # 1～1024
+  flush_ms: 300            # 1～5000
+
+queues:
+  capture_ms: 2000         # 20～10000，且为 audio.frame_ms 的整数倍
+  pending_turns: 1         # 首版固定为 1
+  llm_text_bytes: 8192     # 1～1048576，UTF-8 字节数
+  tts_segments: 4          # 1～64
+  playback_ms: 2000        # 20～10000，且为 audio.frame_ms 的整数倍
+  max_tts_audio_ms: 20000  # 20～60000
+
+timeouts:
+  asr_final_ms: 3000       # 1～120000
+  llm_first_token_ms: 10000  # 1～120000，且不超过 llm_total_ms
+  llm_total_ms: 30000      # 1～300000
+  tts_segment_ms: 10000    # 1～120000
+  cancel_ms: 2000          # 1～10000
+
+dialogue:
+  wake_enabled: false     # 启用时要求 models.kws.enabled
+  barge_in: false         # 启用时要求 models.vad.enabled 与 models.asr.enabled
+  wake_word: "你好小派"    # 唤醒启用时必须为非空字符串
+  window_ms: 15000        # 20～60000
+  barge_in_min_ms: 250     # 20～5000

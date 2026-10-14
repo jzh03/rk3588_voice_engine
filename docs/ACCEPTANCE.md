@@ -1,6 +1,6 @@
 # 验收用例与测量规则
 
-日期：2026-10-16。对应 [执行计划](../EXECUTION_PLAN.md) v1.1。以下全部为**待实施的应用验收**；用户已完成的蓝牙连接与系统同时录放基线 B01 不在本表重复验收。
+日期：2026-10-14。对应 [执行计划](../EXECUTION_PLAN.md) v1.6。A01～A14 全部为**待实施的应用验收**；用户已完成的蓝牙连接与系统同时录放基线 B01 不在本表重复验收。当前实现进度见执行计划；配置与 mock 检查不代表实机应用验收通过。
 
 ## 1. 通过规则
 
@@ -67,15 +67,35 @@ LLM 短答评分由实施者逐项记录“切题、无明显事实矛盾、符�
 
 1 h 长稳先允许 10 min 预热。以第 10～20 min 的 RSS 中位数为基线，第 50～60 min 的中位数增长不得超过 `max(100 MiB, 基线的 5%)`；同时检查后 40 min 是否持续上升且未趋稳。超过阈值或存在持续增长时分析缓存/句柄释放并延长验证，不能只凭起止两点判定无泄漏。MemAvailable 目标 ≥1.5 GiB，空闲磁盘 ≥3 GiB；报告测试期间的降频和延迟变化。
 
-## 6. 实施后的命令约定
+## 6. 当前命令与后续约定
 
-以下为 P1～P4 要实现的 CLI 合同，**当前不存在这些程序，不能直接当成已可运行脚本**：
+当前可运行命令和接口统一维护在 README：
+
+- [基础环境检查](../README.md#基础环境检查)：构建、CTest 与依赖检查入口。
+- [配置检查](../README.md#配置检查)：配置加载、字段约束、默认值与检查范围。
+- [资产清单](../README.md#资产清单)：按功能启用的本地文件、元数据与版本匹配规则。
+- [终端控制与 JSONL 日志](../README.md#终端控制与-jsonl-日志)：mock 命令、运行目录、日志格式、轮转及现有退出码。
+
+P1-01 的无硬件检查保留为后续模块回归入口，覆盖以下类别；具体接口契约以 README 和配置模板为准：
+
+| 检查类别 | 覆盖行为与源码 |
+|---|---|
+| 配置与 CLI | 旧配置兼容、必填字段、类型/范围、重复/未知字段、跨字段约束及错误退出；[check_config.py](../tests/integration/check_config.py)、[full_config.py](../tests/integration/full_config.py) |
+| 资产 | 缺失与损坏文件、大小/哈希、路径逃逸、重复键/ID、清单限额、声明依赖的版本匹配、禁用功能不读取资产及 mock 跳过；[check_assets.py](../tests/integration/check_assets.py) |
+| 音频 mock | 合成帧格式、序号/时间、会话与 generation 失效、停止/清空、播放格式与有限队列；[mock_audio_test.cpp](../tests/unit/mock_audio_test.cpp) |
+| 终端控制 | 会话/generation、重复命令、非法输入、EOF/信号收尾与可选音频后端；[control_stdin.py](../tests/integration/control_stdin.py) |
+| 日志 | JSONL 有效性、关联字段、轮转和 I/O 失败；[logger_test.cpp](../tests/unit/logger_test.cpp) |
+| 独立构建 | 关闭音频与环境检查后引擎独立构建并回归；关闭引擎与环境检查后，仅用标准库构建/测试音频 mock；[build_boundaries.py](../tests/integration/build_boundaries.py) |
+
+独立构建验收要求引擎构建不查询 libpulse/libsamplerate/libsndfile，也不依赖 OpenSSL 开发包；音频独立构建不查找引擎的配置/JSON/线程库及 Python 测试解释器。两种构建均须运行对应测试，命令集中在 [README](../README.md#基础环境检查)。
+
+这些检查不验证真实录放、模型推理/取消、异步模型竞态或实机延迟，不计入 A01～A14 通过数。
+
+已执行检查的结果、证据路径与限制统一记录在 [环境记录](environment.md)，不在本验收规范重复维护通过数量。
+
+以下为 P1～P4 后续要实现的命令，**尚不可作为已可运行程序**：
 
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j2
-ctest --test-dir build --output-on-failure
-./build/bin/voice_engine --config config/local.yaml --check-config
 ./build/bin/audio_probe --config config/local.yaml --duplex --duration-sec 600
 ./build/bin/asr_probe --config config/local.yaml --manifest tests/fixtures/manifest.json
 ./build/bin/llm_probe --config config/local.yaml --cases tests/fixtures/llm_cases.json
@@ -85,6 +105,6 @@ ctest --test-dir build --output-on-failure
 ./build/bin/voice_engine --config config/local.yaml --control stdin
 ```
 
-所有程序约定 `--run-id` 和 `--output-dir`，退出码 `0=通过/正常退出、2=配置或资产错误、3=设备不可用、4=模型失败、5=超时、6=验收指标失败`。实现时使帮助文本、文档和报告一致。无模型的单元检查仅覆盖分帧/残帧、文本分段、generation 竞态、队列上限和状态转换等关键边界，不以 mock 通过代替实机验收。
+后续验收程序沿用 `--run-id`、`--output-dir` 及 README 中现有的正常、运行错误、配置错误和信号退出约定；资产校验失败归入退出码 `2`，新增约定为 `3=设备不可用、4=模型失败、5=超时、6=验收指标失败`。实现时使帮助文本、文档和报告一致。后续无模型的单元检查还需覆盖分帧/残帧、文本分段、异步 generation 竞态和队列上限，不以 mock 通过代替实机验收。
 
-每个阶段完成时更新执行计划状态，并给出证据路径；原始测试音频仅按需保存，公开报告前不包含私有录音和连接凭据。
+阶段状态、证据归档及隐私要求按 [AGENTS.md](../AGENTS.md) 同步。

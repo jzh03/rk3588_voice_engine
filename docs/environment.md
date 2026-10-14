@@ -1,20 +1,12 @@
 # 开发环境与已完成基线
 
-核对日期：2026-10-16（Asia/Shanghai）。来源为本轮 Windows 本机只读检查、现有 `ssh orangepi5` 会话的只读命令，以及用户明确确认。后续已按用户提供的安装结果及音频配置输出更新；基础依赖已安装，C++17 与依赖编译链接检查已通过；模型推理尚未验证。
+更新日期：2026-10-17（Asia/Shanghai）。系统与设备基线来自 2026-10-16 的 Windows 本机只读检查、现有 `ssh orangepi5` 会话的只读命令，以及用户明确确认；后续工程验证按下文日期记录。
 
-## 1. 状态结论
+## 1. 记录范围与证据边界
 
-- **已完成：**板端系统/资源/驱动盘点；电脑转换条件盘点。
-- **已完成（用户确认）：**蓝牙连接和耳机同时播放、录音测试。用户要求直接记为完成，后续无需重复基础验证。
-- **已完成（用户终端输出）：**基础开发依赖安装及版本查询；pactl 可访问 PipeWire 兼容服务。
-- **已完成（用户终端输出）：**C++17 与依赖编译链接检查，程序输出 `ENV_CHECK_OK`。
-- **已完成（用户终端输出）：**板端 Git main 分支初始化和 .gitignore；本轮通过 SSH 配置该项目提交身份为 jzh03 / 1053442572@qq.com。
-- **已完成：**开发板安装 GitHub CLI 2.45.0，以 jzh03 完成 HTTPS 浏览器授权，Git 凭据助手已接入；用户确认 fetch 成功，push dry-run 显示 Everything up-to-date。
-- **工作方式：**后续以开发板为唯一代码/文档及 Git 工作目录，Windows 作为 SSH 入口；本次 Windows 进度推送后，本地目录保留参考。
-- **待实施：**CMake/Ninja 工程构建、SDK/模型兼容性验证、应用录放和完整链路。
-- **已完成：**vivo TWS 4 的 source/sink、profile、codec 和节点格式已由用户提供；用户确认默认输入输出已设置且查询结果一致。应用缓冲、实际延迟仍待应用阶段测量。
+本文件保存系统、工具库和设备快照，以及 Git 交接与工程验证的历史证据。当前任务状态与后续动作统一见 [执行计划](../EXECUTION_PLAN.md#5-工作分解依赖与交付)，构建和使用方法见 [README](../README.md#基础环境检查)，SDK 官方前提见 [兼容性依据](compatibility.md)。
 
-用户确认没有提供基础录放测试时长或测量文件，因此不补造“已连续测 10 分钟”等细节。后续 `audio_probe` 的 10 分钟检查验收的是新程序，不是重新验证用户已完成的系统能力。
+蓝牙连接和耳机同时录放基线由用户于 2026-10-16 明确确认完成，无需重复基础验证。用户未提供测试时长或测量文件，因此不补造“已连续测 10 分钟”等细节；后续 `audio_probe` 验收针对新程序，不替代或改写这条系统基线记录。
 
 ## 2. 开发板实况
 
@@ -30,7 +22,6 @@
 | swap | 1,073,737,728 B，当前使用 0 B | 不能据此预测模型峰值 |
 | 根分区 | `/dev/mmcblk1p1`；可用 20,468,256,768 B（约 19.06 GiB）；占用率 31% | `/` 与 `/home` 在同一文件系统 |
 | NPU 驱动 | `0.9.7` | `/sys/module/rknpu/version` |
-| RKLLM 1.3.1 驱动要求 | 官方手册要求 `0.9.8`，当前驱动低于要求 | 手册第 12 页 §2.4；详见 [compatibility.md](compatibility.md) |
 | NPU 设备 | `renderD129` → `/sys/devices/platform/fdab0000.npu`，驱动 RKNPU | 不能把显示用 `renderD128` 当作 NPU |
 | NPU 访问 | 当前 jzh 对 NPU render 节点可读写 | `os.access`，未实际初始化模型；权限可能来自会话 ACL |
 | NPU governor | `rknpu_ondemand`；读数时频率 1,000,000,000 Hz | 未改频率；不代表持续频率 |
@@ -52,9 +43,11 @@
 | yaml-cpp | 0.8.0 | `pkg-config --modversion yaml-cpp` |
 | nlohmann-json3-dev | 版本未单独查询；头文件可用 | 编译成功且 JSON 序列化输出正确 |
 
+基础开发依赖清单：`build-essential cmake ninja-build pkg-config libpulse-dev pulseaudio-utils libsamplerate0-dev libsndfile1-dev libyaml-cpp-dev nlohmann-json3-dev`。
+
 `pactl info` 成功连接 `/run/user/1000/pulse/native`，服务名称为 `PulseAudio (on PipeWire 1.0.5)`。上述查询证明工具可用、包元数据可发现，C++17 与依赖实际编译链接已由后续检查通过。安装前 apt 提示下载 95.2 MB、新增 262 MB、升级 43 包、新装 66 包；这不是安装后实测磁盘占用。
 
-`ldconfig -p` 可见 `libpulse.so.0`、`libpulse-simple.so.0` 和 `libsamplerate.so.0`。常规系统库位置及 ldconfig 缓存未发现 `librknnrt`、`librkllmrt`；这不等于扫描过整块磁盘，不排除其他路径有用户保存的副本。板端工程目录 `/home/jzh/projects/rk3588_voice_engine` 已由用户创建；早期检查程序现保存在 `tmp/env-check-Ca991G/`，目录整理说明见 §7。用户早先提供的初始化结果为 main 尚无提交；随后已导入并推送提交历史。最新 SSH 复核为 main 跟踪 origin/main、工作区干净。
+`ldconfig -p` 可见 `libpulse.so.0`、`libpulse-simple.so.0` 和 `libsamplerate.so.0`。常规系统库位置及 ldconfig 缓存未发现 `librknnrt`、`librkllmrt`；这不等于扫描过整块磁盘，不排除其他路径有用户保存的副本。NPU 驱动与 SDK 要求的比较见 [兼容性依据](compatibility.md)。早期检查程序的目录迁移见 §7，Git 初始化与交接快照见 §8。
 
 ## 3. 耳机当前配置与历史音频快照
 
@@ -84,7 +77,7 @@ PipeWire、pipewire-pulse、WirePlumber 用户服务均为 active；PipeWire 和
 
 ## 4. 电脑与模型准备方式
 
-用户明确不使用 WSL。实施方式为现有 Windows + SSH/SCP，板端原生编译，优先使用配套预转换模型；不把安装新的电脑运行环境列为前置任务。
+以下为 Windows 电脑的资源快照。用户明确不使用 WSL；模型准备方式与转换条件见 [执行计划](../EXECUTION_PLAN.md#7-工程资产与依赖管理)。
 
 | 项目 | 本轮结果 | 规划影响 |
 |---|---|---|
@@ -123,19 +116,9 @@ pactl list cards
 
 ## 6. 尚未验证的事项
 
-| 待验证内容 | 负责阶段 |
-|---|---|
-| RKLLM 1.3.1 已明确要求驱动 0.9.8；待落实当前 Ubuntu 内核的驱动适配与恢复，再验证模型；RKNN 所选版本要求另行核对 | P0-02～04 |
-| Qwen3.5-2B 文本链路及取消行为、实际模型大小/内存 | P0-04、P2-02 |
-| RKNN 与 RKLLM 同进程共存、总资源峰值 | P2-04 |
-| 配套预转换产物的来源和生成版本；无法取得时的独立转换需求 | P0-03，不预设安装电脑运行环境 |
-| 新程序协商缓冲/延迟及重连后绑定，设备名/profile/节点格式已记录 | P1-02、P4 |
-| 实际识别质量、TTS 声音和端到端延迟 | P2～P4 |
-| 无桌面会话时的音频/NPU 权限、自启动和恢复 | P7 |
-| 原计划中的下载代理 `192.168.137.1:17897` 是否仍可用 | 首次下载前检查；本轮没有验证 |
+本文件的空闲资源、权限和系统录放快照不能作为模型推理、应用录放、同进程共存、实际延迟或部署恢复的验收结果。对应任务与完成条件统一维护在 [执行计划](../EXECUTION_PLAN.md#5-工作分解依赖与交付)，测量规则见 [验收文档](ACCEPTANCE.md)。
 
-已知事实、用户确认和工程目标在主计划中分别标注，不将这里的空闲资源或历史测试替换成未运行的应用性能结果。
-
+原计划中的下载代理 `192.168.137.1:17897` 本轮未验证可用性，首次下载前需检查。
 
 ## 7. C++17 与基础依赖检查通过
 
@@ -157,35 +140,67 @@ sndfile: libsndfile-1.2.2
 ENV_CHECK_OK
 ```
 
-结论：该最小程序的 C++17 编译、libpulse/libsamplerate/libsndfile/yaml-cpp 链接和运行、YAML 解析及 JSON 序列化通过。未打开音频流，未测试 NPU，也尚未验证 CMake/Ninja 工程构建。Git 初始化和忽略规则随后已完成，云端首次提交已推送；之后进入工程构建与 SDK 准备。
+结论：该最小程序的 C++17 编译、libpulse/libsamplerate/libsndfile/yaml-cpp 链接和运行、YAML 解析及 JSON 序列化通过。未打开音频流，未测试 NPU；当时尚未验证 CMake/Ninja 工程构建，后续验证记录见 §9。
 
-2026-10-16 目录整理：原 `env-check-Ca991G/` 已整体移入 `tmp/env-check-Ca991G/`，保留其中的源码和历史可执行文件。此前已纳入版本管理的 `tools/env_check.cpp` 与临时目录中的 `main.cpp` 内容相同，后续统一使用该源码，并将编译结果输出到 `build/env_check`；复现命令见 [README](../README.md#基础环境检查)。本次已按该命令重新编译并运行，输出 `ENV_CHECK_OK`。上方保留了用户当时执行检查的原路径和命令。
+2026-10-16 目录整理：原 `env-check-Ca991G/` 已整体移入 `tmp/env-check-Ca991G/`，保留其中的源码和历史可执行文件。此前已纳入版本管理的 `tools/env_check.cpp` 与临时目录中的 `main.cpp` 内容相同；整理时曾直接编译到 `build/env_check` 并输出 `ENV_CHECK_OK`。后续统一使用该源码，通过 CMake 构建到 `build/bin/env_check`；当前复现命令见 [README](../README.md#基础环境检查)。上方保留用户当时执行检查的原路径和命令。
 
 ## 8. Git 与云端托管
 
-用户已在板端 `/home/jzh/projects/rk3588_voice_engine` 执行 `git init -b main`，并创建忽略构建/模型/运行库/本机配置的 `.gitignore`。云端配置前的 SSH 复核为尚无提交和远程地址；这条记录保留配置前状态。
+以下为 2026-10-16 的初始化、认证与交接记录；日常操作统一见 [README 版本管理约定](../README.md#版本管理约定)。
 
-用户指定提交身份为 `jzh03 <1053442572@qq.com>`，已通过 `git config --local` 配置到板端本项目。用户选择 GitHub 私有仓库，目标为 `jzh03/rk3588_voice_engine`；本轮确认 Windows Git Credential Manager 已有对应账号登录。
+| 记录项 | 当时确认值 |
+|---|---|
+| 云端仓库 | [jzh03/rk3588_voice_engine](https://github.com/jzh03/rk3588_voice_engine)，创建时为 private |
+| origin / 分支 | `https://github.com/jzh03/rk3588_voice_engine.git` / `main` |
+| 项目提交身份 | `jzh03 <1053442572@qq.com>`，通过板端 `git config --local` 配置 |
+| 唯一日常工作目录 | `/home/jzh/projects/rk3588_voice_engine`；代码、文档及 Git 操作均在板端完成 |
+| Windows 参考副本 | `F:\AI\RK3588音频引擎`；交接后仅作参考，不维护双端写入 |
 
-Windows 规划文件与板端检查源码整理为同一首次提交，模型、编译结果、临时检查目录和临时图片排除；检查源码保存为 `tools/env_check.cpp`。GitHub 私有仓库已创建，首次提交 `9aea28a0d31d810eceb950c1cb8a3a554b84f643` 已成功推送，`git ls-remote` 核对 main 一致。首次提交包含 13 个文件。
+历史时间线：
 
-- 云端仓库：[jzh03/rk3588_voice_engine](https://github.com/jzh03/rk3588_voice_engine)，可见性 private。
-- 远程地址：`https://github.com/jzh03/rk3588_voice_engine.git`，默认分支 `main`。
-- Windows 参考副本：`F:\AI\RK3588音频引擎`，曾使用本机 Git Credential Manager 推送。本次按用户要求再推送一次进度记录，此后停止作为日常修改或提交端。
-- 板端主工作目录：`/home/jzh/projects/rk3588_voice_engine`；首次曾以 Git bundle 导入同一提交历史，现已可直接通过 HTTPS 拉取/推送；早期 `env-check-Ca991G/` 临时目录现保存在 `tmp/env-check-Ca991G/`。后续代码和文档都在此更新。
-- Git 提交身份为 `jzh03 <1053442572@qq.com>`。开发板已使用 `gh auth login --hostname github.com --git-protocol https --web` 登录，并执行 `gh auth setup-git`；凭据助手为 `!/usr/bin/gh auth git-credential`。不再需要部署密钥或 Windows 中转认证。
-- `tools/env_check.cpp` 保留了用户已运行通过的环境检查源码；本轮未新增运行模型或录放测试。
+1. **板端初始化。**用户执行 `git init -b main` 并建立 `.gitignore`；云端配置前的 SSH 复核为尚无提交和远程地址。这是初始化时的状态。
+2. **首次推送。**Windows 规划文件与板端 `tools/env_check.cpp` 合为首次提交，排除模型、编译产物、临时检查目录和临时图片；13 个文件组成提交 `9aea28a0d31d810eceb950c1cb8a3a554b84f643`。Windows 使用已登录对应账号的 Git Credential Manager 推送，`git ls-remote` 核对 main 一致；板端最初通过 Git bundle 导入同一历史。
+3. **板端认证。**安装 GitHub CLI 2.45.0（Ubuntu 2.45.0-1ubuntu0.3），使用 `gh auth login --hostname github.com --git-protocol https --web` 和 `gh auth setup-git`。SSH 只读复核中，`gh api user --jq .login` 返回 `jzh03`，凭据助手为 `!/usr/bin/gh auth git-credential`；未读取或记录令牌。用户确认 fetch 成功，`git push --dry-run origin main` 显示 `Everything up-to-date`。
+4. **工作目录交接。**交接前 Windows 与板端 main 均为 `b345e545080d023289bdf41e9dfee3ae884ef96d`，工作区均干净；板端 main 跟踪 origin/main。约定由 Windows 最后推送认证及进度说明，随后板端 fast-forward 拉取完成交接，之后由板端直接通过 HTTPS 拉取/推送。该时点尚未开始 P1-01，后续构建验证见 §9。
 
-### 2026-10-16 认证完成与工作目录交接
+## 9. CMake 构建与首批音频配置校验
 
-用户已确认登录成功，`git push --dry-run origin main` 显示 `Everything up-to-date`。本轮 SSH 只读复核：
+2026-10-16，用户已建立 CMake/Ninja 构建入口，并确认 `build/bin/env_check` 输出 `ENV_CHECK_OK`；随后保存 `config/default.yaml` 和被 Git 忽略的 `config/local.yaml`。当前配置命令、字段约束与退出码见 [README 配置检查](../README.md#配置检查)。
 
-- `gh --version`：2.45.0（Ubuntu 2.45.0-1ubuntu0.3）。
-- `gh api user --jq .login`：`jzh03`。
-- origin：`https://github.com/jzh03/rk3588_voice_engine.git`。
-- 交接前 main 提交：`b345e545080d023289bdf41e9dfee3ae884ef96d`，Windows 与板端一致，工作区均干净。
-- 凭据助手已在前一轮 SSH 检查中核实为 `!/usr/bin/gh auth git-credential`；未读取或记录令牌。
+本轮以 Release 配置执行 CMake/Ninja 构建和 `ctest --test-dir build --output-on-failure -V`，结果为 `All 56 config checks passed`；环境检查输出 `ENV_CHECK_OK`。实际 `config/local.yaml` 检查输出 `CONFIG_OK`、退出 `0`；设备字段留空的默认模板提示 `audio.source` 错误、退出 `2`。运行记录保存在本机被忽略的 `output/runs/config-check-2026-10-16/{run.json,summary.json}`。
 
-工作约定：本次从 Windows 提交并推送认证及进度说明，随后开发板以 fast-forward 拉取该提交完成交接。之后所有代码/文档修改、提交和推送都在开发板完成，Windows 本地副本仅供参考，不继续维护双端写入。Git 无需停止后台服务，也无需删除 Windows 的 .git 或卸载 Git。
+2026-10-17 继续完成配置类型校验：修复超出数值范围的数字被当作设备字符串接受的问题，并补充未加引号与显式字符串的回归用例。Release 构建成功，全部 `62` 项配置检查通过；环境检查、本机配置和空设备模板的退出结果与上述约定一致。新增运行记录保存在 `output/runs/config-check-2026-10-17/{run.json,summary.json}`，其中包含被验证源码和配置的 SHA-256。
 
-当前停在 P1-01 之前：CMakeLists.txt 尚未创建，CMake/Ninja 工程构建尚未执行；不会把此前暂停的计划写成已完成。基础依赖、C++17 检查、耳机配置、GitHub 私有仓库和板端账号认证均已完成。
+上述结果仅为配置检查证据，不含在线设备、模型资产、录放或 NPU 验证。该时点尚未验证 JSONL 和 mock 控制，后续记录见 §10。
+
+## 10. JSONL 日志与 mock 终端控制
+
+2026-10-17，完成 JSONL 日志与无硬件 mock 控制验证。启动方式、命令行为与日志格式统一见 [README 终端控制与 JSONL 日志](../README.md#终端控制与-jsonl-日志)。
+
+Release 构建与三组 CTest 均通过：62 项配置检查、日志单元测试（`LOGGER_TEST_OK`）和 39 项控制检查。覆盖输入长度限制、取消与会话代次、EOF、SIGINT/SIGTERM 收尾、轮转上限、已有目录保护和日志 I/O 失败后拒绝继续写入。实际本机配置检查仍输出 `CONFIG_OK`。
+
+使用本机配置执行 `status → start → stop → start → cancel → new-session → quit` 演示，25 行事件均可解析，最终会话编号为 2、generation 为 4，正常退出。日志及验证脚本保存的报告位于 `output/runs/p1-01-control-2026-10-17/{events.jsonl,ctest.log,verification.json}`；报告记录了本轮源码与配置 SHA-256。
+
+这些结果不计为应用录放、模型取消或 A01～A14 实机验收通过；当前任务状态及剩余项见 [执行计划](../EXECUTION_PLAN.md#5-工作分解依赖与交付)。
+
+## 11. P1-01 完整工程骨架验证
+
+2026-10-14（本次会话提供的日期，Asia/Shanghai），完成 P1-01 的完整配置与资产检查、音频接口/mock 和独立构建验证。原有历史记录的日期保留。当前用法与契约集中在 [README](../README.md#基础环境检查)，回归覆盖要求见 [验收文档](ACCEPTANCE.md#6-当前命令与后续约定)。
+
+Release 配置和 `cmake --build build -j2` 成功。分两次运行 CTest：先执行除 `build_boundaries` 外的回归，再执行该独立构建检查，7 组全部通过：
+
+| 检查 | 实测结果 |
+|---|---|
+| `check_config` / `full_config` | 原有 62 项和完整分组 149 项检查通过 |
+| `check_assets` | 93 项检查通过；使用临时合成文件验证正常清单、损坏哈希、缺文件及依赖/路径约束 |
+| `control_stdin` / `jsonl_logger` | 39 项终端检查通过，日志测试输出 `LOGGER_TEST_OK` |
+| `mock_audio` | 输出 `MOCK_AUDIO_OK`；格式、代次、取消、有限播放队列检查通过 |
+| `build_boundaries` | 输出 `BUILD_BOUNDARIES_OK`；引擎独立构建不查询原生音频库，音频独立构建不查找引擎依赖；各自测试通过 |
+
+`build/bin/env_check` 输出 `ENV_CHECK_OK`。本机 `config/local.yaml` 无修改即可通过检查，输出 `CONFIG_OK` 和 `ASSETS_OK models=0 dependencies=0 files=0`；所有模型默认禁用，因此没有验证真实模型资产。资产哈希复用现有 `/usr/bin/sha256sum`，未安装新依赖、SDK 或模型。
+
+使用本机配置执行 `status → start → stop → start → cancel → new-session → quit`，退出码为 0；27 条事件均为有效 JSONL、序号连续，最终 session 为 2、generation 为 4。启动记录为 `audio_backend=mock`、`asset_checks=skipped_mock`，两次 start 各生成一帧合成静音的元数据，不保存 PCM。
+
+本机证据保存在被 Git 忽略的 `output/runs/p1-01-complete-2026-10-14/`：`regression.log`、`build-boundaries.log`、`check-config.log`、`env-check.log`、`mock-control.log`、`mock-control/events.jsonl` 和 `verification.json`。报告包含实际命令、退出码、测试结果、代码/配置 SHA-256 与工作区状态；这些本机产物不随仓库分发。
+
+上述结果满足 P1-01 工程骨架交付条件。尚未打开真实音频设备或加载模型，未验证 A01～A14、NPU 兼容或模型推理；下一步及相关前置条件见[执行计划](../EXECUTION_PLAN.md#9-下一次实施的首批动作)。
