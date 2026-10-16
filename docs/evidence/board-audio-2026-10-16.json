@@ -1,0 +1,232 @@
+{
+  "inspection_date": "2026-10-16",
+  "timezone": "Asia/Shanghai",
+  "method": "read-only SSH via orangepi5; snapshot only, not an audio functional test",
+  "audio": [
+    {
+      "id": 42,
+      "state": null,
+      "props": {
+        "device.api": "alsa",
+        "device.description": "DP0",
+        "device.name": "alsa_card.platform-dp0-sound",
+        "media.class": "Audio/Device"
+      },
+      "profile": [
+        {
+          "index": 1,
+          "name": "output:stereo-fallback",
+          "description": "Stereo Output",
+          "priority": 5100,
+          "available": "unknown",
+          "classes": [
+            1,
+            [
+              "Audio/Sink",
+              1,
+              "card.profile.devices",
+              [
+                1
+              ]
+            ]
+          ],
+          "save": false
+        }
+      ],
+      "format": null
+    },
+    {
+      "id": 43,
+      "state": null,
+      "props": {
+        "device.api": "alsa",
+        "device.description": "ES8388",
+        "device.name": "alsa_card.platform-es8388-sound",
+        "media.class": "Audio/Device"
+      },
+      "profile": [
+        {
+          "index": 1,
+          "name": "output:stereo-fallback+input:stereo-fallback",
+          "description": "Stereo Output + Stereo Input",
+          "priority": 5151,
+          "available": "yes",
+          "classes": [
+            2,
+            [
+              "Audio/Source",
+              1,
+              "card.profile.devices",
+              [
+                2
+              ]
+            ],
+            [
+              "Audio/Sink",
+              1,
+              "card.profile.devices",
+              [
+                3
+              ]
+            ]
+          ],
+          "save": false
+        }
+      ],
+      "format": null
+    },
+    {
+      "id": 44,
+      "state": null,
+      "props": {
+        "device.api": "alsa",
+        "device.description": "HDMI0",
+        "device.name": "alsa_card.platform-hdmi0-sound",
+        "media.class": "Audio/Device"
+      },
+      "profile": [
+        {
+          "index": 1,
+          "name": "output:stereo-fallback",
+          "description": "Stereo Output",
+          "priority": 5100,
+          "available": "unknown",
+          "classes": [
+            1,
+            [
+              "Audio/Sink",
+              1,
+              "card.profile.devices",
+              [
+                1
+              ]
+            ]
+          ],
+          "save": false
+        }
+      ],
+      "format": null
+    },
+    {
+      "id": 49,
+      "state": "suspended",
+      "props": {
+        "audio.channels": 2,
+        "device.api": "alsa",
+        "media.class": "Audio/Sink",
+        "node.description": "DP0 Stereo",
+        "node.name": "alsa_output.platform-dp0-sound.stereo-fallback"
+      },
+      "profile": null,
+      "format": []
+    },
+    {
+      "id": 50,
+      "state": "suspended",
+      "props": {
+        "audio.channels": 2,
+        "device.api": "alsa",
+        "media.class": "Audio/Sink",
+        "node.description": "ES8388 Stereo",
+        "node.name": "alsa_output.platform-es8388-sound.stereo-fallback"
+      },
+      "profile": null,
+      "format": []
+    },
+    {
+      "id": 51,
+      "state": "suspended",
+      "props": {
+        "audio.channels": 2,
+        "device.api": "alsa",
+        "media.class": "Audio/Source",
+        "node.description": "ES8388 Stereo",
+        "node.name": "alsa_input.platform-es8388-sound.stereo-fallback"
+      },
+      "profile": null,
+      "format": []
+    },
+    {
+      "id": 33,
+      "state": "suspended",
+      "props": {
+        "audio.channels": 2,
+        "device.api": "alsa",
+        "media.class": "Audio/Sink",
+        "node.description": "HDMI0 Stereo",
+        "node.name": "alsa_output.platform-hdmi0-sound.stereo-fallback"
+      },
+      "profile": null,
+      "format": []
+    }
+  ],
+  "wpctl": {
+    "exit_code": 0,
+    "stdout": "PipeWire 'pipewire-0' [1.0.5, jzh@jzh-RK3588, cookie:3042512169]\n └─ Clients:\n        32. pipewire                            [1.0.5, jzh@jzh-RK3588, pid:1065]\n        34. WirePlumber                         [1.0.5, jzh@jzh-RK3588, pid:1063]\n        35. WirePlumber [export]                [1.0.5, jzh@jzh-RK3588, pid:1063]\n        62. gnome-shell                         [1.0.5, jzh@jzh-RK3588, pid:1252]\n        63. GNOME Shell Volume Control          [1.0.5, jzh@jzh-RK3588, pid:1252]\n        64. GNOME Volume Control Media Keys     [1.0.5, jzh@jzh-RK3588, pid:1617]\n        65. xdg-desktop-portal                  [1.0.5, jzh@jzh-RK3588, pid:1971]\n        66. wpctl                               [1.0.5, jzh@jzh-RK3588, pid:3921]\n\nAudio\n ├─ Devices:\n │      42. DP0                                 [alsa]\n │      43. ES8388                              [alsa]\n │      44. HDMI0                               [alsa]\n │  \n ├─ Sinks:\n │      33. HDMI0 Stereo                        [vol: 0.40]\n │      49. DP0 Stereo                          [vol: 0.40]\n │  *   50. ES8388 Stereo                       [vol: 0.40]\n │  \n ├─ Sink endpoints:\n │  \n ├─ Sources:\n │      51. ES8388 Stereo                       [vol: 1.00]\n │  \n ├─ Source endpoints:\n │  \n └─ Streams:\n\nVideo\n ├─ Devices:\n │  \n ├─ Sinks:\n │  \n ├─ Sink endpoints:\n │  \n ├─ Sources:\n │  \n ├─ Source endpoints:\n │  \n └─ Streams:\n\nSettings\n └─ Default Configured Node Names:\n         0. Audio/Sink    bluez_output.1C_7A_43_7F_83_8F.1",
+    "stderr": ""
+  },
+  "bluetooth_service": {
+    "exit_code": 3,
+    "stdout": "inactive",
+    "stderr": ""
+  },
+  "bluez_tree": {
+    "exit_code": 0,
+    "stdout": "/\n/org\n/org/bluez",
+    "stderr": ""
+  },
+  "rfkill": {
+    "exit_code": 0,
+    "stdout": "{\n   \"rfkilldevices\": [\n\n   ]\n}",
+    "stderr": ""
+  },
+  "usb": {
+    "exit_code": 0,
+    "stdout": "Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub\nBus 002 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub\nBus 003 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub\nBus 003 Device 002: ID 3837:3033 MCHOSE MCHOSE K87S 2.4G\nBus 004 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub\nBus 005 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub\nBus 006 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub\nBus 007 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub\nBus 007 Device 002: ID 046d:c53f Logitech, Inc. USB Receiver\nBus 008 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub",
+    "stderr": ""
+  },
+  "npu_access": [
+    {
+      "node": "/dev/dri/renderD128",
+      "device": "/sys/devices/platform/display-subsystem",
+      "driver": "/sys/bus/platform/drivers/rockchip-drm",
+      "read_write": true
+    },
+    {
+      "node": "/dev/dri/renderD129",
+      "device": "/sys/devices/platform/fdab0000.npu",
+      "driver": "/sys/bus/platform/drivers/RKNPU",
+      "read_write": true
+    }
+  ],
+  "thermal": [
+    {
+      "type": "bigcore1-thermal",
+      "celsius": 40.692
+    },
+    {
+      "type": "soc-thermal",
+      "celsius": 39.769
+    },
+    {
+      "type": "gpu-thermal",
+      "celsius": 38.846
+    },
+    {
+      "type": "littlecore-thermal",
+      "celsius": 40.692
+    },
+    {
+      "type": "bigcore0-thermal",
+      "celsius": 40.692
+    },
+    {
+      "type": "npu-thermal",
+      "celsius": 38.846
+    },
+    {
+      "type": "center-thermal",
+      "celsius": 38.846
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+# Build output, recordings, and temporary checks
+/build/
+/output/
+/tmp/
+/env-check-*/
+/tools/env_check
+
+# Local configuration and credentials
+/config/local.yaml
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Model and runtime files; track manifests only
+/models/*
+!/models/manifest.json
+/deps/*
+!/deps/manifest.json

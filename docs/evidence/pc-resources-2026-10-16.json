@@ -1,0 +1,22 @@
+{
+  "inspection_date": "2026-10-16",
+  "timezone": "Asia/Shanghai",
+  "method": "read-only PowerShell CIM and Get-PSDrive",
+  "ram_bytes": 16889036800,
+  "logical_processors": 16,
+  "os": "Microsoft Windows 11 家庭版 中文版",
+  "version": "10.0.26300",
+  "free_memory_kib": 3255272,
+  "disks": [
+    {
+      "Name": "C",
+      "Used": 147161960448,
+      "Free": 26291716096
+    },
+    {
+      "Name": "F",
+      "Used": 425138401280,
+      "Free": 575062822912
+    }
+  ]
+}
