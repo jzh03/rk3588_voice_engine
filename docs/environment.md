@@ -155,12 +155,19 @@ sndfile: libsndfile-1.2.2
 ENV_CHECK_OK
 ```
 
-结论：该最小程序的 C++17 编译、libpulse/libsamplerate/libsndfile/yaml-cpp 链接和运行、YAML 解析及 JSON 序列化通过。未打开音频流，未测试 NPU，也尚未验证 CMake/Ninja 工程构建。Git 初始化和忽略规则随后已完成，正在准备云端首次提交；之后进入工程构建与 SDK 准备。
+结论：该最小程序的 C++17 编译、libpulse/libsamplerate/libsndfile/yaml-cpp 链接和运行、YAML 解析及 JSON 序列化通过。未打开音频流，未测试 NPU，也尚未验证 CMake/Ninja 工程构建。Git 初始化和忽略规则随后已完成，云端首次提交已推送；之后进入工程构建与 SDK 准备。
 
-## 8. Git 与云端托管准备
+## 8. Git 与云端托管
 
-用户已在板端 `/home/jzh/projects/rk3588_voice_engine` 执行 `git init -b main`，并创建忽略构建/模型/运行库/本机配置的 `.gitignore`。本轮 SSH 复核仍无提交和远程地址。
+用户已在板端 `/home/jzh/projects/rk3588_voice_engine` 执行 `git init -b main`，并创建忽略构建/模型/运行库/本机配置的 `.gitignore`。云端配置前的 SSH 复核为尚无提交和远程地址；这条记录保留配置前状态。
 
 用户指定提交身份为 `jzh03 <1053442572@qq.com>`，已通过 `git config --local` 配置到板端本项目。用户选择 GitHub 私有仓库，目标为 `jzh03/rk3588_voice_engine`；本轮确认 Windows Git Credential Manager 已有对应账号登录。
 
-Windows 规划文件与板端检查源码整理为同一首次提交，模型、编译结果、临时检查目录和临时图片排除；检查源码保存为 `tools/env_check.cpp`。云端创建、首次推送及 Windows/板端相同提交验证尚在进行中，只有实际推送验证后才标记完成。
+Windows 规划文件与板端检查源码整理为同一首次提交，模型、编译结果、临时检查目录和临时图片排除；检查源码保存为 `tools/env_check.cpp`。GitHub 私有仓库已创建，首次提交 `9aea28a0d31d810eceb950c1cb8a3a554b84f643` 已成功推送，`git ls-remote` 核对 main 一致。首次提交包含 13 个文件。
+
+- 云端仓库：[jzh03/rk3588_voice_engine](https://github.com/jzh03/rk3588_voice_engine)，可见性 private。
+- 远程地址：`https://github.com/jzh03/rk3588_voice_engine.git`，默认分支 `main`。
+- Windows 工作目录：`F:\AI\RK3588音频引擎`，通过本机现有 Git Credential Manager 的 jzh03 登录推送，跟踪 `origin/main`。
+- 板端工作目录：`/home/jzh/projects/rk3588_voice_engine`；采用 Git bundle 从 Windows 中转同一提交历史，保留已存在的 env-check-Ca991G 临时目录，设置相同 origin。
+- Git 提交身份在两个项目目录分别设置，不修改全局身份。板端尚未配置直接访问 GitHub 私有仓库的凭据；配置 origin 本身不提供认证。当前云端推送由 Windows 完成。
+- `tools/env_check.cpp` 保留了用户已运行通过的环境检查源码；本轮未新增运行模型或录放测试。
