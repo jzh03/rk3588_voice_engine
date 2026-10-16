@@ -9,6 +9,8 @@
 - **已完成（用户终端输出）：**基础开发依赖安装及版本查询；pactl 可访问 PipeWire 兼容服务。
 - **已完成（用户终端输出）：**C++17 与依赖编译链接检查，程序输出 `ENV_CHECK_OK`。
 - **已完成（用户终端输出）：**板端 Git main 分支初始化和 .gitignore；本轮通过 SSH 配置该项目提交身份为 jzh03 / 1053442572@qq.com。
+- **已完成：**开发板安装 GitHub CLI 2.45.0，以 jzh03 完成 HTTPS 浏览器授权，Git 凭据助手已接入；用户确认 fetch 成功，push dry-run 显示 Everything up-to-date。
+- **工作方式：**后续以开发板为唯一代码/文档及 Git 工作目录，Windows 作为 SSH 入口；本次 Windows 进度推送后，本地目录保留参考。
 - **待实施：**CMake/Ninja 工程构建、SDK/模型兼容性验证、应用录放和完整链路。
 - **已完成：**vivo TWS 4 的 source/sink、profile、codec 和节点格式已由用户提供；用户确认默认输入输出已设置且查询结果一致。应用缓冲、实际延迟仍待应用阶段测量。
 
@@ -52,7 +54,7 @@
 
 `pactl info` 成功连接 `/run/user/1000/pulse/native`，服务名称为 `PulseAudio (on PipeWire 1.0.5)`。上述查询证明工具可用、包元数据可发现，C++17 与依赖实际编译链接已由后续检查通过。安装前 apt 提示下载 95.2 MB、新增 262 MB、升级 43 包、新装 66 包；这不是安装后实测磁盘占用。
 
-`ldconfig -p` 可见 `libpulse.so.0`、`libpulse-simple.so.0` 和 `libsamplerate.so.0`。常规系统库位置及 ldconfig 缓存未发现 `librknnrt`、`librkllmrt`；这不等于扫描过整块磁盘，不排除其他路径有用户保存的副本。板端工程目录 `/home/jzh/projects/rk3588_voice_engine` 已由用户创建；检查程序位于 `env-check-Ca991G` 子目录。用户已提供 Git 初始化结果：main 分支尚无提交，.gitignore 为待提交文件；本轮 SSH 复核一致。
+`ldconfig -p` 可见 `libpulse.so.0`、`libpulse-simple.so.0` 和 `libsamplerate.so.0`。常规系统库位置及 ldconfig 缓存未发现 `librknnrt`、`librkllmrt`；这不等于扫描过整块磁盘，不排除其他路径有用户保存的副本。板端工程目录 `/home/jzh/projects/rk3588_voice_engine` 已由用户创建；检查程序位于 `env-check-Ca991G` 子目录。用户早先提供的初始化结果为 main 尚无提交；随后已导入并推送提交历史。最新 SSH 复核为 main 跟踪 origin/main、工作区干净。
 
 ## 3. 耳机当前配置与历史音频快照
 
@@ -167,7 +169,21 @@ Windows 规划文件与板端检查源码整理为同一首次提交，模型、
 
 - 云端仓库：[jzh03/rk3588_voice_engine](https://github.com/jzh03/rk3588_voice_engine)，可见性 private。
 - 远程地址：`https://github.com/jzh03/rk3588_voice_engine.git`，默认分支 `main`。
-- Windows 工作目录：`F:\AI\RK3588音频引擎`，通过本机现有 Git Credential Manager 的 jzh03 登录推送，跟踪 `origin/main`。
-- 板端工作目录：`/home/jzh/projects/rk3588_voice_engine`；采用 Git bundle 从 Windows 中转同一提交历史，保留已存在的 env-check-Ca991G 临时目录，设置相同 origin。
-- Git 提交身份在两个项目目录分别设置，不修改全局身份。板端尚未配置直接访问 GitHub 私有仓库的凭据；配置 origin 本身不提供认证。当前云端推送由 Windows 完成。
+- Windows 参考副本：`F:\AI\RK3588音频引擎`，曾使用本机 Git Credential Manager 推送。本次按用户要求再推送一次进度记录，此后停止作为日常修改或提交端。
+- 板端主工作目录：`/home/jzh/projects/rk3588_voice_engine`；首次曾以 Git bundle 导入同一提交历史，现已可直接通过 HTTPS 拉取/推送，保留 env-check-Ca991G 临时目录。后续代码和文档都在此更新。
+- Git 提交身份为 `jzh03 <1053442572@qq.com>`。开发板已使用 `gh auth login --hostname github.com --git-protocol https --web` 登录，并执行 `gh auth setup-git`；凭据助手为 `!/usr/bin/gh auth git-credential`。不再需要部署密钥或 Windows 中转认证。
 - `tools/env_check.cpp` 保留了用户已运行通过的环境检查源码；本轮未新增运行模型或录放测试。
+
+### 2026-10-16 认证完成与工作目录交接
+
+用户已确认登录成功，`git push --dry-run origin main` 显示 `Everything up-to-date`。本轮 SSH 只读复核：
+
+- `gh --version`：2.45.0（Ubuntu 2.45.0-1ubuntu0.3）。
+- `gh api user --jq .login`：`jzh03`。
+- origin：`https://github.com/jzh03/rk3588_voice_engine.git`。
+- 交接前 main 提交：`b345e545080d023289bdf41e9dfee3ae884ef96d`，Windows 与板端一致，工作区均干净。
+- 凭据助手已在前一轮 SSH 检查中核实为 `!/usr/bin/gh auth git-credential`；未读取或记录令牌。
+
+工作约定：本次从 Windows 提交并推送认证及进度说明，随后开发板以 fast-forward 拉取该提交完成交接。之后所有代码/文档修改、提交和推送都在开发板完成，Windows 本地副本仅供参考，不继续维护双端写入。Git 无需停止后台服务，也无需删除 Windows 的 .git 或卸载 Git。
+
+当前停在 P1-01 之前：CMakeLists.txt 尚未创建，CMake/Ninja 工程构建尚未执行；不会把此前暂停的计划写成已完成。基础依赖、C++17 检查、耳机配置、GitHub 私有仓库和板端账号认证均已完成。
