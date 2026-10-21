@@ -1,8 +1,11 @@
 # SDK 兼容性依据
 
-依据核对日期：2026-10-19（Asia/Shanghai）。本文件集中记录官方要求、驱动适配方案与留存来源；实际环境见 [环境记录](environment.md)，实施任务见 [执行计划](../EXECUTION_PLAN.md#3-技术方案与兼容性关口)。
+依据核对日期：2026-10-21（Asia/Shanghai）。本文件集中记录官方要求、驱动适配方案与留存来源；实际环境见 [环境记录](environment.md)，实施任务见 [执行计划](../EXECUTION_PLAN.md#3-技术方案与兼容性关口)。
 
 ## 官方要求与本机差距
+
+**当前实测（2026-10-21）：**官方 Jammy 22.04.5 / BSP 6.1.99 运行 RKNPU 0.9.8、RKNN 2.3.2 / RKLLM 1.3.0。系统与私有 runtime/头文件保持版本锁；Qwen3.5-2B 已通过一次初始化、三条短问答及正常释放，loader 报告内部 Toolkit 1.3.0 / RK3588 / W8A8。它和 ASR 的分别成功不证明共驻或完整验收。网络、时间和构建恢复见[当前环境](environment.md#26-官方-jammy-系统网络时间与构建依赖恢复)。下文 2026-10-20 及更早记录保留历史语义。
+
 
 来源：[瑞芯微 RKLLM SDK 1.3.1 中文手册](https://github.com/airockchip/rknn-llm/blob/main/doc/Rockchip_RKLLM_SDK_CN_1.3.1.pdf)。
 
@@ -10,16 +13,54 @@
 |---|---|---|
 | 第 12 页 §2.2 | runtime 与对应的 rkllm.h 配套链接、部署 | 不单独更换库而保留不匹配的头文件 |
 | 第 12 页 §2.3 | 推荐 GCC 10.2 工具链，不使用低于 10.2 的版本 | 核查板端原生编译器与链接依赖，不涉及安装 WSL |
-| 第 12 页 §2.4 | 要求检查 RKNPU 驱动为 v0.9.8，低于 v0.9.8 时更新 | 本板实测 0.9.7，低于要求，不能列为满足 RKLLM 1.3.1 官方前提 |
-| 第 13 页 §2.4 续 | 驱动适配涉及 kernel-5.10 / kernel-6.1，参考版本 5.10.209 / 6.1.84，并给出驱动包与构建步骤 | 当前内核 6.1.0-1025-rockchip 需要匹配的内核来源、补丁或更新包，以及恢复方法 |
+| 第 12 页 §2.4 | 要求检查 RKNPU 驱动为 v0.9.8，低于 v0.9.8 时更新 | 当前实测 0.9.8，满足驱动前置要求；推理仍待验收 |
+| 第 13 页 §2.4 续 | 驱动适配涉及 kernel-5.10 / kernel-6.1，参考版本 5.10.209 / 6.1.84，并给出驱动包与构建步骤 | 当前已运行配套官方 BSP 6.1.99，不继续混装旧系统候选内核 |
 
-0.9.8 是 RKNPU 驱动版本，与 Ubuntu 24.04、Linux 6.1 的版本号不同。官方门槛已经明确，剩余工作是本发行版的驱动适配、具体模型/runtime 的板端验收和性能测试。
+0.9.8 是 RKNPU 驱动版本，与 Ubuntu 24.04、Linux 6.1 的版本号不同。官方门槛已经明确，当前驱动前置已通过，剩余工作是具体模型/runtime 的板端验收和性能测试。
 
 RKNN/Zipformer 所选版本的要求需另查其发布资料，这份 RKLLM 手册不能替代所有 SDK 的兼容矩阵。驱动适配、备份恢复、候选分支和推理验证顺序统一见执行计划 §3.2。
 
+## 指定 runtime 版本锁（2026-10-20）
+
+本轮用户明确指定以下组合。通过 GitHub 官方 API 将 tag 解析为固定提交，再从该提交下载 Linux aarch64 库与同版头文件；上方 1.3.1 手册条款保留为此前调查依据，不作为本轮 1.3.0 头文件来源。
+
+| 组件 | 固定官方来源 | 库 SHA-256 |
+|---|---|---|
+| RKNPU 0.9.8 | 当前运行内核 `6.1.99-rockchip-rk3588`，`/sys/module/rknpu/version` 实测 0.9.8 | 本轮未替换内核或驱动 |
+| RKNN 2.3.2 | [v2.3.2](https://github.com/airockchip/rknn-toolkit2/tree/42aa1d426c0a9e0869b6374edba009f7208a1926)，commit `42aa1d426c0a9e0869b6374edba009f7208a1926`，`rknpu2/runtime/Linux/librknn_api/` | `d31fc19c85b85f6091b2bd0f6af9d962d5264a4e410bfb536402ec92bac738e8` |
+| RKLLM 1.3.0 | [release-v1.3.0](https://github.com/airockchip/rknn-llm/tree/878f9361fd3afa7e167b7079918918f78d2c1c2a)，commit `878f9361fd3afa7e167b7079918918f78d2c1c2a`，`rkllm-runtime/Linux/librkllm_api/` | `6a9e4fc5324c68921c3a900340361e107af7599fe34dc8fa7759b2c5ae22a6e6` |
+
+文件在 `deps/rknn-2.3.2/` 与 `deps/rkllm-1.3.0/`，清单为 `deps/manifest.json`；四个头文件、许可证和上游说明均记录大小与哈希。两库 `ldd -v` 无缺失依赖/版本；使用同版头文件编译 C++17 检查程序，`RTLD_NOW | RTLD_GLOBAL` 同进程加载成功，主要入口符号存在，`rkllm_createDefaultParam()` 调用成功。系统同名库安装后重新验证哈希和加载，默认 soname 解析到 `/lib/`（实路径为 `/usr/lib/` 的相同文件）。该检查未初始化模型、提交 NPU 推理或证明模型共存兼容。系统部署状态、备份和回退统一见[环境记录 §30](environment.md#30-npu-runtime-指定版本更新2026-10-20)。
+
+## 本轮模型配套核查（2026-10-20）
+
+| 组件 | 配套及验证边界 |
+|---|---|
+| Qwen3.5-2B / RK3588 / W8A8 | 社区权重与固定 revision 的 LFS SHA-256 一致；模型卡声明 Toolkit 1.3.0，实际转换输入 revision、完整校准张量未披露。官方 1.3.0 示例已编译，用户要求本轮不运行模型。[来源与限制](model-prep-llm.md) |
+| Zipformer / RK3588 FP16 | Model Zoo v2.3.2 固定 commit bad6c7334531becaf90a561988519b7bec34d0ab，原始 ONNX 固定 HF revision；通过官方 ARM64 Toolkit2 2.3.2 私有环境在板端转换为 FP16。官方 C++ 文件推理成功，实际加载私有 RKNN runtime 2.3.2 / driver 0.9.8。[转换与版本记录](model-prep-asr.md) |
+| Silero v5.0 / MeloTTS FP32 | 共用官方 sherpa-onnx 1.12.14 CPU aarch64 / ORT 1.17.1-patched，私有库加载和短例通过；TTS INT8 文件是上游 LFS 指针，实际使用完整 FP32 权重。[详细记录](model-prep-speech.md) |
+
+所有模型保持 candidate。没有更换系统、内核、RKNPU 或固定 NPU runtime。各模型短例不能代替同进程共驻、流式接入及完整验收；LLM 本轮没有运行证据。[公共汇总](environment.md#35-模型准备汇总)。
+
+## 文件探针配套实测（2026-10-20）
+
+固定 [ASR](asr-probe.md) 与 [TTS](tts-probe.md) 文件工具已在当前 Jammy aarch64 原生编译。ASR 使用私有 RKNN 2.3.2 / driver 0.9.8；VAD 和 TTS 共用已固定的 sherpa-onnx 1.12.14 C API / ONNX Runtime 1.17.1-patched。探针在模型初始化前核对实际加载库的路径及清单哈希，并保留运行映射；没有替换系统运行库。
+
+官方预编译 sherpa C++ wrapper 的旧 libstdc++ 字符串 ABI 与工程默认 ABI 不匹配，因此以同版 C API 封装 C++17 RAII，未改变全工程 ABI。官方 fbank 静态库未按 PIC 构建，ASR 探针单独使用 `-no-pie` 链接；此范围仅影响可选目标。两探针默认关闭，基础和独立构建不隐式依赖模型 SDK。
+
+ASR 官方样本 5/5、分块一致性和 TTS 4 线程性能已有文件证据，但 ASR 固定集质量未达标、TTS 未试听；详细结果见[环境记录 §36](environment.md#36-固定测试集与文件模型探针)。候选状态不变。两工具没有链接 RKLLM 或初始化 LLM，也未证明全模型共驻、实时链路或取消可用。
+
+## Qwen3.5-2B 最小配套实测（2026-10-21）
+
+使用不变的 HanzoHuang 社区 W8A8 文件，RKLLM 1.3.0 的实际 loader 报告 `rkllm-toolkit version: 1.3.0`、`target_platform: RK3588`、`model_dtype: W8A8`、`max_context_limit: 4096`、`npu_core_num: 3`。这补上了此前仅由模型卡声明生成版本的缺口；本次请求上下文仍为 2048、输出上限 128，没有测试 4096 上下文能力。
+
+初始化/三条中文推理/释放均返回 0；进程 maps 确认实际库为项目 `deps/rkllm-1.3.0/lib/librkllmrt.so`，SHA-256 与固定系统/私有版本锁相同。SDK 报告 runtime 1.3.0、driver 0.9.8，无新增内核日志错误。库与模型最小正常加载配套通过，原始转换 revision 和校准张量仍未知；模型继续 candidate。
+
+SDK 警告 `rkllm_set_chat_template` 会禁用包括 `enable_thinking` 在内的内部自动模板处理。本次依靠显式完整的非思考后缀，三条未输出思考内容；不能宣称单独设置该 bool 已验证自动处理。观察到 token 248046 后正常 FINISH，但 SDK 未暴露具体 stop_reason 或模型内置 EOS 配置，完整 EOS/多轮/取消/共驻仍未验证。详见 [LLM 本次结果](model-prep-llm.md#2026-10-21-最小正常推理验证)、[环境记录 §38](environment.md#38-qwen35-2b-最小正常推理验证)。
+
 ## RKNPU 0.9.8 升级评估
 
-**当前结论：用户计划自行重装官方 Ubuntu 26.04，实际镜像与 SDK 驱动兼容尚待核验。** 旧系统方案 2 第一阶段已完成，官方 BSP 6.1.99 / RKNPU 0.9.8 候选已并存安装并生成 initramfs，但从未启动；本轮只读实测仍为旧内核 / RKNPU 0.9.7。第一阶段安装通过不等于运行兼容通过，历史证据见[环境记录 §23](environment.md#23-第一阶段授权与安装执行)，候选差异见[下文](#官方-bsp-6199-离线核验与候选包)。旧方案不再作为默认下一步，不在新镜像自动复用其脚本。
+**此前结论（重装前）：用户曾计划自行重装官方 Ubuntu 26.04，彼时实际镜像与 SDK 驱动兼容尚待核验。** 旧系统方案 2 第一阶段已完成，官方 BSP 6.1.99 / RKNPU 0.9.8 候选已并存安装并生成 initramfs，但从未启动；本轮只读实测仍为旧内核 / RKNPU 0.9.7。第一阶段安装通过不等于运行兼容通过，历史证据见[环境记录 §23](environment.md#23-第一阶段授权与安装执行)，候选差异见[下文](#官方-bsp-6199-离线核验与候选包)。旧方案不再作为默认下一步，不在新镜像自动复用其脚本。
 
 菜单测试后续：用户再次完整观察启动过程，确认未看到内核选项；这更新了[第一次观察未确认](environment.md#242-旧内核重启复核与菜单观察)的状态，但不证明具体 U-Boot 根因。新机恢复与 Windows SSH 操作集中见[迁移交接](../MIGRATION_GUIDE.md)，本轮记录见[环境记录 §25](environment.md#25-重装镜像与-windows-codex-交接)。
 

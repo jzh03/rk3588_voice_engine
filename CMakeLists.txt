@@ -5,6 +5,8 @@ option(VOICE_ENGINE_BUILD_ENGINE "Build the engine and its CLI" ON)
 option(VOICE_ENGINE_BUILD_AUDIO "Build the independent audio implementations" ON)
 option(VOICE_ENGINE_BUILD_PULSE_AUDIO "Build native PulseAudio and streaming DSP" ON)
 option(VOICE_ENGINE_BUILD_ENV_CHECK "Build the system dependency check" ON)
+option(VOICE_ENGINE_BUILD_ASR_PROBE "Build the optional VAD/RKNN file diagnostic" OFF)
+option(VOICE_ENGINE_BUILD_TTS_PROBE "Build the optional CPU TTS file diagnostic" OFF)
 
 include(CTest)
 
@@ -147,6 +149,12 @@ if(BUILD_TESTING)
             set_tests_properties(${script} PROPERTIES TIMEOUT 60)
         endforeach()
 
+        # Offline, fixed fixture integrity/format regression; no model execution.
+        add_test(NAME fixed_fixtures
+            COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/check_fixtures.py")
+        set_tests_properties(fixed_fixtures PROPERTIES TIMEOUT 30)
+
         add_executable(logger_test tests/unit/logger_test.cpp)
         voice_engine_cpp_target(logger_test)
         target_link_libraries(logger_test PRIVATE voice_engine_logging)
@@ -168,4 +176,33 @@ if(BUILD_TESTING)
                     "${CMAKE_CTEST_COMMAND}")
         set_tests_properties(build_boundaries PROPERTIES TIMEOUT 240)
     endif()
+endif()
+
+# File model diagnostics are explicit opt-ins. Default and independent builds
+# continue to work without model SDKs, private weights, or model initialization.
+if(VOICE_ENGINE_BUILD_ASR_PROBE OR VOICE_ENGINE_BUILD_TTS_PROBE)
+    if(NOT VOICE_ENGINE_BUILD_ENGINE)
+        message(FATAL_ERROR "Model probes require VOICE_ENGINE_BUILD_ENGINE=ON")
+    endif()
+    add_library(voice_engine_probe_support STATIC src/engine/probe_support.cpp)
+    voice_engine_cpp_target(voice_engine_probe_support)
+    target_include_directories(voice_engine_probe_support PUBLIC include)
+
+    if(BUILD_TESTING)
+        add_executable(probe_lock_probe tests/unit/probe_lock_probe.cpp)
+        voice_engine_cpp_target(probe_lock_probe)
+        target_link_libraries(probe_lock_probe PRIVATE voice_engine_probe_support)
+        add_test(NAME probe_lock
+            COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/probe_lock.py"
+                    "$<TARGET_FILE:probe_lock_probe>")
+        set_tests_properties(probe_lock PROPERTIES TIMEOUT 30)
+    endif()
+endif()
+
+if(VOICE_ENGINE_BUILD_ASR_PROBE)
+    include(cmake/asr_probe.cmake)
+endif()
+if(VOICE_ENGINE_BUILD_TTS_PROBE)
+    include(cmake/tts_probe.cmake)
 endif()

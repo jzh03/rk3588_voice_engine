@@ -1,0 +1,603 @@
+{
+  "schema_version": 1,
+  "models": [
+    {
+      "id": "qwen3.5-2b-rk3588-w8a8",
+      "source_url": "https://huggingface.co/HanzoHuang/Qwen3.5-2B-RKLLM",
+      "revision": "888bdd28aa55fc77ce135ab3e1b0c6c395f5b108",
+      "license": "Apache-2.0; see llm/qwen3.5-2b/source/LICENSE; conversion model card declares apache-2.0",
+      "platform": "Linux-aarch64-rk3588",
+      "quantization": "W8A8",
+      "toolkit_version": "1.3.0",
+      "runtime_version": "1.3.0",
+      "status": "candidate",
+      "run_id": "model-prep-llm-20261020-200730",
+      "dependencies": [
+        {
+          "id": "rkllm-runtime",
+          "version": "1.3.0"
+        }
+      ],
+      "source_kind": "community_preconverted",
+      "toolkit_version_evidence": "Converter model card declares 1.3.0; RKLLM loader independently reported rkllm-toolkit 1.3.0 during the 2026-10-21 minimal normal run.",
+      "upstream_model": "Qwen/Qwen3.5-2B",
+      "upstream_conversion_revision": "unknown",
+      "upstream_metadata_reference_revision": "15852e8c16360a2fea060d615a32b45270f8a8fc",
+      "conversion_command": "unknown; exact command not published by converter",
+      "calibration": {
+        "manifest": "llm/qwen3.5-2b/conversion/Qwen3.5-2B_data_quant.json",
+        "sample_count": 20,
+        "tensor_data_and_hashes": "not published; local converter paths only"
+      },
+      "input_mode": "text",
+      "vision_encoder_required": false,
+      "validation": "Minimal normal flow passed 2026-10-21: one initialization, three short Chinese answers, normal FINISH/run returns and successful destroy. Full A04/A08, cancel, repeated initialization, long run and coexistence are untested.",
+      "limitations": [
+        "Actual source-weight revision and complete conversion/calibration inputs remain undisclosed.",
+        "One initialization and three short text cases only; selected custom template worked, but internal EOS configuration and SDK stop reason are not exposed.",
+        "Full A04/A08, active cancellation, repeated initialization, long/context stress, coexistence and realtime engine integration are not validated."
+      ],
+      "files": [
+        {
+          "path": "llm/qwen3.5-2b/Qwen3.5-2B_RK3588_w8a8.rkllm",
+          "size_bytes": 2942188412,
+          "sha256": "946daf4377bbf5913d8d5226180991b8e6b4a3068d8b5959bdc81a9492311a09"
+        },
+        {
+          "path": "llm/qwen3.5-2b/conversion/Qwen3.5-2B_data_quant.json",
+          "size_bytes": 2792,
+          "sha256": "9d594da8753bf9d314f73d42167c17f510d49ffe7c9d6e3e99e3d673930715a2"
+        },
+        {
+          "path": "llm/qwen3.5-2b/conversion/README.md",
+          "size_bytes": 3551,
+          "sha256": "2ad824a11d70447533b69261b120a7c662343efa7de7c1eb99d06b605aea182c"
+        },
+        {
+          "path": "llm/qwen3.5-2b/provenance.json",
+          "size_bytes": 1892,
+          "sha256": "5650ea7e55f9fda187f1433049fd839ef7c3bcff55e8815f47c00e91a4f73b52"
+        },
+        {
+          "path": "llm/qwen3.5-2b/source/LICENSE",
+          "size_bytes": 11544,
+          "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a"
+        },
+        {
+          "path": "llm/qwen3.5-2b/source/README.md",
+          "size_bytes": 62814,
+          "sha256": "c0e83a849c776e6fa843d011f023132d942a0f0140d903205bf1c363adad2275"
+        },
+        {
+          "path": "llm/qwen3.5-2b/source/chat_template.jinja",
+          "size_bytes": 7755,
+          "sha256": "273d8e0e683b885071fb17e08d71e5f2a5ddfb5309756181681de4f5a1822d80"
+        },
+        {
+          "path": "llm/qwen3.5-2b/source/config.json",
+          "size_bytes": 2908,
+          "sha256": "ed1c1723241f23f7f4e23430759cbd7dcfb4103cbdfe052bfe7626b57c2615b4"
+        },
+        {
+          "path": "llm/qwen3.5-2b/source/model.safetensors.index.json",
+          "size_bytes": 64460,
+          "sha256": "aca8afed9da75b0f050b408d270766fd77627f1af401e240f61c3b47d0db02f9"
+        },
+        {
+          "path": "llm/qwen3.5-2b/source/tokenizer_config.json",
+          "size_bytes": 16709,
+          "sha256": "49e2b6e395f959f077f1e992b338919c0d4a9732fc6e613995e06557f843500c"
+        }
+      ],
+      "validation_run_id": "llm-minimal-20261021-113633",
+      "observed_model_metadata": {
+        "runtime_version": "1.3.0",
+        "rknpu_driver_version": "0.9.8",
+        "toolkit_version": "1.3.0",
+        "target_platform": "RK3588",
+        "model_dtype": "W8A8",
+        "max_context_limit": 4096,
+        "npu_core_num": 3,
+        "evidence": "output/runs/llm-minimal-20261021-113633/normal-attempt-2/stdout.log"
+      },
+      "minimal_normal_validation": {
+        "status": "passed",
+        "date": "2026-10-21",
+        "result": "output/runs/llm-minimal-20261021-113633/normal-attempt-2/result.json",
+        "initializations": 1,
+        "short_qa_cases": 3,
+        "max_context_len": 2048,
+        "max_new_tokens": 128,
+        "keep_history": 0,
+        "init_wall_ms": 2998.913854,
+        "ttft_ms": [
+          324.238,
+          342.642,
+          351.505
+        ],
+        "sdk_generate_tokens_per_second": [
+          11.531631361955062,
+          10.72696674587931,
+          11.232634010340515
+        ],
+        "child_ru_maxrss_kib": 2195032,
+        "sampled_peak_rss_kib": 2195576,
+        "minimum_MemAvailable_kib": 5314940,
+        "max_swap_used_kib": 0,
+        "normal_FINISH_count": 3,
+        "last_normal_token_ids": [
+          248046,
+          248046,
+          248046
+        ],
+        "specific_stop_reason_exposed": false,
+        "custom_chat_template": "Explicit non-thinking suffix; SDK disables automatic enable_thinking processing when a custom template is set.",
+        "actual_runtime_library": "/home/orangepi/projects/rk3588_voice_engine/deps/rkllm-1.3.0/lib/librkllmrt.so",
+        "actual_runtime_library_sha256": "6a9e4fc5324c68921c3a900340361e107af7599fe34dc8fa7759b2c5ae22a6e6",
+        "cancel_tested": false,
+        "full_A04_A08_passed": false
+      },
+      "preparation_provenance_scope": "The file llm/qwen3.5-2b/provenance.json is the unchanged 2026-10-20 preparation snapshot; current execution evidence is recorded in minimal_normal_validation."
+    },
+    {
+      "id": "zipformer-bilingual-zh-en-rk3588-fp16",
+      "source_url": "https://huggingface.co/csukuangfj/k2fsa-zipformer-bilingual-zh-en-t/tree/e2382758de9a0219b4efe682b95af30b399db3b8/exp/96",
+      "revision": "e2382758de9a0219b4efe682b95af30b399db3b8",
+      "license": "Apache-2.0 (upstream model card and RKNN Model Zoo)",
+      "platform": "RK3588/RK3588S Linux aarch64; batch=1",
+      "quantization": "FP16; do_quantization=False",
+      "toolkit_version": "2.3.2",
+      "runtime_version": "2.3.2",
+      "status": "candidate",
+      "run_id": "model-prep-asr-20261020-200730",
+      "dependencies": [
+        {
+          "id": "rknn-runtime",
+          "version": "2.3.2"
+        }
+      ],
+      "files": [
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/LICENSE-model-zoo-Apache-2.0",
+          "size_bytes": 11357,
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/decoder-conversion-inputs.json",
+          "size_bytes": 264,
+          "sha256": "32a495901ab269aed9c3758a8c7b6cf09c06246a846d9f5482449ca902c7840f"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/decoder-epoch-99-avg-1.onnx",
+          "size_bytes": 13877276,
+          "sha256": "89be509a83175261695bdef5fd1c7b9ab1129a663d1284e7ba9f8507b21e0906"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/decoder-epoch-99-avg-1.rknn",
+          "size_bytes": 8017769,
+          "sha256": "715c669b1cd05ab54b9185dcb6fec9c882fb1bc2be491f6838a5696be18d6dba"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/encoder-conversion-inputs.json",
+          "size_bytes": 2624,
+          "sha256": "5e762925a2c0acd4e5043b5030bdfd8c249fdb73aeaa068477e999e86d3d015d"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/encoder-epoch-99-avg-1.onnx",
+          "size_bytes": 88476276,
+          "sha256": "d53e858189c32678fd97dc40bf3a2dcf4acf462fd6530c265afecb6496156aef"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/encoder-epoch-99-avg-1.rknn",
+          "size_bytes": 113933362,
+          "sha256": "be438262794958868b2296537fca17c0bc8fa758d8e8da4ed6f0795f646e7fe5"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/feature-config.json",
+          "size_bytes": 1257,
+          "sha256": "10f53cdc931b44dc8b3199af84efe54a18693b9a48610e8d231a63e67fc14973"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/joiner-conversion-inputs.json",
+          "size_bytes": 327,
+          "sha256": "e5fe989bffbea688a6c00b1bb4250269fed6575602b96508b29f1bc290a8d534"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/joiner-epoch-99-avg-1.onnx",
+          "size_bytes": 12833675,
+          "sha256": "bcbcf0cc1b449bc32b7777084ab5a65d1199b822e2aae149d3a43adc9f4b5775"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/joiner-epoch-99-avg-1.rknn",
+          "size_bytes": 6495894,
+          "sha256": "1093b40f3f690bfc1a19d64310f860aae99fadac1c3d7dc59c8d2f379df18e29"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/onnx-io.json",
+          "size_bytes": 13755,
+          "sha256": "175cab3bec4610d82510369ed7c0280a0f061f81cf129639cf13674337cb735f"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/test.wav",
+          "size_bytes": 179646,
+          "sha256": "668bf8df51a10027b84d5d8816a1ce11ae93545538dc05cfe2aa6811d399c250"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/tokens-upstream.txt",
+          "size_bytes": 56317,
+          "sha256": "a8e0e4ec53810e433789b54a5c0134a7eaa2ffca595a6334d54c00da858841d3"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/upstream-model-card.md",
+          "size_bytes": 4115,
+          "sha256": "037edf8e561cff512493746532af04f5c40cb6fbc55d3e360a399215b6b0b915"
+        },
+        {
+          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/vocab.txt",
+          "size_bytes": 56316,
+          "sha256": "a0715804ad587a5fe18208b37296c7bb83a4794c6329e298ae7d07a218576d6f"
+        }
+      ],
+      "artifact_format": "RKNN",
+      "source_format": "ONNX FP32 with INT64 state/token inputs",
+      "source_model_version": "epoch-99-avg-1; exp/96; ONNX model metadata version=1",
+      "model_zoo_revision": "bad6c7334531becaf90a561988519b7bec34d0ab",
+      "toolkit_revision": "42aa1d426c0a9e0869b6374edba009f7208a1926",
+      "conversion_origin": "Converted locally on Orange Pi 5 using official arm64 RKNN Toolkit2 2.3.2; not preconverted upstream artifacts",
+      "conversion_script": "deps/model-prep/asr/convert_zipformer.py",
+      "conversion_parameters": {
+        "target_platform": "rk3588",
+        "do_quantization": false,
+        "batch": 1,
+        "input_shapes_recorded": "asr/zipformer-bilingual-zh-en-epoch99-exp96/*-conversion-inputs.json"
+      },
+      "filez_byte_identity_verified": false,
+      "validation": {
+        "result": "official_file_inference_passed",
+        "runs": 1,
+        "audio_seconds": 5.6115,
+        "recognized_text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢",
+        "exact_expected_text_match": true,
+        "inference_ms": 981.135986,
+        "whole_process_seconds": 1.855204970000159,
+        "peak_rss_kib": 160232,
+        "rtf_original_wav": 0.17484380040987257,
+        "rtf_official_padded_wav": 0.168,
+        "official_padded_seconds_printed": 5.841,
+        "rtf_whole_process_original_wav": 0.3306076753096603,
+        "runtime_loaded_path": "/home/orangepi/projects/rk3588_voice_engine/deps/rknn-2.3.2/lib/librknnrt.so",
+        "streaming_integration": false,
+        "A03_acceptance_complete": false
+      },
+      "roles": {
+        "encoder": "asr/zipformer-bilingual-zh-en-epoch99-exp96/encoder-epoch-99-avg-1.rknn",
+        "decoder": "asr/zipformer-bilingual-zh-en-epoch99-exp96/decoder-epoch-99-avg-1.rknn",
+        "joiner": "asr/zipformer-bilingual-zh-en-epoch99-exp96/joiner-epoch-99-avg-1.rknn",
+        "vocabulary": "asr/zipformer-bilingual-zh-en-epoch99-exp96/vocab.txt",
+        "feature_config": "asr/zipformer-bilingual-zh-en-epoch99-exp96/feature-config.json",
+        "official_wav": "asr/zipformer-bilingual-zh-en-epoch99-exp96/test.wav"
+      }
+    },
+    {
+      "platform": "Linux aarch64 CPU; Ubuntu 22.04.5 / glibc 2.35 tested",
+      "quantization": "FP32",
+      "toolkit_version": "upstream preconverted ONNX; exact exporter toolchain not recorded by upstream asset",
+      "runtime_version": "sherpa-onnx 1.12.14; ONNX Runtime 1.17.1",
+      "status": "candidate",
+      "run_id": "model-prep-speech-20261020-201140",
+      "dependencies": [
+        {
+          "id": "sherpa-onnx-cpu",
+          "version": "1.12.14"
+        },
+        {
+          "id": "onnxruntime-cpu",
+          "version": "1.17.1-patched"
+        }
+      ],
+      "conversion": {
+        "performed_locally": false,
+        "calibration_data": "not applicable: FP32 preconverted model"
+      },
+      "id": "silero-vad-v5.0",
+      "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad_v5.onnx",
+      "revision": "snakers4/silero-vad v5.0 commit 5cd2ba54db059f961e7545d4f211b44f005a6dfb; sherpa release asset 176977129; sha256:6b99cbfd39246b6706f98ec13c7c50c6b299181f2474fa05cbc8046acc274396",
+      "license": "MIT",
+      "model_path": "vad/silero-v5/silero_vad_v5.onnx",
+      "files": [
+        {
+          "path": "vad/silero-v5/LICENSE",
+          "size_bytes": 1075,
+          "sha256": "2e63e9a38b6e8fc0c7bc37ce174caca1862870856c6daf5697cfb785e925520b"
+        },
+        {
+          "path": "vad/silero-v5/silero_vad_v5.onnx",
+          "size_bytes": 2313101,
+          "sha256": "6b99cbfd39246b6706f98ec13c7c50c6b299181f2474fa05cbc8046acc274396"
+        },
+        {
+          "path": "vad/silero-v5/upstream-v5.0.onnx",
+          "size_bytes": 2313101,
+          "sha256": "6b99cbfd39246b6706f98ec13c7c50c6b299181f2474fa05cbc8046acc274396",
+          "role": "provenance_duplicate_matches_active_model"
+        }
+      ],
+      "input": {
+        "sample_rate_hz": 16000,
+        "channels": 1,
+        "pcm_type": "normalized float32",
+        "new_samples_per_step": 512,
+        "context_samples": 64,
+        "onnx_input_shape": [
+          1,
+          576
+        ],
+        "state_shape": [
+          2,
+          1,
+          128
+        ],
+        "state_initialization": "zero; carry stateN between windows; reset at new stream",
+        "sample_rate_limit": "upstream supports 8000/16000; sherpa 1.12.14 tested path permits only 16000"
+      },
+      "validation_summary": {
+        "input_source": "Generated MeloTTS Chinese sample, resampled only for VAD; no recorded audio",
+        "sample_rate": 16000,
+        "threshold": 0.5,
+        "window_samples": 512,
+        "min_silence_s": 0.6,
+        "min_speech_s": 0.2,
+        "max_speech_s": 15,
+        "speech_inserted_regions_s": [
+          [
+            1,
+            3.98375
+          ],
+          [
+            4.983750000000001,
+            7.9675
+          ]
+        ],
+        "cases": [
+          {
+            "case": "vad-silence",
+            "expected_segments": 0,
+            "detected_segments": [],
+            "passed": true,
+            "elapsed_s": 0.31127113599995937,
+            "max_rss_kib": 39120
+          },
+          {
+            "case": "vad-two-speech",
+            "expected_segments": 2,
+            "detected_segments": [
+              [
+                1.648,
+                3.912
+              ],
+              [
+                5.648,
+                7.912
+              ]
+            ],
+            "passed": true,
+            "elapsed_s": 0.3611135070000273,
+            "max_rss_kib": 38288
+          }
+        ]
+      }
+    },
+    {
+      "platform": "Linux aarch64 CPU; Ubuntu 22.04.5 / glibc 2.35 tested",
+      "quantization": "FP32",
+      "toolkit_version": "upstream preconverted ONNX; exact exporter toolchain not recorded by upstream asset",
+      "runtime_version": "sherpa-onnx 1.12.14; ONNX Runtime 1.17.1",
+      "status": "candidate",
+      "run_id": "model-prep-speech-20261020-201140",
+      "dependencies": [
+        {
+          "id": "sherpa-onnx-cpu",
+          "version": "1.12.14"
+        },
+        {
+          "id": "onnxruntime-cpu",
+          "version": "1.17.1-patched"
+        }
+      ],
+      "conversion": {
+        "performed_locally": false,
+        "calibration_data": "not applicable: FP32 preconverted model"
+      },
+      "id": "vits-melo-tts-zh-en-fp32",
+      "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2",
+      "revision": "sherpa release asset 203769960 updated 2024-11-03T12:31:05Z; archive sha256:e58351ed7149f290a54534538badd4077cdbe6fddc964b24d0bee870415d1514; model metadata melo-vits version=2",
+      "license": "MIT (LICENSE supplied in upstream MeloTTS bundle)",
+      "model_path": "tts/vits-melo-tts-zh_en/model.onnx",
+      "files": [
+        {
+          "path": "tts/downloads/vits-melo-tts-zh_en.tar.bz2",
+          "size_bytes": 167006755,
+          "sha256": "e58351ed7149f290a54534538badd4077cdbe6fddc964b24d0bee870415d1514",
+          "role": "upstream_complete_archive"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/LICENSE",
+          "size_bytes": 1053,
+          "sha256": "88a50e5a02bbc2a5c2f084dc19da751aa97b1690f5fda76cd8005c8634d1ca70"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/README.md",
+          "size_bytes": 257,
+          "sha256": "ae6e44dead53dfdbd5b4a77106226f3118eb910222b46cb5533a3860773fc6c7"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/date.fst",
+          "size_bytes": 59154,
+          "sha256": "eb8aa079ae3cb81d8f4404992f39d61a0cb990947512b5b8d1e54d1f6980e718",
+          "role": "tts_rule_date"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/dict/README.md",
+          "size_bytes": 683,
+          "sha256": "8bcc7c2ed7dff082d9a99c09de0bfd72249bf3b5c4298a3af328da40cbd8cfd1",
+          "role": "tts_dictionary"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/dict/hmm_model.utf8",
+          "size_bytes": 519739,
+          "sha256": "f17790586ac86dd048c8adffed052c4bd2b28ed0682972c1275e59040c0589a7",
+          "role": "tts_dictionary"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/dict/idf.utf8",
+          "size_bytes": 5998717,
+          "sha256": "dbd1e03d72b2263cc8d84a4304ed77677eed9e7deaf43a1a5133bbba9733b535",
+          "role": "tts_dictionary"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/dict/jieba.dict.utf8",
+          "size_bytes": 5071204,
+          "sha256": "3043b77068e09c9904f27cad82f12b6ebe9dbdb5aeff3b25e45ab7f9c1122b55",
+          "role": "tts_dictionary"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/dict/pos_dict/char_state_tab.utf8",
+          "size_bytes": 327139,
+          "sha256": "28b7be1dd7369766a51445af4d42e9a2ba4bf374c13be5bc1ca7721e27271dbb",
+          "role": "tts_dictionary"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/dict/pos_dict/prob_emit.utf8",
+          "size_bytes": 1687686,
+          "sha256": "c33c4cb7edf3b3a5947df7209b6e9f267eae1f21335d9e2bd2521ea07105457a",
+          "role": "tts_dictionary"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/dict/pos_dict/prob_start.utf8",
+          "size_bytes": 4347,
+          "sha256": "13623ea0e9300bdb597cb2da28770b7b385d6c0098d66e516083fb01b6bd5d96",
+          "role": "tts_dictionary"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/dict/pos_dict/prob_trans.utf8",
+          "size_bytes": 124159,
+          "sha256": "f22363e2307408293d180c6f9f6b5cb75879d52f722f7764fa2d3d0ae2400236",
+          "role": "tts_dictionary"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/dict/stop_words.utf8",
+          "size_bytes": 8974,
+          "sha256": "b788b8a939d2e2fe079abd579ea98f12f9fb84370bfd0dddd81bb9381f7ab42c",
+          "role": "tts_dictionary"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/dict/user.dict.utf8",
+          "size_bytes": 49,
+          "sha256": "495bbf49270408a1234690e1e6a97328f30a482a7a72aa769e8a12e8714b0c62",
+          "role": "tts_dictionary"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/lexicon.txt",
+          "size_bytes": 6837671,
+          "sha256": "7236884b02435ac5d10cf69b4be40a61b45aa676b5300f0e412f185748fee528",
+          "role": "tts_lexicon"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/model.int8.onnx",
+          "size_bytes": 133,
+          "sha256": "0a1462eef98f05c15a6f57569bf2fb57a6b3995891bb17956187ff5e2694273e",
+          "role": "upstream_lfs_pointer_not_loadable"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/model.onnx",
+          "size_bytes": 170429550,
+          "sha256": "bf30582eb1b012250a35b1a4a80e7dfbcf8485e7bb9de0d95efbbeef0e4ad86d",
+          "role": "active_fp32_weight"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/new_heteronym.fst",
+          "size_bytes": 21974,
+          "sha256": "ca14b2127e27baa571664e4bb791e143e7425f56a6bc29db08d74f97e6aa4e29",
+          "role": "tts_rule_heteronym"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/number.fst",
+          "size_bytes": 64482,
+          "sha256": "743f402181fcfebf76cc2f0546b71fa26476e626fbe4e460fb7b4c3a7a8bd5bd",
+          "role": "tts_rule_number"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/phone.fst",
+          "size_bytes": 88630,
+          "sha256": "1ac2b6fa56b1442320c4de7db08353bab8963a2b57f365eebcdd3a2d3562f8d7",
+          "role": "tts_rule_phone"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/tokens.txt",
+          "size_bytes": 655,
+          "sha256": "d18664a7e12bd7ea1022ddaf951e534e136815016c5a809d6b64156bffb4369d",
+          "role": "tts_tokens"
+        }
+      ],
+      "output": {
+        "native_sample_rate_hz": 44100,
+        "channels": 1,
+        "native_pcm": "float32",
+        "official_cli_wav": "PCM16"
+      },
+      "onnx_metadata": {
+        "add_blank": "1",
+        "bert_dim": "1024",
+        "comment": "melo",
+        "description": "MeloTTS is a high-quality multi-lingual text-to-speech library by MyShell.ai",
+        "ja_bert_dim": "768",
+        "jieba": "1",
+        "lang_id": "3",
+        "language": "Chinese + English",
+        "license": "MIT license",
+        "model_type": "melo-vits",
+        "n_speakers": "1",
+        "sample_rate": "44100",
+        "speaker_id": "1",
+        "tone_start": "0",
+        "url": "https://github.com/myshell-ai/MeloTTS",
+        "version": "2"
+      },
+      "provenance_limit": "Upstream bundle does not provide original weight revision or the exact exporter toolchain; runtime version is not the exporter version.",
+      "unavailable_variant": {
+        "path": "tts/vits-melo-tts-zh_en/model.int8.onnx",
+        "reason": "upstream 133-byte Git LFS pointer; actual INT8 weight not downloaded or validated",
+        "lfs_object_sha256": "f085f5079e05f039b800aeb542f5253c26a303211b0c6465d0d9387977855a63",
+        "lfs_object_size_bytes": 53517430
+      },
+      "validation_summary": [
+        {
+          "case": "tts-chinese",
+          "sample_rate": 44100,
+          "channels": 1,
+          "frames": 131584,
+          "sample_width_bytes": 2,
+          "duration_s": 2.9837641723356008,
+          "whole_process_elapsed_s": 13.315951258000041,
+          "peak_rss_kib": 552880,
+          "generate_s": 3.856,
+          "generate_rtf": 1.292,
+          "subjective_audio_quality": "not evaluated or user-confirmed"
+        },
+        {
+          "case": "tts-numbers-date",
+          "sample_rate": 44100,
+          "channels": 1,
+          "frames": 267264,
+          "sample_width_bytes": 2,
+          "duration_s": 6.060408163265306,
+          "whole_process_elapsed_s": 17.925902490000226,
+          "peak_rss_kib": 553132,
+          "generate_s": 7.876,
+          "generate_rtf": 1.3,
+          "subjective_audio_quality": "not evaluated or user-confirmed"
+        }
+      ]
+    }
+  ]
+}

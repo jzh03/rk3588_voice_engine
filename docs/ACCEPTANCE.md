@@ -1,12 +1,16 @@
 # 验收用例与测量规则
 
-日期：2026-10-17（Asia/Shanghai）。对应 [执行计划](../EXECUTION_PLAN.md) v1.7。A01～A14 均未通过应用验收；A01/A02 的 `audio_probe` 构建和自动回归已通过，待用户配合实机验证。用户已完成的蓝牙连接与系统同时录放基线 B01 不在本表重复验收。当前实现进度见执行计划；配置、mock 及合成音频协议检查不代表实机应用验收通过。
+日期：2026-10-21（Asia/Shanghai）。对应当前[执行计划](../EXECUTION_PLAN.md)。A01～A14 均未完整通过应用验收。P1-01 及文件探针已有构建/回归结果；新系统 `audio_probe` 集成失败、A01/A02 完整条件仍待处理，历史耳机短测不替代完整验收。蓝牙连接与系统同时录放基线 B01 不重复验收。
 
 ## 1. 通过规则
 
 每个用例必须有代码版本、配置哈希、模型清单哈希、实际 SDK/驱动版本、测试输入、结果和失败原因。`not_run`、`blocked`、`failed` 不计为通过。文档中的数值是初始工程目标，不是本轮测得的性能。
 
 崩溃、OOM、错误设备播放、旧轮次串音、数据无界增长是硬性失败。数值目标需调整时保留原目标、实测值、原因和负责人确认；不能只改阈值来消除失败。M1 要求 A01～A10，M2 增加 A11/A12，M3 增加 A13/A14。
+
+2026-10-20 已完成模型准备及固定工程集/文件探针阶段：ASR 官方 WAV 连续 5 次精确匹配；合成固定集三批各 13/20 条关键词全对、中文 CER 15.96%，未达 A03 质量条件，分块一致性及预热速度通过。TTS 4 线程性能条件通过，2 线程未达标，听感和发音尚未确认，A05 未完整通过。当日按用户要求未初始化或推理 LLM；模型保持 candidate。阈值和完整条件不因本轮结果下调；详见[结果与证据](environment.md#36-固定测试集与文件模型探针)。
+
+2026-10-21 用户另行授权的 Qwen3.5-2B 最小正常验证已通过：一次初始化、三条中文短问答、FINISH/run 返回及正常释放。首 token 和 SDK token 速率已记录，但样本数不满足 A04 原定 10 问及主动取消，也未执行 P2 的重复初始化、多轮、超长输入或 A08。这不计为 A04/A08 或 M0 完整交付通过，阈值不变；见[本次证据](environment.md#38-qwen35-2b-最小正常推理验证)。
 
 ## 2. 用例矩阵
 
@@ -15,7 +19,7 @@
 | A01 / P1 | 用新 `audio_probe` 显式选择耳机麦克风/输出，连续录放 10 min；检查转换前后格式及帧序号 | 不误用 monitor/HDMI；0 次采集队列溢出；播放已经开始后无应用导致的断流；帧累计时长与测试时长差 ≤1%；profile 不被程序改变 | 设备属性、格式、协商缓冲、帧计数、overflow/underrun 事件；不用“主观听起来正常”代替计数 |
 | A02 / P1、P4 | 在空闲、录音、播报时分别断开再接回，共 3 次 | 断开取消旧轮次且无自动切到其他声卡；在目标 source/sink 重新可用后 10 s 内恢复到可触发状态；旧 PCM 不恢复播放 | 断开/设备可用/流重建时间、状态迁移、generation；恢复后各完成 1 轮 |
 | A03 / P0、P2 | P0：官方测试 WAV 连续 5 次；P2：20 条固定 WAV 各 3 次，以及同一 WAV 以 10/20/37 ms 分块增量送入；追加空音频、短音频、15 s 发言和尾部语音 | 官方样本与参考输出一致；每批 20 条至少 18 条关键词全对；纯中文子集 CER ≤15%；同 PCM 不同分块的 final 文本一致；尾部不丢字，reset 后无上轮缓存；预热 ASR RTF 的 P95 <1 | 转写、参考文本、每条 CER/关键词命中、分块参数、端点后耗时、RTF |
-| A04 / P0、P2 | P0：小模型 5 个短问答、最终选定模型（默认 2B）10 个短问答及 1 次主动取消；P2：20 个固定问题各 3 次、10 次初始化/释放、5 组多轮上下文及超长输入 | 无驱动错误/OOM；中文可解码，正常 EOS 或达到 token 上限可结束；每批相关且符合短答要求的回答 ≥18/20；模板只使用一次；token 预算被执行；new-session 不保留旧历史；超时能退出 | 模型版本、TTFT、token 数/速率、终止原因、内存、问答评分；模型取消完整验收见 A08 |
+| A04 / P0、P2 | P0：固定目标 Qwen3.5-2B 的 10 个短问答及 1 次主动取消（不另测 0.8B）；P2：20 个固定问题各 3 次、10 次初始化/释放、5 组多轮上下文及超长输入 | 无驱动错误/OOM；中文可解码，正常 EOS 或达到 token 上限可结束；每批相关且符合短答要求的回答 ≥18/20；模板只使用一次；token 预算被执行；new-session 不保留旧历史；超时能退出 | 模型版本、TTFT、token 数/速率、终止原因、内存、问答评分；模型取消完整验收见 A08 |
 | A05 / P2 | 10 条固定 TTS 文本，覆盖普通中文、数字、日期、标点和常用英文；测首段与完整句 | 10/10 生成有效非空音频；数字/日期无明显读错，声音由用户试听确认；无控制标记读出；预热合成 RTF 的 P95 <1；句尾不截断，短句可冲刷 | 文本 ID、输出采样率/时长、耗时、RTF、线程数、用户试听结论；模型词典缺词单独记录 |
 | A06 / P2-04 | VAD、ASR、LLM、TTS 同时驻留；按拟用进程布局运行 30 min，至少 30 轮；ASR/LLM 串行推理、TTS 可与 LLM 流水重叠 | 无 ABI/符号加载错误、崩溃、OOM；实际库路径符合锁定组合；MemAvailable 始终 ≥1.5 GiB；预热后没有持续 swap-in/out；队列不越界 | 每秒资源曲线、实际 `.so` 路径、版本日志、各队列峰值；P5 加入 KWS 后重跑 |
 | A07 / P3 | 20 条固定语音逐条执行 WAV → ASR → LLM → TTS，保存关联 ID | 20/20 流程完成；输出与本轮输入对应；无空文本触发回答；每个失败可以定位到具体阶段；ASR/LLM 内容质量继续满足 A03/A04 | 全链路事件、输入/输出 ID、失败分类、人工内容检查结果 |
@@ -30,6 +34,8 @@
 ## 3. 固定语料及内容评分
 
 建立 20 条 2～8 s 的普通说话语音：普通中文 8 条、数字/日期 5 条、短问句 4 条、中英混说 3 条。先使用干净文件隔离模型问题，再用耳机录制的版本测试应用，不混用为同一数据集。另设无声、噪声、15 s 长语音等边界样本，不塞进正常准确率的分母。
+
+当前 [固定工程集](file-fixtures.md) 已冻结 20 条 Melo 合成主体及 6 条边界，另有 10 条 TTS 文本、20 个静态 LLM 问题。它与 TTS 同源、未经试听，适用于接口回归，不能替代自然人声独立验收；两条短句的补零时长、15 s 重复句和尾部样本构造已逐项标注。参考与关键词在首次识别前冻结，失败后不改写。
 
 每条清单包含 `sample_id`、文件路径/SHA-256、采样率、时长、参考转写、归一化转写、关键词、类别、录制条件和预期行为。测试集与量化校准集分离，不用测试答案调阈值后仍宣称独立验收。
 
@@ -75,6 +81,7 @@ LLM 短答评分由实施者逐项记录“切题、无明显事实矛盾、符�
 - [配置检查](../README.md#配置检查)：配置加载、字段约束、默认值与检查范围。
 - [资产清单](../README.md#资产清单)：按功能启用的本地文件、元数据与版本匹配规则。
 - [终端控制与 JSONL 日志](../README.md#终端控制与-jsonl-日志)：mock 命令、运行目录、日志格式、轮转及现有退出码。
+- [模型文件诊断](../README.md#模型文件诊断)：已实现的 `asr_probe`、`tts_probe`、统一锁和固定集命令；详细契约见 [ASR](asr-probe.md)、[TTS](tts-probe.md)。
 - [真实音频诊断](../README.md#真实音频诊断)：已实现的 `audio_probe` 模式、命令、报告与退出码。
 
 P1-01 的无硬件检查保留为后续模块回归入口，覆盖以下类别；具体接口契约以 README 和配置模板为准：
@@ -88,6 +95,7 @@ P1-01 的无硬件检查保留为后续模块回归入口，覆盖以下类别�
 | 真实音频接口 | CLI 约束、报告、显式设备/profile、队列、取消与重建；[audio_probe.py](../tests/integration/audio_probe.py) 使用本机私有合成服务，不计为耳机验收 |
 | 终端控制 | 会话/generation、重复命令、非法输入、EOF/信号收尾与可选音频后端；[control_stdin.py](../tests/integration/control_stdin.py) |
 | 日志 | JSONL 有效性、关联字段、轮转和 I/O 失败；[logger_test.cpp](../tests/unit/logger_test.cpp) |
+| 文件模型工具（不加载模型的 CTest） | fixture 格式/哈希、持锁归属与拒绝绕过、VAD 聚帧尾部、ASR 文本指标/CLI 负例、TTS UTF-8/数字日期分句与转换残帧；[fixture 检查](../tests/integration/check_fixtures.py)、[锁检查](../tests/integration/probe_lock.py)、[ASR CLI](../tests/integration/asr_probe.py)、[TTS CLI](../tests/integration/tts_probe.py) |
 | 独立构建 | 引擎、仅标准库音频 mock、原生音频三种独立构建及对应测试；[build_boundaries.py](../tests/integration/build_boundaries.py) |
 
 独立构建验收要求引擎构建不查询 libpulse/libsamplerate/libsndfile，也不依赖 OpenSSL 开发包；仅 mock 的音频构建不查找配置/JSON/线程库及 Python 测试解释器；原生音频独立构建只增加 libpulse/libsamplerate/线程依赖，不查询 yaml-cpp、JSON 或 libsndfile。三种构建均须运行对应测试，命令集中在 [README](../README.md#基础环境检查)。
@@ -107,13 +115,13 @@ A02 使用交互诊断：在 READY 空闲时、`start` 后录音时、提示音�
 以下为 P2～P4 后续要实现的命令，**尚不可作为已可运行程序**：
 
 ```bash
-./build/bin/asr_probe --config config/local.yaml --manifest tests/fixtures/manifest.json
 ./build/bin/llm_probe --config config/local.yaml --cases tests/fixtures/llm_cases.json
-./build/bin/tts_probe --config config/local.yaml --cases tests/fixtures/tts_cases.json
 ./build/bin/coexist_probe --config config/local.yaml --duration-sec 1800
 ./build/bin/voice_file_demo --config config/local.yaml --manifest tests/fixtures/manifest.json
 ./build/bin/voice_engine --config config/local.yaml --control stdin
 ```
+
+ASR/TTS 文件程序已可按 README 运行；其退出 0 只表示本次适用的软件/性能条件通过，未覆盖项不能记为通过。ASR 的 VAD 分段和 NPU 识别同时接收原 PCM，尚不构成实时 VAD 门控；TTS 同步 Generate 不能立即取消，A08 留待后续。
 
 后续验收程序沿用 `--run-id`、`--output-dir` 及 README 中现有的正常、运行错误、配置错误和信号退出约定；资产校验失败归入退出码 `2`，新增约定为 `3=设备不可用、4=模型失败、5=超时、6=验收指标失败`。实现时使帮助文本、文档和报告一致。后续无模型的单元检查还需覆盖分帧/残帧、文本分段、异步 generation 竞态和队列上限，不以 mock 通过代替实机验收。
 

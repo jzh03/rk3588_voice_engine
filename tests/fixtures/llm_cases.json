@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "execution_status": "not_run",
+  "execution_prohibited_in_this_round": true,
+  "cases": [
+    {
+      "id": "llm_01",
+      "text": "用一句话介绍你能做什么。",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_02",
+      "text": "请用一句话解释什么是离线语音助手。",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_03",
+      "text": "怎样把桌面整理干净？",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_04",
+      "text": "出门前应该检查哪三样东西？",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_05",
+      "text": "请给我一个简单的伸展建议。",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_06",
+      "text": "一加一等于多少？",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_07",
+      "text": "十分钟等于多少秒？",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_08",
+      "text": "一年通常有多少个月？",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_09",
+      "text": "一米等于多少厘米？",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_10",
+      "text": "今天的实时天气怎么样？",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_11",
+      "text": "请把你好翻译成英文。",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_12",
+      "text": "请用中文解释 hello 的意思。",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_13",
+      "text": "请用一句话介绍图书馆。",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_14",
+      "text": "为什么开会前要准备议程？",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_15",
+      "text": "请给我一句简短的鼓励。",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_16",
+      "text": "请把请保存文件说得更礼貌。",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_17",
+      "text": "请列出两种常见的水果。",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_18",
+      "text": "怎样避免忘记带钥匙？",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_19",
+      "text": "请只回答三个字：准备好。",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    },
+    {
+      "id": "llm_20",
+      "text": "请用一句话说明没有联网时的信息限制。",
+      "category": "static_short_question",
+      "max_output_tokens": 64,
+      "expected_behavior": "Brief relevant Chinese answer without control/thinking markers; do not invent real-time data."
+    }
+  ]
+}

@@ -32,7 +32,7 @@ vad:
   max_speech_ms: 15000     # 20～60000
 
 threads:
-  vad: 1                  # 各模块均为 1～16；尚未启动模型线程
+  vad: 1                  # 各模块均为 1～16；文件探针使用对应项，mock 不启动模型线程
   asr: 1
   llm: 1
   tts: 2

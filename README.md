@@ -1,20 +1,26 @@
 # RK3588 原生语音引擎
 
-面向 Orange Pi 5（RK3588S）的本地语音助手，使用 C++17 / CMake，在板端原生编译。已验证的开发环境为 Ubuntu 24.04；现准备迁移至香橙派官方 Ubuntu 26.04 镜像，见[新镜像迁移交接](MIGRATION_GUIDE.md)。
+面向 Orange Pi 5（RK3588S）的本地语音助手，使用 C++17 / CMake，在板端原生编译。当前系统为官方 Orange Pi 1.2.4 / Ubuntu 22.04.5 LTS / BSP 6.1.99；已完成网络、时间与构建依赖恢复，见[当前环境](docs/environment.md#26-官方-jammy-系统网络时间与构建依赖恢复)。
 
 ## 当前进度
 
-**P0-02 驱动兼容进行中**：官方 BSP 6.1.99 / RKNPU 0.9.8 候选的第一阶段并存安装已完成，但尚未启动；当前仍运行旧内核 / RKNPU 0.9.7。用户再次完整观察启动过程未看到内核菜单，现计划自行重装官方 Ubuntu 26.04，并通过 GitHub 迁移工程。已编写[迁移交接](MIGRATION_GUIDE.md)，包含 Windows SSH/公钥恢复、板端网络/代理、依赖安装及新环境验证顺序。实际镜像的厂商 RKNPU 与 SDK 配套仍待核验，不能由 26.04 或 Rocket 的存在推断兼容；见[兼容性记录](docs/compatibility.md#重装-2604-的交接与核验边界)和[本轮环境记录](docs/environment.md#25-重装镜像与-windows-codex-交接)。本轮未刷卡、安装或推送。
+**P0-02 SDK 配套进行中**：固定 RKNPU 0.9.8 / RKNN 2.3.2 / RKLLM 1.3.0 已有单模型实跑证据。系统库、头文件与私有库的版本锁保持不变；Qwen 模型加载日志亦报告内部 Toolkit 1.3.0 / RK3588 / W8A8。完整验收及来源缺项继续保留。备份和回退见[环境记录 §30](docs/environment.md#30-npu-runtime-指定版本更新2026-10-20)，配套依据见[兼容性记录](docs/compatibility.md)。
 
-**P1-01 已完成旧环境验证；P1-02 进行中**：真实音频后端与 `audio_probe` 已实现，支持显式设备绑定、异步录放、重采样及断线后重建；旧系统构建和自动回归已通过。耳机连接超时问题及 A01/A02 实机验收仍待完成，新系统需重新构建并核验音频服务版本。模型推理尚未接入。完整任务状态见 [执行计划](EXECUTION_PLAN.md#5-工作分解依赖与交付)，实测与验证结果见 [环境记录](docs/environment.md#12-p1-02-真实音频开发与待验收项)。
+**P0-03/04 模型准备进行中**：2026-10-21 经用户授权，Qwen3.5-2B 完成一次初始化、三条简短中文问答及正常释放；初始化约 3.0 s，首 token 324～352 ms，生成 10.73～11.53 token/s，采样峰值 RSS 约 2.09 GiB。Zipformer 官方 WAV 5/5 匹配，VAD/TTS 已有文件验证。模型均保持 candidate；LLM 主动取消、完整 A04/A08、共驻与实时接入尚未完成。[LLM 本次结果](docs/model-prep-llm.md#2026-10-21-最小正常推理验证)；[环境汇总](docs/environment.md#38-qwen35-2b-最小正常推理验证)。
+
+**P1-01 已在新系统复核；P1-02 进行中**：Release 构建、ENV_CHECK_OK 与 8 项通用 CTest 通过；新系统音频集成测试已运行但失败。已完成两套音频服务对照并恢复 PipeWire；AP6275P M.2 已启用，Wi-Fi/蓝牙扫描通过；vivo TWS 4 播放及 10 秒录音回放已由用户确认正常。按用户要求完成约一分钟双向检查，未见断连/溢出/欠载，用户确认听感正常；短测时长偏差保留、不继续排查。耳机出盒后自动重连，双向节点及本机配置已恢复；A01/A02 完整验收尚未完成。模型推理尚未接入实时引擎。[一分钟检查与重连](docs/environment.md#34-ap6275p-耳机长时稳定性及重连检查)；[此前音频排查](docs/environment.md#31-音频链路恢复)。
+
+**P1-03 工程回归集已交付；P2-01/03 文件探针已实现**：固定 20 条合成语音、6 条边界、10 条 TTS 文本及 20 个静态 LLM 问题；`asr_probe` 支持增量分块/reset，`tts_probe` 支持分句和 44.1 → 16 kHz 转换。ASR 三批各 13/20 条关键词全对、中文 CER 15.96%，未达质量门槛；10/20/37 ms 分块结果一致。TTS 4 线程 RTF P95 0.883 达标，2 线程 1.326 未达标，尚未试听。测试集为合成工程回归集，不代表自然语音独立验收。[本轮结果与限制](docs/environment.md#36-固定测试集与文件模型探针)。
 
 ## 文档入口
 
-- [协作与文件同步规范](AGENTS.md)：各类文件归属、每次更新的同步要求与交付检查。
+- [协作与文件同步规范](AGENTS.md)：Windows Codex / SSH / 板端开发分工、各类文件归属、每次更新的同步要求与交付检查。
 - [执行计划](EXECUTION_PLAN.md)：任务依赖、里程碑与交付条件。
 - [新镜像迁移交接](MIGRATION_GUIDE.md)：Windows Codex 的 SSH 配置、板端依赖与工程恢复步骤。
 - [环境记录](docs/environment.md)：系统、依赖版本和音频设备设置。
-- [SDK 兼容性](docs/compatibility.md)：驱动与 RKLLM 要求。
+- [SDK 兼容性](docs/compatibility.md)：驱动、SDK 与模型配套。
+- 模型准备：[Qwen3.5-2B](docs/model-prep-llm.md)、[Zipformer](docs/model-prep-asr.md)、[Silero VAD 与 MeloTTS](docs/model-prep-speech.md)。
+- 文件测试：[固定测试集](docs/file-fixtures.md)、[VAD/ASR 探针](docs/asr-probe.md)、[TTS 探针](docs/tts-probe.md)。
 - [验收用例](docs/ACCEPTANCE.md)：功能、延迟、资源和恢复验证。
 - [规划审阅记录](docs/PLAN_REVIEW.md)：问题和修订依据。
 
@@ -29,6 +35,7 @@ rk3588_voice_engine/
 ├── EXECUTION_PLAN.md             # 当前执行计划
 ├── MIGRATION_GUIDE.md            # 重装后 Windows/板端配置与 Codex 交接
 ├── CMakeLists.txt                # CMake/Ninja 构建入口
+├── cmake/                        # 可选 ASR/TTS 探针的私有依赖与测试目标
 ├── src/                          # 应用实现，按模块划分
 │   ├── main.cpp                  # 配置/资产检查与 mock 控制 CLI 入口
 │   ├── audio/                    # 音频 mock、流式 DSP 与 PulseAudio 异步录放
@@ -39,8 +46,12 @@ rk3588_voice_engine/
 ├── include/voice_engine/         # 配置、资产、音频、日志和控制接口
 ├── tools/                        # 独立的 C++ 检查与诊断工具
 │   ├── env_check.cpp             # 基础依赖检查
-│   └── audio_probe.cpp           # 真实录放、格式转换与设备恢复诊断
+│   ├── audio_probe.cpp           # 真实录放、格式转换与设备恢复诊断
+│   ├── asr_probe.cpp             # VAD/RKNN 固定 WAV 与增量分块诊断
+│   └── tts_probe.cpp             # CPU 合成、分句、原生/16 kHz WAV 诊断
 ├── scripts/                      # 构建、检查、启动、回退脚本与适配补丁
+│   ├── install_npu_runtimes.py    # 本机固定版本 runtime 安装、检查与回退
+│   ├── prepare_fixtures.py       # 固定工程语料生成与原生 WAV 重建
 │   └── patches/                  # 固定源码版本的候选驱动补丁
 ├── config/                       # 通用配置；local.yaml 为本机配置
 ├── tests/
@@ -50,20 +61,27 @@ rk3588_voice_engine/
 ├── docs/
 │   ├── environment.md            # 开发环境与已完成基线
 │   ├── compatibility.md          # SDK、驱动和模型兼容性
+│   ├── model-prep-llm.md          # 2B 权重来源、下载校验与未运行范围
+│   ├── model-prep-asr.md          # Zipformer 转换、文件推理与限制
+│   ├── model-prep-speech.md       # VAD/TTS 私有依赖及最小验证
+│   ├── file-fixtures.md          # 固定合成工程集、来源、哈希和限制
+│   ├── asr-probe.md              # 增量文件 ASR、测量和未达标样本
+│   ├── tts-probe.md              # 分句/合成/转换接口与线程性能
 │   ├── ACCEPTANCE.md             # 验收用例
 │   ├── PLAN_REVIEW.md            # 规划审阅记录
 │   ├── archive/                  # 历史计划，保留原始内容
 │   └── evidence/
 │       ├── environment/          # 板端音频、电脑资源 JSON 快照
 │       └── sdk/                  # 已引用的官方 SDK 手册
-├── models/                       # 模型、词典与 manifest.json
+├── models/                       # llm/asr/vad/tts 资产与 manifest.json
 ├── deps/                         # 私有 SDK、运行库与 manifest.json
+│   └── model-prep/               # 各任务私有示例、构建和转换环境
 ├── build/                        # 本机编译产物（Git 忽略）
 ├── output/                       # 运行日志、验收结果（Git 忽略）
 └── tmp/                          # 临时检查和中间文件（Git 忽略）
 ```
 
-`config/default.yaml` 保存通用模板，`config/local.yaml` 保存本机完整配置。空目录用 `.gitkeep` 保留；模型与依赖资产清单尚未建立。
+`config/default.yaml` 保存通用模板，板端 `config/local.yaml` 已保存耳机参数，模型仍全部禁用；本轮未修改该配置。独立文件探针使用 `config/file-probes.yaml`，只启用 VAD/ASR/TTS，LLM/KWS 禁用；其中的文件输入输出标签不能用于真实录放。默认模板的设备字段为空，不能直接用于启动。空目录用 `.gitkeep` 保留；模型与依赖分别登记于 `models/manifest.json`、`deps/manifest.json`。模型、运行库、私有构建/转换环境和运行证据仍被 Git 忽略。
 
 ## 基础环境检查
 
@@ -78,7 +96,7 @@ ctest --test-dir build --output-on-failure
 
 输出 `ENV_CHECK_OK` 表示该检查完成。它只验证编译和库调用，不打开录音、播放或 NPU。
 
-CMake 提供以下开关，默认均为 `ON`：
+CMake 基础开关默认 `ON`；两个模型文件探针开关默认 `OFF`：
 
 | 开关 | 构建内容与依赖 |
 |---|---|
@@ -86,6 +104,8 @@ CMake 提供以下开关，默认均为 `ON`：
 | `VOICE_ENGINE_BUILD_AUDIO` | `voice_engine_audio` 内存 mock，仅依赖 C++17 标准库；与下一开关共同决定是否构建真实后端 |
 | `VOICE_ENGINE_BUILD_PULSE_AUDIO` | 音频模块开启时构建 `voice_engine_audio_dsp` 和 `voice_engine_pulse_audio`，依赖 libpulse、libsamplerate 和 pthread；引擎也开启时构建 `audio_probe`，另需 libsndfile |
 | `VOICE_ENGINE_BUILD_ENV_CHECK` | `env_check`，单独检查 libpulse、libsamplerate、libsndfile、yaml-cpp 和 nlohmann-json |
+| `VOICE_ENGINE_BUILD_ASR_PROBE`（OFF） | VAD/RKNN 文件探针；显式开启后检查固定私有 RKNN、sherpa/ORT 与官方 fbank 依赖 |
+| `VOICE_ENGINE_BUILD_TTS_PROBE`（OFF） | CPU TTS 文件探针；显式开启后检查固定私有 sherpa/ORT，复用音频 DSP 与 libsndfile |
 
 构建工具使用现有 CMake/Ninja 与 C++17 编译器；引擎依赖通过 pkg-config/CMake 查找。启用引擎测试时还需要 Python 3；真实音频集成测试另需 `pipewire`、`pipewire-pulse`、`wireplumber`、`pactl`，测试服务在独立临时目录运行。`BUILD_TESTING=OFF` 可关闭测试目标。仅构建引擎并运行纯状态 mock：
 
@@ -149,7 +169,7 @@ ctest --test-dir build/native-audio-only --output-on-failure
 
 ### 资产清单
 
-`--check-config` 只检查已启用模型及其声明的依赖，不自动下载。`models.<模块>.id` 绑定模型清单中的同名 `id`；所有模型禁用时不读取两份 manifest，输出的三个资产计数均为 `0`。仓库当前没有真实 `models/manifest.json` 和 `deps/manifest.json`，需要取得可追溯资产后再建立清单。
+`--check-config` 只检查已启用模型及其声明的依赖，不自动下载。`models.<模块>.id` 绑定模型清单中的同名 `id`；所有模型禁用时不读取两份 manifest，输出的三个资产计数均为 `0`。两份清单已合并本轮实际取得的模型及 RKNN 2.3.2 / RKLLM 1.3.0 / sherpa-onnx 1.12.14 / ORT 1.17.1-patched 依赖；模型保持 candidate。各模型运行状态见专属准备记录。文件校验通过不代表推理验收；文件探针的适配器可单独运行，实时控制入口尚未接入它们。
 
 `assets.models_manifest` 与 `assets.deps_manifest` 可用绝对路径，或相对于所加载 YAML 所在目录的路径；每个 `files[].path` 则相对于对应 manifest 所在目录。资产文件必须是目录内的普通文件，禁止绝对路径、`..` 以及解析后逃出目录的符号链接；同一条目内不得重复声明同一文件。检查逐文件精确比较非负整数 `size_bytes` 和 64 个十六进制字符的 `sha256`，流式调用构建时找到的 `sha256sum`，不把大文件读入进程内存。
 
@@ -198,6 +218,36 @@ printf 'status\nstart\nstop\nstart\ncancel\nnew-session\nquit\n' | \
 
 正常 quit/EOF 返回 `0`，参数、配置或资产错误返回 `2`，运行目录创建、日志、输入 I/O 或音频 mock 运行错误返回 `1`。运行中收到 `SIGINT`（如 Ctrl+C）或 `SIGTERM` 时先记录 shutdown 事件，再分别退出 `130` 或 `143`。
 
+## 模型文件诊断
+
+在板端工程根目录一次构建两个可选工具：
+
+```bash
+cmake -S . -B build/model-probes -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DVOICE_ENGINE_BUILD_ASR_PROBE=ON -DVOICE_ENGINE_BUILD_TTS_PROBE=ON
+cmake --build build/model-probes -j2
+ctest --test-dir build/model-probes --output-on-failure -E '^audio_probe$'
+python3 tests/integration/check_fixtures.py
+```
+
+这组 CTest 不初始化模型或访问音频设备；明确排除新系统已有失败的 `audio_probe` 音频集成项，不将它记为本轮通过。完整测试仍用不带 `-E` 的命令，其音频问题单独处理。默认构建不要求私有模型 SDK，三种独立构建边界继续保留。
+
+以下只读取固定文件、保存结果。每次把 `NEW_ASR_RUN`、`NEW_TTS_RUN` 改成新 run ID；`--output-dir` 是父目录，已有 `<父目录>/<run-id>` 会被拒绝。初始化、推理和采样全程共用同一锁，未持有锁时程序在模型初始化前退出 2。
+
+```bash
+flock -x /tmp/rk3588_voice_engine_model_validation.lock \
+  timeout 180 build/model-probes/bin/asr_probe \
+  --config config/file-probes.yaml --manifest tests/fixtures/manifest.json \
+  --chunk-ms 20 --repeat 3 --output-dir output/runs --run-id NEW_ASR_RUN
+
+flock -x /tmp/rk3588_voice_engine_model_validation.lock \
+  timeout 900 build/model-probes/bin/tts_probe \
+  --config config/file-probes.yaml --cases tests/fixtures/tts_cases.json \
+  --threads 4 --repeat 3 --warmup 1 --output-dir output/runs --run-id NEW_TTS_RUN
+```
+
+ASR 的 `--official --repeat 5` 可代替 `--manifest` 复核官方 WAV，`--chunk-ms 10/20/37` 检查分块一致性。TTS `--validate-text-only` 只验证文本和分句。两工具不播放 WAV、不录音、不执行 LLM。退出 6 表示本次质量/行为或性能指标未达标，应保留失败报告；退出 0 也不等于 A03/A05 全项通过。外层 `timeout` 返回 124 时保留部分证据并记为未完成。输入契约、其它错误码、耗时口径和已知限制见 [ASR](docs/asr-probe.md)、[TTS](docs/tts-probe.md)；固定数据、参考和哈希见[测试集说明](docs/file-fixtures.md)。
+
 ## 真实音频诊断
 
 使用现有 `config/local.yaml` 的耳机参数，在开发板终端执行：
@@ -237,7 +287,7 @@ printf 'status\nstart\nstop\nstart\ncancel\nnew-session\nquit\n' | \
 
 ## 版本管理约定
 
-开发板 `/home/jzh/projects/rk3588_voice_engine` 是唯一日常代码、文档和 Git 工作目录；Windows 用作 SSH 入口及参考副本。远程版本保存在 [GitHub 公开仓库](https://github.com/jzh03/rk3588_voice_engine)，板端使用 GitHub CLI 通过 HTTPS 认证。账号配置和交接历史见 [环境记录](docs/environment.md#8-git-与云端托管)。
+开发板 `/home/orangepi/projects/rk3588_voice_engine` 是唯一日常代码、文档和 Git 工作目录；Windows 用作 SSH 入口及参考副本。远程版本保存在 [GitHub 公开仓库](https://github.com/jzh03/rk3588_voice_engine)，板端使用 GitHub CLI 通过 HTTPS 认证。账号配置和交接历史见 [环境记录](docs/environment.md#8-git-与云端托管)。当前 Windows Codex SSH 开发环境及验证范围见[开发就绪复核](docs/environment.md#29-windows-codex-ssh-开发就绪复核)。
 
 模型权重、运行库、录音、构建产物、临时文件和本机配置按 `.gitignore` 排除，资产只提交清单。开始工作先检查状态；工作区干净且需要同步远程时执行拉取。完成修改并验证后，只暂存本次相关文件，按用户授权提交和推送；日常 Git 命令不使用 sudo：
 

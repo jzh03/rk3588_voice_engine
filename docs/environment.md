@@ -1,6 +1,6 @@
 # 开发环境与已完成基线
 
-更新日期：2026-10-19（Asia/Shanghai）。系统与设备基线来自 2026-10-16 的 Windows 本机只读检查、现有 `ssh orangepi5` 会话的只读命令，以及用户明确确认；后续工程验证按下文日期记录。重装前最新盘点与 Windows Codex 交接见 [§25](#25-重装镜像与-windows-codex-交接)。
+更新日期：2026-10-19（Asia/Shanghai）。系统与设备基线来自 2026-10-16 的 Windows 本机只读检查、现有 `ssh orangepi5` 会话的只读命令，以及用户明确确认；后续工程验证按下文日期记录。重装前盘点见 [§25](#25-重装镜像与-windows-codex-交接)；当前系统恢复结果见 [§26](#26-官方-jammy-系统网络时间与构建依赖恢复)。§2～25 保留各自历史时点语义。
 
 ## 1. 记录范围与证据边界
 
@@ -590,3 +590,355 @@ PipeWire / pipewire-pulse / WirePlumber、SSH 和蓝牙服务均 active，Linger
 已创建根目录 [MIGRATION_GUIDE.md](../MIGRATION_GUIDE.md)：记录 Windows PowerShell 与板端 Bash 的操作边界、SSH alias/公钥/主机指纹、网络/代理、依赖包、耳机配置、构建/测试入口及 SDK 接手顺序。新镜像的 Rocket/RKNPU 区别与 WirePlumber 0.5 测试迁移边界见[兼容性记录](compatibility.md#重装-2604-的交接与核验边界)。未接收最终 26.04 镜像，未验证新系统编译、音频或模型；旧 P1-01、B01 的历史完成记录保留，P0-02 与 P1-02 继续进行中。
 
 本轮本机证据位于被 Git 忽略的 `output/runs/new-image-handoff-2026-10-19/`：`before/` 保存修改前文档及当前交接 JSON，`baseline.json` 保存代码标识、系统/包/服务命令和保护文件哈希，`configuration-details.json` 保存网络/NPU 绑定及资产目录，`ssh-inventory.json` 保存 SSH 只读结果及用户补充，`verification.json` 保存交付检查。目录不会随 Git 克隆恢复；必要摘要已进入版本管理文档，不将新机缺少历史 output 视为工程损坏。本轮仅文档/交接同步，不重复运行应用构建或 CTest；未下载镜像、安装包、改动系统配置、录音或刷卡。
+
+## 26. 官方 Jammy 系统网络时间与构建依赖恢复
+
+2026-10-19（Asia/Shanghai），用户决定保留 Orangepi5_1.2.4_ubuntu_jammy_desktop_xfce_linux6.1.99，明确授权依次配置网络、时间和构建依赖。当前为 Ubuntu 22.04.5 LTS / 6.1.99-rockchip-rk3588 / aarch64，厂商 RKNPU 0.9.8，renderD129 已绑定 RKNPU 且普通用户可读写。此前各节为旧环境历史。
+
+### 26.1 网络、时间与工程位置
+
+- 普通用户 orangepi；工程恢复到 /home/orangepi/projects/rk3588_voice_engine，初始代码提交 6c1aecb726903bfb6fd8fc0334ca020f4154bb31。Windows 参考副本未修改，未提交或推送。
+- NetworkManager 的 eth0 配置已落盘：自动连接启用、优先级 100，192.168.137.2/24，网关 192.168.137.1，DNS 223.5.5.5、119.29.29.29。Windows WLAN 2 → 以太网 ICS 重新应用后恢复转发，期间额外生成的 192.168.50.1 已清理。未执行重启测试。
+- 复用 Windows 已有 RSA 公钥恢复 authorized_keys；Windows orangepi5 Host 单独增加 BindAddress 192.168.137.1，避免 VPN 路由干扰。主机指纹已用开发板照片核对；普通 BatchMode SSH 登录通过。
+- 下载代理 http://192.168.137.1:17897 最小写入 /etc/environment，保留其他环境项；新 SSH 非交互会话访问 GitHub HTTPS 返回 200。本轮临时 profile.d 代理文件已撤下，避免重复配置。代理依赖 Windows 开机、代理运行并允许局域网访问。
+- apt 使用 /etc/apt/apt.conf.d/80rk3588-proxy；华为 Ubuntu 源与 Docker 官方源使用 DIRECT。镜像原有阿里 Docker 源返回 403，改为同一仓库的官方地址，并使用 /etc/apt/keyrings/docker.asc 限定 signed-by；未安装或升级 Docker。公钥指纹为 9DC858229FC7DD38854AE2D88D81803C0EBFCD88。严格 apt 索引更新返回 0，TLS 和包签名校验保留。
+- 时区 Asia/Shanghai，沿用 Chrony：先通过电脑时钟纠正日期，再由网络 NTP 同步，NTPSynchronized=yes、Leap status Normal。已保存 fake-hwclock，并写入 UTC RTC。
+- 板端配置备份位于 /var/backups/rk3588-setup-20261019/；Windows SSH config 和 known_hosts 保留本次操作前备份。
+
+### 26.2 构建依赖与实际验证
+
+新增 CMake、Ninja、libpulse/libsamplerate/libsndfile/yaml-cpp/nlohmann-json 开发包及必要依赖，共 15 包，0 升级、0 删除。版本为 G++ 11.4.0、CMake 3.22.1、Ninja 1.10.1、Python 3.10.12、libpulse 包 15.99.1、libsamplerate 0.2.2、libsndfile 1.0.31、yaml-cpp 0.7.0、nlohmann-json 3.10.5。dpkg --audit 无问题，apt-get check 返回 0。
+
+普通用户 Release 配置、cmake --build build -j2 均通过；build/bin/env_check 输出 ENV_CHECK_OK。ctest --test-dir build --output-on-failure -E '^audio_probe$' 为 8/8 通过，包括配置、资产、控制、JSONL、DSP 和独立构建边界验证。完整构建另注册的 audio_probe 集成测试需要 PipeWire/WirePlumber，本轮未安装其服务组件，因此未执行；不能把本轮结果写成完整 9/9。
+
+### 26.3 后续范围与证据
+
+当前仍为镜像自带 PulseAudio，蓝牙适配器已识别但无耳机节点；音频服务恢复、耳机双向录放及 A01/A02 待下一阶段。内核和 NPU 驱动未修改；系统 RKLLM 1.1.4、RKNN 2.3.0 未替换，尚未部署模型或运行推理。
+
+官方 RKLLM 1.3.1（commit f7390530443bf84f0394255a449d7cbe81e69d1c）aarch64 runtime SHA-256 为 f25e9b099db08aaacd0a3ac62b4697d3951d6ae61ae41ea09f6702cfa89eb32c；其所需 GLIBC/GLIBCXX/CXXABI/GOMP/GCC 版本节点与板端 7 个依赖库逐项核对通过（最高 GLIBC 2.29、GLIBCXX 3.4.26，板端 glibc 2.35、GLIBCXX 3.4.30）。这只是 ELF 与符号版本前置检查，不是动态加载或推理验证；本轮未安装该 runtime。
+
+证据在 Git 忽略的 output/runs/20261019-network-time-build/：setup-baseline.json、build-validation.json、配置/构建/env_check/CTest 日志、apt 更新/安装/包一致性日志及修改前文档。该目录不会随 Git 克隆恢复，文档保留必要摘要。未修改应用代码、默认模型目标或验收标准。
+
+
+## 27. VS Code Remote-SSH 恢复（2026-10-20）
+
+- 普通 SSH 公钥登录正常；失败发生在 VS Code Server 首次下载，远程 wget 失败后本地备用下载报 LocalDownloadFailed / Failed to fetch。原日志没有给出具体 wget 错误，不能把下载故障归因于账户、密钥或系统不兼容。
+- 通过 VS Code CLI 重新打开 orangepi5 上的 /home/orangepi/projects/rk3588_voice_engine，匹配 VS Code 1.142.0 的服务安装成功。code --status 已确认远程主服务、扩展主机、文件监视服务和项目文件夹；不是仅验证 SSH 端口可达。
+- 远程扩展日志另发现继承的 127.0.0.1:7897 代理连接失败；在板端 ~/.vscode-server/data/Machine/settings.json 将 http.proxy 设置为 http://192.168.137.1:17897。该地址依赖电脑和代理运行，Windows 本地 VS Code 设置未修改。未关闭 TLS 校验。
+- 证据：output/runs/20261020-vscode-remote-ssh/result.json。官方启动程序下载 SHA256 已与官方响应头匹配；并未替换系统或修改 NPU 驱动。
+- 附带发现：当时板端时钟落后于客户端日期，NTPSynchronized=no；本次 SSH 排查未调整时间。随后已按用户要求修复并验证重启自动同步，见第 28 节。所有扩展联网能力未做全面验收。
+
+
+## 28. 重启自动校时修复（2026-10-20）
+
+- 根因：Windows SharedAccess 服务为 Manual 且已停止。板端 HTTP 代理仍可用，但直连 DNS/NTP 不通；chrony 虽已启用，实际显示 16 个未知地址时间源。启动时 RTC 曾显示 2021 年，fake-hwclock 只能恢复上次保存值。
+- 修复：Windows SharedAccess 改为 Automatic 并启动；HKLM\Software\Microsoft\Windows\CurrentVersion\SharedAccess 下 DWORD EnableRebootPersistConnection=1。沿用 WLAN 2 对开发板以太网的共享及 192.168.137.1 地址。DNS、ICMP 和 NTP 随之恢复。配置做法参考 [Microsoft ICS 排障说明](https://learn.microsoft.com/en-us/troubleshoot/windows-client/networking/ics-not-work-after-computer-or-service-restart)；该说明原针对 Windows 10 1709，本机效果以实际验证为准。
+- 板端继续使用已启用的 chrony、原有 NTP 源、makestep/rtcsync 和 fake-hwclock；同步后保存软件及硬件时钟。遵照用户要求，没有新增检查脚本、校时定时任务或后台监控。
+- 实际重启验证：boot ID 从 28568e40-9e4a-4361-87dd-95f596741b33 变为 79f65dc5-217b-486c-afa4-da6040a33a23。开机时间 14:26:16，chrony 于 14:26:40 自行选中 NTP 源；14:26:45 已显示 NTPSynchronized=yes、Leap status Normal、Asia/Shanghai。重启后没有手动设时或重启 chrony。
+- 范围：已验证开发板重启后自动同步；没有重启 Windows，也未做断电冷启动或 RTC 电池保持测试。当前直连拓扑仍需要电脑开机联网且网络共享可用。
+- 证据及配置前备份：output/runs/20261020-time-autosync/。没有修改模型、驱动、应用源码或提交推送 Git。
+
+## 29. Windows Codex SSH 开发就绪复核
+
+2026-10-20（Asia/Shanghai），从 Windows Codex 经现有 `orangepi5` SSH 公钥连接完成复核。当前普通用户为 `orangepi`，实际且可写的工程为 `/home/orangepi/projects/rk3588_voice_engine`；旧 `/home/jzh/projects/rk3588_voice_engine` 在本系统不存在。README 日常工作路径已修正，前文旧系统历史路径保留原意。
+
+- **基础开发可直接开始。** 当前 Ubuntu 22.04.5 / aarch64 / `6.1.99-rockchip-rk3588`；C++17、G++ 11.4.0、CMake 3.22.1、Ninja 1.10.1、Python 3.10.12 及当前 CMake 所需开发库可用，具体依赖版本见 §26.2 和本轮 `dependencies.log`。SSH 用户对源码、配置、文档、构建与运行目录有写权限。
+- **本轮实际构建与测试。** 在独立目录 `build/windows-codex-devcheck-20261020-145302/` 重新进行 Release 配置和完整编译，均返回 0；新生成的 `env_check` 输出 `ENV_CHECK_OK`，CLI `--help` 返回 0。CTest 注册 9 项，执行 `ctest --test-dir build/windows-codex-devcheck-20261020-145302 --output-on-failure -E '^audio_probe$'`，8/8 通过，包括配置、资产、控制、JSONL、音频 mock、DSP 和独立构建边界。`audio_probe` 集成测试依赖的 PipeWire / pipewire-pulse / WirePlumber 未安装，本次未运行，不能记为完整 9/9 或 A01/A02 验收通过。
+- **真实设备与模型的剩余条件。** 当前 PulseAudio 正常，可枚举 ES8388 输入输出与 HDMI 输出；蓝牙服务和适配器已识别，但没有耳机音频节点。`config/local.yaml` 尚未恢复，默认模板的 source/sink/profile 为空，执行 README 中本机配置命令前须按实际设备恢复。`models/`、`deps/` 仍只有占位文件；系统 RKNN/RKLLM 库文件及 `rkllm.h` 存在，RKNPU 版本 `0.9.8`、普通用户可读写 NPU render 节点，但 SDK/模型配套、动态加载与实际推理未在本次验证。
+- **资源、时间与联网。** 检查时根分区可用约 23 GiB，RAM 7.7 GiB、可用约 6.7 GiB、swap 3.9 GiB；`Timezone=Asia/Shanghai`、`NTPSynchronized=yes`。当前 SSH 会话访问 GitHub HTTPS 返回 200；本次没有验证 Git 推送认证。
+- **工作区与范围。** 分支 `main`，HEAD 为 `6c1aecb726903bfb6fd8fc0334ca020f4154bb31`。开始时已有 `EXECUTION_PLAN.md`、`MIGRATION_GUIDE.md`、`README.md`、`docs/compatibility.md`、`docs/environment.md` 五份文档修改；本轮保留它们，仅补充环境记录及 README 当前路径/本机配置状态。47 份受保护的非 Markdown 跟踪文件哈希保持不变。未安装依赖、配置音频服务、录音、加载模型、提交或推送；Windows 参考副本未修改。
+
+证据位于 Git 忽略的 `output/runs/windows-codex-devcheck-20261020-145302/`：`baseline.json` / `result.json` 保存代码标识、命令、退出码、构建目录、测试排除原因与文件哈希；独立日志保存系统/依赖/音频/NPU 枚举、CMake 配置、编译、环境检查及 CTest 输出；`before/` 保留本次修改前的 README 与环境记录。被忽略的本机证据不会随 Git 克隆恢复。
+
+## 30. NPU runtime 指定版本更新（2026-10-20）
+
+按用户明确要求，已落实 RKNPU **0.9.8**、RKNN runtime **2.3.2**、RKLLM runtime **1.3.0**。Windows Codex 经 SSH 在当前板端项目准备并验证；用户在板端终端执行 sudo 安装，返回 `INSTALL_OK`。原有六份文档修改保留，未操作 Windows 参考源码或提交/推送 Git。
+
+- **驱动已达标。** `/sys/module/rknpu/version` 为 0.9.8，运行内核为 `6.1.99-rockchip-rk3588`；本轮无需安装驱动、切换内核或重启。
+- **runtime 和头文件已更新。** 从官方固定提交下载两库及四个头文件，库版本字符串分别为 `2.3.2 (429f97ae6b@2025-04-09T09:09:27)` 和 `1.3.0 / 82bf4aa8e 2026-06-16 14:06:08`。来源、提交和库哈希集中见[兼容性版本锁](compatibility.md#指定-runtime-版本锁2026-10-20)，逐文件清单见 `deps/manifest.json`。
+- **安装与备份。** 普通 SSH 无免密 sudo，由用户运行 `sudo python3 scripts/install_npu_runtimes.py --install` 完成系统安装。脚本校验原文件与下载哈希、运行内核/驱动和 NPU 空闲，先备份，再逐文件原子替换并刷新 ldconfig；异常自动恢复。更新 `/usr/lib/librknnrt.so`、`/usr/lib/librkllmrt.so` 以及 `/usr/include/` 下 `rknn_api.h`、`rknn_custom_op.h`、`rknn_matmul_api.h`、`rkllm.h`，均为 root:root / 0644。原有文件不属于 dpkg 包，已备份在 `/var/backups/rk3588-npu-runtimes-20261020/`；`backup.json` 保存原哈希/权限，`install-result.json` 记录 installed。
+- **安装后验证。** 六个目标文件哈希与官方固定下载一致；`/lib` 和 `/usr/lib` 实路径一致。两库 ELF 为 aarch64，`ldd -v` 无缺失依赖；普通用户用同版头文件 C++17 编译检查程序，安装前私有候选、安装后系统绝对路径及默认 soname 的同进程加载、主要入口符号和 RKLLM 默认参数调用通过。默认解析路径和映射路径已记录。没有模型推理证据，P0-02 与 P0-04 不据此标完成。
+
+安装脚本的 `--check` 为安装前检查（安装后会因原系统哈希已改变而拒绝，避免重复覆盖）。若需回退，在板端工程根目录执行：
+
+```bash
+sudo python3 scripts/install_npu_runtimes.py --rollback
+```
+
+回退验证备份和当前目标哈希，恢复原文件与权限，移除本轮新增且未被其他操作修改的头文件，再刷新 ldconfig。备份存在时脚本拒绝重复安装；发生中断时先检查备份中的结果文件，必要时回退，不删除备份强行重试。本轮没有实际执行回退，以保留用户指定的新版本。
+
+本机证据（Git 忽略）：`output/runs/npu-runtimes-20261020/`，包括 `baseline.json`、`before/`、官方 tree/source/download 记录、`install-plan.json`、两库 ELF/依赖日志、`runtime_smoke.cpp`、编译/加载日志和 `verification.json`。依赖文件同样被忽略，`deps/manifest.json` 和安装脚本纳入可审阅工作区；恢复时需重新取得匹配哈希文件。此次未修改应用实现，未重复运行无关应用构建或音频测试。
+
+## 31. 音频链路恢复
+
+2026-10-20（Asia/Shanghai）。
+
+### 31.1 恢复前检查
+
+用户要求先恢复音频链路，并确认继续使用 vivo TWS 4、耳机已进入配对模式。预检查时系统仍运行镜像自带 PulseAudio；RTL8821C USB 适配器 `0bda:c820` 已识别，蓝牙 powered、无 rfkill 阻断，但无已登记的耳机设备。PipeWire / pipewire-pulse / WirePlumber / 蓝牙 SPA 插件尚未安装。
+
+- 镜像 `/etc/pulse/client.conf` 将客户端固定到 `unix:/tmp/pulse-socket`，`/etc/pulse/default.pa` 也显式创建该 socket；后续切换必须同时处理客户端连接目标，不能只启动新服务。拟使用普通用户配置覆盖连接目标，保留系统原配置和可回退的旧 PulseAudio。
+- 仅对缺少的 `pipewire pipewire-bin pipewire-pulse wireplumber libspa-0.2-bluetooth` 做 apt 模拟，结果为新增 9 包、升级 2 个 PipeWire 依赖库、删除 0 包；不主动升级已安装的 BlueZ。候选 PipeWire 为 0.3.48-1ubuntu3.2，WirePlumber 为 0.4.8-4，具体以实际安装日志为准。[Ubuntu Jammy WirePlumber 包](https://packages.ubuntu.com/jammy/wireplumber)
+- `sudo -n true` 表明需要交互认证，已指导用户在自己的终端执行 apt 更新和上述安装命令；密码在终端输入。本节只记录预检查，不代表安装、服务切换、耳机配对、真实录放或 A01/A02 已通过。
+- 预检查和备份保存在 Git 忽略的 `output/runs/audio-link-restore-20261020-150614/`：`preflight.json`、包安装模拟、原用户服务状态、蓝牙与 PulseAudio 枚举；`before/` 保存本轮前文档及不含凭据的 PulseAudio 配置。后续在同一目录追加实际安装、切换与验证结果。P1-02 保持进行中。
+
+### 31.2 安装、服务切换与当前状态
+
+用户在板端终端完成 apt 更新和安装，apt 记录为 15:07:05 至 15:07:16：新增 9 包、升级 2 个 PipeWire 库、无删除。实际 PipeWire / pipewire-pulse / SPA 为 `0.3.48-1ubuntu3.2`，WirePlumber 为 `0.4.8-4`；BlueZ 保持 `5.64-0ubuntu1.4`。
+
+曾以普通用户 mask 原 PulseAudio，启用 PipeWire / pipewire-pulse / WirePlumber；三项 active，`pactl info` 实测为 `PulseAudio (on PipeWire 0.3.48)`。初次仅添加用户 client.conf.d 覆盖未被采用，客户端仍读镜像系统配置；改为显式 `~/.config/pulse/client.conf` 后，连接到用户 native socket 成功。首次失败及回退保存在 `audio-service-switch.json`，成功切换保存在 `audio-service-switch-final.json`。中间一次客户端配置检查曾在原服务的 native socket 上等待超时，后续已恢复。
+
+用户询问新服务是否造成连接失败后，实际切回原 PulseAudio 对照：停止并 mask 新增的五个服务/socket，撤回本轮创建的用户 client.conf，unmask 并启动原 pulseaudio.service / pulseaudio.socket。`pactl info` 已恢复 `pulseaudio 15.99.1` / `unix:/tmp/pulse-socket`。**该阶段临时保留原 PulseAudio 诊断状态**；当时新包仍已安装，新服务为用户级 masked，并未卸载。新服务客户端配置保留在证据目录 `pipewire-client.conf.saved`，三份系统 PulseAudio 配置与本轮前备份哈希一致。以后切回 PipeWire 须先核对状态、撤销新服务 mask 并恢复所需用户客户端配置；本次临时对照不等于永久更改技术路线。同日 16:05 已恢复 PipeWire，后续状态见 §31.6 与 §32。
+
+### 31.3 耳机与蓝牙对照结果
+
+- 用户在桌面完成 vivo TWS 4 配对；目标 `1C:7A:43:7F:83:8F` 实测 Paired=yes、Trusted=yes、Blocked=no。曾短暂显示 Connected=yes，但未形成蓝牙音频节点，随后 Connected=no、ServicesResolved=false。未生成虚假的 local.yaml，也未开始耳机录放。
+- 用户关闭手机及 Windows 蓝牙、重新入盒取出佩戴，并确认有电且距板端约 1 m；还重新进入配对模式、将 Realtek USB 适配器拔下约 5 s 再插回。上述操作后仍未稳定连接。用户另测手机连接与播放正常，测试后关闭手机蓝牙；没有备用耳机/音箱或适配器可做交叉测试。手机结果为用户报告，不是板端验收。
+- PipeWire 与原 PulseAudio 下，对同一目标的 BlueZ Connect / A2DP ConnectProfile 均复现 `br-connection-page-timeout`；日志另有 HFP gateway 超时与 Host is down。临时启用控制器 discoverable 后可见 connectable 标志，仍未解决，已恢复 discoverable 原状态。用户重启了 bluetooth.service，进程由 916 变为 24101；重启后一次 Connect 在 15 s 内未收到 D-Bus 回复，仍无耳机 card/source/sink。不能把通用 NoReply 消息列举的若干可能原因当成已确认根因。
+- 现有对照不足以把蓝牙超时归因于新音频栈，具体控制器/固件/射频或设备组合原因仍待定位。现有内核加载 `rtl8821c_fw.bin` / `rtl8821c_config.bin`，日志固件版本 `0x829a7644`；本轮音频操作未更换驱动/固件或重启系统。下一步需有针对性地采集 HCI 连接状态，或在具备设备时交叉验证，不据超时要求购置设备。
+
+### 31.4 自动测试与未完成项
+
+安装后构建和 ENV_CHECK_OK 通过；完整 CTest 为 **8 项通过、audio_probe 1 项失败**，原测试等待私有 source 超时。对旧版 PipeWire 的配置/权限差异做了独立试验：候选配置可推进私有服务启动，但后续虚拟流格式协商仍触发 DEVICE_WAIT，未通过全部原断言。候选未降低断言，未作为正式修复部署；`tests/integration/audio_probe.py` 已逐字节恢复到本轮开始时的内容，候选 diff 及失败日志保留在证据目录。
+
+当前不能记成 9/9、耳机已可录放或 A01/A02 已通过，P1-02 继续进行中。音频操作保持生产源码、构建、配置模板及其余受保护非 Markdown 跟踪文件哈希不变。本节不改写同日在其他工作中完成的 NPU runtime 更新记录。
+
+证据统一位于 Git 忽略的 `output/runs/audio-link-restore-20261020-150614/`：包/apt 日志、切换及原服务对照、连接与控制器复核、USB 拔插和 BlueZ 重启后的结果、原 CTest 及私有测试试验。`test-compatibility-experiment-status.json` 明确候选未部署；`before/` 保存本轮前文档、原测试及非凭据系统音频配置。没有采集配对密钥、PulseAudio cookie 或原始私有录音；未提交、推送或改动 Windows 参考副本。
+
+### 31.5 HCI 结果与重新发现检查
+
+用户完成 25 s 有界 btmon 采集并提供终端输出，板端 `hci-status.log` 已核对为 345 B。该次 `Create Connection` 的 Command Status 为 `Success (0x00)`，随后 Connect Complete 为 `Page Timeout (0x04)`。这说明控制器接受了连接命令，但此次基础蓝牙连接未建立，尚未进入音频协商；结合 §31.3 原 PulseAudio 下的复现结果，不能将故障直接归因于 PipeWire/WirePlumber。该状态码不能单独确定耳机状态、无线环境、控制器或固件中的具体原因。`hci-capture-status.json` 已更新为采集完成，原先检查时的空日志不再代表当前结果。
+
+用户按指导在板端移除耳机配对后，报告重新搜索不到 vivo TWS 4。独立核验确认控制器 Powered=true、rfkill 无阻断、设备列表为空；普通用户启动实际发现扫描成功，18 s 内没有 Device1 新增或 RSSI 事件，扫描后设备列表仍为空。证据为 `rediscovery-after-remove.json`。本次扫描未发现设备，不等于已证明适配器硬件损坏。
+
+后续已取得手机发现对照并恢复 PipeWire，见 §31.6；本节 HCI 记录保留此前那次失败的含义，耳机录放及 A01/A02 仍未通过。
+
+### 31.6 暂停前补充结果与后续硬件更换
+
+用户报告手机可在可用设备列表看到 orangepi5；随后板端经典蓝牙扫描实测发现 `Xiaomi 17 Max`，首个新设备事件约 0.54 s、RSSI −36 dBm。独立 LE 扫描还发现 vivo TWS 4，RSSI 约 −38 dBm。手机没有在本轮配对或传输音频。这些结果说明当时设备发现并非持续完全不可用，不将此前一次空扫描写成硬件损坏结论。
+
+用户按两只耳机入盒、开盖、白灯持续闪烁的步骤操作后，板端重新配对成功并短暂 ServicesResolved=true；随后断开，原 PulseAudio 下 A2DP 连接仍返回 `br-connection-page-timeout`，取出佩戴和在配对窗口内连接也没有生成蓝牙音频节点。未取得成功配对瞬间的内核连接类型证据，不将该次配对擅自归类为 LE 或经典蓝牙。另一次有界 LE ATT 检查只观察到 pending（handle 65535 / state 5），未确认 LE 连接建立，也没有读取或写入特征值。
+
+16:05 已完成原 PulseAudio 对照并恢复 PipeWire / pipewire-pulse / WirePlumber，三服务 active，客户端为 `PulseAudio (on PipeWire 0.3.48)`；旧 PulseAudio 服务/socket masked，用户 client.conf 恢复指向 native socket。之后一次重配前已移除目标旧记录，但重新发现未完成，因此不能继续声称此前 Paired=true 仍是当前状态。Wi-Fi rescan 对照和临时关闭 Wi-Fi 的 LE/经典发现对照均未重新发现设备；Wi-Fi 原 enabled 状态已恢复，SSH 路由仍为 eth0。不能据这些阴性结果确认 Wi-Fi 共存或省电为根因。
+
+用户明确补充 USB 模块型号为 RTL8821CU。仅准备了有回退的 Wi-Fi 驱动隔离脚本，执行了 py_compile 和普通用户只读预检查；**未执行 --run、未卸载驱动**。随后用户要求暂停，已停止排查。该脚本针对旧 USB 设备，不适用于下一节的新模块。
+
+以上证据仍在 `output/runs/audio-link-restore-20261020-150614/`：`phone-discovery-two-transports.json`、`headset-repair-open-case.json`、A2DP 连接检查、`headset-le-transport-check.json`、`pipewire-restored-after-comparison.json`、`rtl8821cu-wifi-radio-off-comparison.json` 等；其他阶段原始日志保留各自时点含义。
+
+## 32. AP6275P M.2 模块安装后检查
+
+2026-10-20（Asia/Shanghai），19:15 起经 SSH 检查。用户已拔掉 RTL8821CU USB 二合一模块，改装官方 M.2 模块，并明确确认标签型号为 AP6275P。19:15 检查阶段范围为识别、配置及启动前离线验证，当时没有修改启动文件或执行重启；随后授权启用及重启的结果见 §32.1～32.2。
+
+- **19:15 检查时尚未启用，不能计为正常工作。** 旧 USB `0bda:c820` 已不在枚举中；`bluetoothctl list` 为空、`show` 返回 `No default controller available`，btmgmt 为 0 个控制器，sysfs 无蓝牙设备。网络只有 eth0 与 lo，PCI/SDIO 枚举为空。当前内核为 `6.1.99-rockchip-rk3588`、板型 Orange Pi 5，boot ID 为 `d73c6033-1cbf-40bf-a93f-1b311ae271ce`。旧 USB 在本次启动较早时段的识别日志不代表当前仍接着该设备。
+- **服务与硬件识别分别核验。** bluetooth.service active；PipeWire / pipewire-pulse / WirePlumber 三项 active，原 PulseAudio inactive。该检查阶段没有控制器，因而没有执行蓝牙扫描、耳机连接或录放，A01/A02 继续未验收。
+- **已确认缺少启用配置。** `/boot/orangepiEnv.txt` 没有 overlays 项；运行中 `/proc/device-tree/wireless-wlan` 与 `wireless-bluetooth` 的 status 均为 `disabled`，前者 wifi_chip_type 为 `ap6275p`。启动日志有 PCIe link fail；在节点未启用的情况下，不能单凭该日志判定模块本体故障或插接问题。
+- **所需镜像文件已存在。** 当前内核配套 bcmdhd 模块、`rk3588-wifi-ap6275p.dtbo`，以及 AP6275P 的 Wi-Fi firmware/NVRAM 和 `BCM4362A2.hcd` 文件均可读取；这表示文件准备条件具备，不代表驱动已识别模块或固件已实际加载。
+- **配置副本验证通过。** 已将镜像自带 overlay 用 fdtoverlay 应用到同版 Orange Pi 5 基础 DTB 的输出副本，返回 0；副本中无线和蓝牙节点均为 `okay`。启动环境预览仅追加 `overlays=wifi-ap6275p`，原 `/boot/orangepiEnv.txt` SHA-256 仍为 `7bc6713dbe577c5c908c4f1b6aa893223c47fc23220485a01e34c2fd2e1c745e`。预览不是实际启动结果。
+
+19:15 检查后提出启用 `wifi-ap6275p`、重启并做真实扫描；该检查阶段未执行启用或重启，也未运行旧 RTL8821CU 隔离脚本。用户随后明确授权启用、重启和复核，结果如下；耳机连接及录放仍待验证。
+
+本机证据（Git 忽略）：`output/runs/m2-wireless-check-20261020-191524/`，包括 `baseline.json`、`kernel-wireless.log`、`ap6275p-configuration-check.json`、`overlay-preview-validation.json`、反编译 overlay、`ap6275p-preview.dtb`、`orangepiEnv.preview.txt`、原启动文件和修改前文档备份。没有修改应用实现、系统驱动、固件、NPU runtime，未提交或推送。
+
+### 32.1 启用与重启确认
+
+2026-10-20（Asia/Shanghai），用户明确要求启用 AP6275P、重启后检查 Wi-Fi 和蓝牙。普通 SSH 用户不能免密 sudo，因此先生成并完成只读预检的 `enable_ap6275p.py`，由用户在板端终端执行 `sudo python3 .../enable_ap6275p.py --apply-reboot`。19:23:45 完成写入并发起重启；随后 SSH 重新连接，独立确认新的启动结果。
+
+- `/boot/orangepiEnv.txt` 仅追加 `overlays=wifi-ap6275p`，其余启动设置保留。原文件备份为 `/boot/orangepiEnv.txt.before-ap6275p-20261020-191524`；原 SHA-256 为 `7bc6713dbe577c5c908c4f1b6aa893223c47fc23220485a01e34c2fd2e1c745e`，启用后为 `aa24fb7ca06a0e85448ba35dd123ebc718b0d3535e323da92e710534d93be7f5`。新文件及备份均保持 root:root、0664。
+- 启动 ID 从 `d73c6033-1cbf-40bf-a93f-1b311ae271ce` 变为 `23c5113b-8204-4ac7-801a-9d91d36d079c`，已确认真正重启。内核仍为 `6.1.99-rockchip-rk3588`；运行中 wireless-wlan 和 wireless-bluetooth 节点均为 `okay`，wifi_chip_type 为 `ap6275p`。
+- Wi-Fi 在 PCIe `0004:41:00.0` 枚举为 Broadcom `[14e4:449d]`，使用镜像自带 `bcmdhd`（PCI 绑定 `pcieh`；NetworkManager 报告接口驱动 `wl`）。固件和 NVRAM 加载成功，出现 `Firmware up` 及 `wlan0`，MAC 为 `40:D9:5A:63:E2:86`。
+- 蓝牙出现 UART `/dev/ttyS9` 对应的 `hci0`，本次启动地址为 `7C:6D:24:C5:C8:77`，Broadcom manufacturer 15，控制器 Powered=yes。镜像自带 `brcm_patchram_plus` 正在使用 AP6275P 固件；启动参数包含 `--bd_addr_rand`，本次控制器地址不作为跨重启固定设备标识。
+- 未更换内核、驱动、固件或 NPU runtime。原启动配置可由上述备份恢复；如需回退，应先核对后续是否有其他启动设置修改，再恢复原内容并重启。
+
+### 32.2 Wi-Fi 与蓝牙实际扫描
+
+19:26 起进行扫描。重启后 Wi-Fi 硬件已可用，但 NetworkManager 保留的软件无线开关为 disabled，导致 wlan0 暂为 unavailable。执行 `nmcli radio wifi on` 后恢复为 disconnected（可用、尚未连接热点），再执行 `nmcli -w 20 device wifi rescan ifname wlan0`，返回 0。
+
+- **Wi-Fi 扫描通过。** 首次读取 6 个热点，后续缓存复核为 6 个；实际频率包含 2.4 GHz 与 5 GHz。NetworkManager 的 `WIFI-PROPERTIES.5GHZ` 字段仍报告 no，与已返回的 5 GHz 扫描频率不一致；这里仅记录扫描成功，不据此认定已验证 5 GHz 连接。未连接任何 Wi-Fi 热点，未测无线 DHCP、联网或吞吐。
+- **蓝牙扫描通过。** `bluetoothctl --timeout 20 scan on` 返回 0，报告 `Discovery started`，本轮收到 6 个新设备和实时 RSSI 事件，包括 FlyDigi BS2、Mijia Scale S400。扫描结束后 Discovering=no、Powered=yes；rfkill 无软/硬阻断。该扫描证明附近设备发现可用，未进行目标耳机配对、经典蓝牙音频连接或录放验收。
+- 当前 eth0 仍 connected，Windows SSH 路由仍走 eth0；Wi-Fi 软件开关已开启。bluetooth.service 与 PipeWire / pipewire-pulse / WirePlumber 均 active。
+- **19:28 扫描阶段结论：AP6275P 已启用，重启后硬件识别及 Wi-Fi/蓝牙实际扫描通过。** 当时下一步为 vivo TWS 4 重新配对、音频连接与短录放（随后结果见 §33）；A01/A02、音频集成适配及完整语音链路继续待验收，P1-02 保持进行中。没有修改应用实现或默认设备配置，也未提交、推送。
+
+新增本机证据仍在同一 run 目录：`enable-reboot-preflight.json`、`enable_ap6275p.py`、`enable-apply-result.json`、`post-reboot-baseline.json`、`post-reboot-kernel-wireless.log`、`post-reboot-network-diagnosis.json`、`wireless-scan-verification.json`、`bluetooth-discovery-clean.txt`、`wireless-final-state.json`、`post-scan-kernel.log`、`activation-verification.json` 及 `before-activation-sync/`。原 `verification.json` 为 19:19 启用前检查结果，保留其历史语义；脚本自身的 reboot_completed=false 表示脚本不能观察重启完成，实际完成由新启动 ID 的独立记录确认。
+
+## 33. AP6275P 与 vivo TWS 4 播放录音短测
+
+2026-10-20（Asia/Shanghai），19:30 起经 Windows Codex / SSH 执行。用户已在板端自行配对并连接 vivo TWS 4，明确要求测试播放和录音。结果：**系统播放及 10 秒耳机麦克风录音回放均经用户确认清楚正常，当前音频链路的短录放已恢复。** 本次不将短测计为 A01/A02 完整通过。
+
+### 33.1 设备、profile 与系统录放
+
+- 蓝牙地址仍为 `1C:7A:43:7F:83:8F`，Paired=yes、Connected=yes；新 AP6275P 控制器下，PipeWire / pipewire-pulse / WirePlumber 均 active，Pulse 客户端连接 `unix:/run/user/1000/pulse/native`。
+- 初始为 `a2dp-sink-sbc`，显式向 `bluez_output.1C_7A_43_7F_83_8F.a2dp-sink` 播放三声低幅度提示音，paplay 返回 0；用户反馈“提示音清楚，已准备好录音”。
+- 为使用耳机麦克风，执行 `pactl set-card-profile bluez_card.1C_7A_43_7F_83_8F headset-head-unit-msbc`，返回 0。出现实际耳机 source 与 sink，均为 s16le、16 kHz、单声道、未静音；profile 保持为 `headset-head-unit-msbc`。
+- 当前可复用参数：source=`bluez_input.1C_7A_43_7F_83_8F.headset-head-unit`；sink=`bluez_output.1C_7A_43_7F_83_8F.headset-head-unit`；card=`bluez_card.1C_7A_43_7F_83_8F`。每次运行仍须核验在线状态及 profile，不能使用 monitor 或临时数字 ID。
+- 用 parec 显式录制该耳机 source 的 PCM16 / 16 kHz / 单声道音频，取得 320000 字节、160000 样本，精确 10.000 秒；录音进程按计划停止，返回 0、无 stderr。RMS 为 -27.49 dBFS，峰值 -4.52 dBFS，削波样本 0。WAV 显式通过该耳机 sink 回放，paplay 返回 0；用户确认“能，回放清楚完整”。
+- 本轮路由通过命令明确选择耳机，没有改变系统默认 source/sink，未建立 `config/local.yaml`；供项目复核的配置保存在本次 run 的 `audio-test.yaml`。录音为用户授权的本机测试材料，保留于 Git 忽略目录，WAV 权限为 0600，不纳入公开配置或版本库。
+
+### 33.2 项目 audio_probe 双向短测与限制
+
+使用已有 `build/bin/audio_probe`、本次显式设备配置，运行 `--duplex --duration-sec 10 --wait-device-sec 10`，未开启 `--record-wav`。程序到达 AUDIO_READY 并完成双向会话，退出 0 / duration_complete；运行期间 profile 为 mSBC，设备身份校验为实际耳机输入与输出。
+
+- capture_overflows=0、capture_holes=0、invalid_capture_frames=0；playback_overflows=0、playback_underruns=0；device_lost=false、reconnects=0，software_counters_ok=true。
+- 输出 500 帧；采集 469 帧、149971 样本，即 9.3731875 秒。active_capture_seconds=9.996048293，报告相对目标 10 秒的误差为 6.268125%，约少 0.627 秒。**短测退出 0 不等于采集时长完整性通过；差异原因该短测阶段未定位，当时提出先复核再做长时验收。用户后续要求暂不排查，直接继续下一步，见 §33.3。** 不将差异直接归因于蓝牙丢包或硬件故障。
+- A01 的连续 10 min、时长误差阈值及其他完整条件尚未验收；A02 的三种状态重连未执行。此前新系统音频集成 fixture 的失败没有因本次系统短测而自动消除。P1-02 保持进行中；该阶段提出先复核采集时长，后续安排已按用户要求调整，见 §33.3。
+
+本机证据（Git 忽略）：`output/runs/ap6275p-audio-test-20261020-193055/`。包含 `baseline.json`、`playback-and-profile.json`、`record-and-replay.json`、`user-feedback.json`、`audio-test.yaml`、`application-duplex-result.json`、`application/duplex-10s/{run.json,events.jsonl,summary.json}`、`final-state.json`、`verification.json` 与测试 WAV。配置及程序哈希见 application 记录。没有修改应用源码、默认配置、驱动、固件或 NPU 资产，未安装依赖，未提交或推送。
+
+### 33.3 用户要求暂不排查并继续下一步
+
+2026-10-20（Asia/Shanghai），用户明确要求“不用排查了，直接同步一下文档；开始下一步”。保留 §33.2 的实际采集量和误差记录，不将其改为已修复或已验收；本轮不为该差异修改源码或安排定位实验。同步入口与任务进度后，使用已确认的耳机节点直接开展下一步 600 s 双向稳定性和三种状态重连检查。完整验收状态仍取决于实际结果。
+
+## 34. AP6275P 耳机长时稳定性及重连检查
+
+2026-10-20（Asia/Shanghai），19:36 建立本机证据目录 `output/runs/audio-stability-20261020-193657/`。开始前确认 vivo TWS 4 Connected=yes，耳机输入/输出均为 s16le、16 kHz、单声道、未静音，profile 为 `headset-head-unit-msbc`，无其他 audio_probe 进程。
+
+初始安排为 A01 非交互 600 s 双向录放及 A02 三种状态重连；随后用户明确要求“不要测十分钟，一分钟够了”，已按该指示停止原任务并使用已采集的一分钟窗口，不重复启动稳定性测试。使用本次目录的 `audio-test.yaml` 显式绑定耳机 source/sink，未启用 `--record-wav`，没有将长测录音保存到磁盘。应用源码及验收阈值未修改；本轮检查不计为 A01/A02 完整通过。
+
+### 34.1 用户指定的一分钟检查结果
+
+原任务于 19:37:35 启动；用户将测试改为一分钟时已运行约 66.98 s，立即向已核对命令行的本次 audio_probe 发送 SIGINT，19:38:42 正常完成收尾。实际运行约 67 s，没有继续至十分钟，也没有再启动另一轮一分钟测试。原 run 名 `a01-duplex-600s` 和原参数保留作历史证据，不表示完成了 600 s。
+
+- 软件摘要为 exit_code=130 / reason=signal，符合用户要求的主动中止；不是完整 duration_complete 结果。active_capture_seconds=66.886212253，capture_samples=1055680；程序报告的原 600 s 目标误差不能用于评价此次一分钟检查。采集时长相关事实照常保留，未据此继续定位或修改实现。
+- 从原始每秒事件提取连续 60.158376758 s 窗口，capture_native_frames 增加 957120，playback_frames 增加 3007；整个运行 profile 保持 mSBC，capture_overflows / capture_holes / playback_overflows / playback_underruns 均为 0，无设备断开或重连。SIGINT 收尾时丢弃 15 个尚排队的播放帧，未把停止后的 PCM 继续播放。
+- 用户确认“正常，没有异常中断或杂音”。结论仅为本次约一分钟短时双向检查结果正常；A01 的连续十分钟及完整条件未执行，不调整原验收阈值。
+
+### 34.2 空闲重连检查及恢复
+
+之后仅执行一次 READY 空闲时的软件断开/重连检查，未继续录音和播放状态两项。断开后程序进入 DEVICE_WAIT；耳机一度自动重连，但 profile 为 `a2dp-sink-sbc`，仅有输出，没有配置要求的麦克风。后续音频卡和节点消失，虽然 BlueZ 仍显示 Connected=yes，程序也未恢复 READY。因此本次空闲重连检查未通过，A02 继续未验收。
+
+为恢复用户刚才可用的耳机，将已配对的 vivo TWS 4 标记 Trusted=yes；普通 connect 及显式 Handsfree profile 连接未恢复音频节点，后者超时。用户将耳机取出充电盒后报告“我拿出来，从盒子里拿出来，它就自动重连成功了”。随后独立确认 Connected=yes、Trusted=yes、耳机音频卡重新出现，并将 profile 恢复为 `headset-head-unit-msbc`，耳机 source/sink 均重新为 s16le、16 kHz、单声道、未静音。
+
+这是人工操作配合后的恢复结果，不记为原程序在目标设备可用后十秒内自动恢复的 A02 通过证据。未再次断开耳机，没有继续定位先前的采集时长偏差，也未为重连问题修改应用或蓝牙策略文件。
+
+### 34.3 本机开发配置与交付状态
+
+按本轮实际恢复的参数，从默认模板建立板端 `config/local.yaml`，仅填写耳机 source、sink 和 `headset-head-unit-msbc` profile；保留 16 kHz / 单声道 / 20 ms 及默认模型禁用状态。`voice_engine --config config/local.yaml --check-config` 返回 0，本机配置已确认被 Git 忽略，哈希见 `local-config-verification.json`。没有修改 `config/default.yaml`，也没有改系统默认输入输出路由。
+
+交付时耳机双向节点已恢复，三个 PipeWire 服务均 active，没有残留 audio_probe 进程。本轮按用户要求完成文档同步和一分钟检查；十分钟稳定性测试不自动续跑，P1-02 的音频集成适配、重连可靠性及 A01/A02 完整验收保留未完成状态。
+
+本机证据仍在 `output/runs/audio-stability-20261020-193657/`：`baseline.json`、`launch.json`、`a01-process.json`、`user-shortened-test.json`、`one-minute-window.json`、`one-minute-user-feedback.json`、`application/a01-duplex-600s/{run.json,events.jsonl,summary.json}`、`reconnect-result.json`、`application/a02-idle/`、音频恢复记录、`manual-reconnect-final-state.json`、`local-config-verification.json`、`verification.json` 及修改前文档。运行辅助脚本均在此 Git 忽略目录。未更换内核/驱动/固件/NPU 资产，未提交或推送。
+
+## 35. 模型准备汇总
+
+2026-10-20（Asia/Shanghai），按用户要求由三个 Astra / xhigh 子代理并行准备，主对话统一合并清单和进度。全部项目改动经 Windows SSH 落在板端 `/home/orangepi/projects/rk3588_voice_engine`。下载、依赖准备和编译并行；模型执行及 ASR 转换共用 `/tmp/rk3588_voice_engine_model_validation.lock`。
+
+| 任务 | 实际结果 | 限制 |
+|---|---|---|
+| Qwen3.5-2B | 社区 W8A8 权重 2,942,188,412 B；SHA-256 `946daf4377bbf5913d8d5226180991b8e6b4a3068d8b5959bdc81a9492311a09` 与固定来源一致；官方 1.3.0 示例编译成功 | 用户要求仅下载校验，未初始化、问答、采集性能或验证取消；原始转换输入和完整校准资料未披露 |
+| Zipformer | 三份 FP16 RKNN 已生成，官方 5.6115 s WAV 识别与参考文本完全一致；推理段 981.136 ms、全进程 1.855 s，峰值 RSS 160232 KiB，实际加载私有 RKNN 2.3.2 | 仅运行一次文件样例，未完成 A03 的五次基线、英文、增量流式、reset/取消、共驻或质量批测；原始 WAV 与补零后时长的 RTF 口径另见专属记录 |
+| Silero VAD v5.0 | 静音 0 段、两段合成语音 2 段，官方 CPU 文件工具通过 | 只核验分段数量，未验收自然语音、噪声或边界精度 |
+| MeloTTS FP32 | 两份 44.1 kHz / 单声道 / PCM16 WAV，时长 2.983764 / 6.060408 s，数字日期归一化日志正确 | Generate RTF 1.292/1.300，两例 RTF 大于 1，尚无 A05 预热达标证据；未试听；原包 INT8 是不可加载 LFS 指针 |
+
+LLM 下载在 1,487,530,008 B 因 TLS EOF 中断，按用户指示续传同一文件后完成完整校验。用户随后明确要求不推理，故没有运行任何 LLM 模型或视觉编码器。详细来源、版本、命令、测量和缺项分别在 [LLM](model-prep-llm.md)、[ASR](model-prep-asr.md)、[VAD/TTS](model-prep-speech.md)，本节只作汇总。
+
+公共模型清单现有 4 个 candidate 条目、50 条模型文件记录；依赖清单保留原 RKNN/RKLLM 并加入 sherpa/ORT，共 4 个依赖。所有文件记录大小与 SHA-256；现有 `voice_engine --check-config` 对每个模型及其直接依赖检查均通过。该检查不加载模型或打开设备，只验证资产完整性。原有本机配置中模型仍全部禁用。
+
+本轮保留已有未提交修改，未修改公共 CMake、应用源码、`config/local.yaml` 或系统运行库/内核/驱动/音频配置；未提交或推送 Git。P0-02/03/04 继续进行中，M0、A03/A04/A05、模型共驻、流式及完整链路仍未完成。没有续做音频、蓝牙、自动重连或长稳测试。
+
+本机证据（Git 忽略）：
+
+- `output/runs/model-prep-llm-20261020-200730/`：来源、下载/续传、完整哈希、编译及模型片段。
+- `output/runs/model-prep-asr-20261020-200730/`：版本锁、来源、转换和文件验证。
+- `output/runs/model-prep-speech-20261020-201140/`：私有运行库、VAD/TTS 结果、WAV 及两份片段。
+- `output/runs/model-prep-merge-20261020-200735/`：修改前备份、约束、合并输入哈希、逐模型资产检查及 `final-audit.json`；`manifest-merge-validation.json` 为完整性检查结果。
+
+## 36. 固定测试集与文件模型探针
+
+2026-10-20（Asia/Shanghai），按用户要求继续由三个 Astra / xhigh 子代理分别完成固定测试集、`asr_probe` 与 `tts_probe`；主对话合并公共 CMake、模型角色元数据、文件配置及文档。所有写入仍在板端唯一开发目录，保留原有未提交修改。LLM 本轮未初始化或推理；其静态问题文件只是测试资料。
+
+### 36.1 固定工程集
+
+[测试集说明](file-fixtures.md)及 `tests/fixtures/manifest.json` 已交付：20 条主体语音（普通中文 8、数字日期 5、短问句 4、中英混合 3）及 6 条边界，全部 16 kHz / 单声道 / PCM16。主体 WAV 为 2.000～3.308875 s，两条不足 2 s 的原始合成句只补尾部静音，原始时长与补零数量已记录。另有 10 条 TTS 文本、20 个未执行的 LLM 固定问题。
+
+参考、关键词在首次 ASR 前冻结。全部 26 WAV 格式/哈希检查、9 项损坏反例拒绝、从保留的原生 WAV 重建后 26/26 哈希一致均通过。清单 SHA-256 为 `49cd7104e1eb635c4a428c6d52788b0694d3e4d0fd3caf513fd7288374472369`。
+
+该集是同一 Melo 模型生成的 synthetic engineering regression，未录制用户声音、未试听；实际合成具有上游默认随机噪声，固定 WAV 哈希才是输入身份。15 s 边界由四次完整句重复及静音构造，不能称为自然连续 15 s 发言。它适用于实现回归，不替代自然人声独立质量验收，也不因改参考而消除失败。
+
+### 36.2 VAD / ASR 文件结果
+
+[ASR 探针](asr-probe.md)包含真实增量 fbank、RKNN encoder/decoder/joiner 缓存、reset/flush，以及 CPU Silero 512 样本聚窗。官方固定 WAV 5/5 输出精确匹配，预热 4 次 RTF P95 为 0.10975。
+
+- 固定主体 20 条各 3 次：每批关键词全对 **13/20**；纯中文 CER **34/213 = 15.9624%**，未达到 18/20 与 CER ≤15% 的门槛。工具正确退出 6，A03 不记为通过。
+- 主体后两批共 40 次预热 RTF P95 为 **0.20705**；26 条整体在 10/20/37 ms 分块下的 final、原始识别与 VAD 结果一致，重复/reset/finish 幂等检查通过。特征缓存峰值 105 帧，15 s 输入在 finish 前已执行 15 个 encoder 块，完整消费 240000 个样本。
+- 空、静音、80 ms 短音频、低幅噪声均返回空；尾部语音最后词完整，但开头“请把”识别为“行吧”，严格全文参考检查失败，保留该失败。
+- 关键词失败为 `zh_01/04/07/08`、`num_01`、`mix_02/03`。另用已编译的官方整 WAV 示例复核 `zh_07`、`zh_01`，输出与本次 adapter 原始结果逐字相同；这两条未观察到增量实现引入差异，不能外推其它失败原因。
+- 批次最大 wait4 子进程 RSS 为 196948 KiB，采样 PSS 最大 193789 KiB，最小 MemAvailable 6470048 KiB；这些不代表全部 NPU 内存。实际 runtime 为私有 RKNN 2.3.2 / driver 0.9.8。
+
+当前 VAD 和 ASR 同时接收原 PCM，VAD 仅决定最终空结果并记录分段；尚未接入实时 VAD 门控和音频状态机。默认 start_timeout/max_speech 的真实触发路径本批未覆盖，不宣称完整端点验收。
+
+### 36.3 TTS 文件结果
+
+[TTS 探针](tts-probe.md)使用固定 sherpa-onnx 1.12.14 C API / ORT 1.17.1-patched / Melo FP32，模型在整批驻留。十条固定文本覆盖普通中文、数字日期、标点和英文，先预热 1 条，再按固定种子乱序各运行 3 次。2/4 线程两组在统一锁下串行，采样时没有编译或 ASR 并行竞争。
+
+| 指标 | 2 线程 | 4 线程 |
+|---|---:|---:|
+| 正式成功 / 失败；预热成功 | 30 / 0；1 | 30 / 0；1 |
+| Generate RTF P50 / P95 / max | 1.299 / 1.326 / 1.350 | 0.843 / 0.883 / 0.894 |
+| 完整处理 RTF P95（含分句、复制、转换、冲刷） | 1.341 | 0.899 |
+| 首段可用 / 完整处理 P95 | 5.411 / 5.411 s | 3.455 / 3.455 s |
+| 模型初始化（不含资产校验） | 8.982 s | 9.051 s |
+| 峰值 RSS / 最小 MemAvailable | 575040 / 6091264 KiB | 570820 / 6101924 KiB |
+| 退出码 / 性能门槛 | 6 / 未通过 | 0 / 通过 |
+
+共 124 个 WAV（两组各 31 次、每次原生/转换各一份）已独立检查格式、非零音频、采样数、有效尾帧和 SHA-256，分位数亦重算通过。保留 44.1 kHz 原生单声道 PCM16，同时实际重采样为 16 kHz / 20 ms 帧，没有仅修改 WAV 头。首段时间是整段生成并转换后可用时间，不是流式首样本延迟。
+
+后续文件测试显式使用 `--threads 4` 候选，通用线程默认值与本机音频配置未修改。`tts_07` 的全角冒号“：”被上游忽略，两组各 3 条警告已单列；词典外英文列表为空仍不证明发音正确。没有播放 WAV，数字/日期/英文发音及听感待用户确认，**A05 全项未通过**。同步 Generate 的超时只在返回后判定，硬限时使用外层 timeout；输出长度检查在上游已分配输出后发生，不能称为及时取消或底层硬内存上界。
+
+### 36.4 统一集成与约束核验
+
+两个目标为 OFF-by-default 的 CMake opt-in；`config/file-probes.yaml` 只供文件测试，LLM/KWS 禁用。公共模型清单只补充 ASR/TTS 文件角色，既有模型文件路径、大小、SHA-256 与 candidate 状态保留；依赖清单未变。两探针使用私有运行库，在初始化前核对真实加载路径及哈希；对 sherpa 旧 C++ 字符串 ABI 使用同版 C API 封装，ASR 官方非 PIC fbank 仅在该目标使用 `-no-pie`。
+
+统一锁覆盖模型初始化、推理和采样的完整进程；适配器也检查自己或实际 flock 祖先进程持有指定文件的排他锁。无锁、共享锁、错误文件以及只有其它无关进程持锁均被拒绝。下载、源码编辑、编译不占模型锁，性能正式批次期间暂停编译。
+
+统一 Release 构建 `build/model-probes` 通过，**15/15 非音频 CTest 通过**，包含原有配置/资产/控制/独立构建，新增 fixture 完整性、锁归属、VAD 窗口、ASR 指标及负例、TTS 分句/转换及 CLI。新系统已有失败的 `audio_probe` 集成项明确排除，未在本轮重跑或计为通过。最终二进制 `--help`、`ldd -r`、ENV_CHECK_OK、本机/文件配置检查通过；分别再用官方 ASR 一条、4 线程 TTS 一条做受锁短测，均退出 0，不混入正式性能分位数。
+
+最终静态审计核对已有无关文件、Git HEAD、`config/local.yaml`、两份系统 NPU runtime 哈希不变；LLM manifest 条目和完整权重哈希不变，两个探针未链接 RKLLM。未更改系统/内核/驱动/音频，未执行录放、蓝牙、重连、长稳或 LLM 验证，未提交或推送。所有模型继续 candidate；P1-03 工程集已交付，P2-01/03 保持进行中，M0 仍受 LLM 未验证限制。
+
+本机证据（Git 忽略；目录名仅作 run 标识，实际时钟以日志为准）：
+
+- `output/runs/file-fixtures-20261020-210044/` 及其 `-rebuild/`：冻结前置文本、生成、9 项拒绝检查和逐文件重建校验。
+- `output/runs/asr-probe-validation-20261020-212111/`：命令、源码/二进制快照、资源、跨分块汇总；对应 `asr-probe-official5-...`、`asr-probe-fixed20ms/10ms/37ms-...` 保存各批报告。
+- `output/runs/asr-probe-native-compare-20261020-212111/`：两条失败的官方示例对照。
+- `output/runs/tts-probe-20261020-211053/`：`thread2/`、`thread4/`、冻结二进制/源文件、`artifact-check.json`、`oov-warnings.json`；此前构建和无模型检查在 `tts-probe-20261020-211405/`。
+- `output/runs/file-probes-merge-20261020-205226/`：修改前备份、基线、协调约束、默认/联合构建、15 项 CTest、最终二进制短测、`consolidation.json` 和 `final-audit.json`。
+
+## 37. Qwen 下载来源与运行环境复核
+
+本节保留本日先前的静态检查结论；随后用户授权的实际初始化和问答结果见[第 38 节](#38-qwen35-2b-最小正常推理验证)。
+
+2026-10-21（Asia/Shanghai），按用户要求重新核对板端 Qwen 的实际来源及运行准备。下载记录确认当前唯一完整 2B 权重来自 Hugging Face 的 HanzoHuang 社区预转换仓库，固定 revision 与 2,942,188,412 B 文件的完整 SHA-256 一致。模型和 RKLLM/RKNN 依赖共 22 条清单记录复核通过；当前仍为 Ubuntu 22.04.5 / aarch64 / BSP 6.1.99 / RKNPU 0.9.8 / RKNN 2.3.2 / RKLLM 1.3.0。系统与私有 runtime、配套头文件一致，两个已有 ARM64 C++ 示例及 RKLLM 私有库的依赖解析无缺项，当前 SSH 用户具备 RKNPU 节点读写权限。
+
+**官方 C++ 最小示例的已知运行前置条件已配齐，尚未实跑验证该社区模型。** 此次仅静态检查，没有启动 LLM、调用初始化/推理、占用模型执行锁、安装环境或变更系统；也未测试音频。模型内部兼容性、模板/EOS、性能/内存和取消仍未验证，来源披露限制与 candidate 状态不变；完整实时 LLM 接入仍待后续。
+
+详细来源、检查项、资源快照及边界统一见 [LLM 静态复查](model-prep-llm.md#2026-10-21-来源与运行条件静态复查)。证据位于 `output/runs/llm-readiness-check-20261021-113001/`：`baseline.json`、`readiness.json`、两个示例及库的 linkage 日志、`before-docs/` 和 `documentation-check.json`。保留全部已有暂存和未提交内容，未提交或推送；没有任务状态变化，不重复改写 README 或执行计划。
+
+## 38. Qwen3.5-2B 最小正常推理验证
+
+2026-10-21（Asia/Shanghai），用户明确授权后，由 Astra / xhigh 子代理完成 Qwen3.5-2B 的初始化、三条简短中文问答和正常结束；主对话核对原始日志并统一更新公共清单、README、兼容性、验收状态与执行计划。仅执行一个实际模型进程，初始化一次，模型运行及资源采样约 7.582 s。共享排他锁 `/tmp/rk3588_voice_engine_model_validation.lock` 覆盖初始化、问答、销毁、进程回收和采样结束，结束后已释放，无模型残留进程。
+
+最小正常流程通过：初始化返回 0，墙钟约 **2.999 s**；三条中文回答均收到一次 FINISH，run 返回 0、is_running=0、无错误回调，最终 destroy 返回 0（约 **0.882 s**），进程退出 0。首 token 延迟 **324.238～351.505 ms**，SDK generate 阶段速度 **10.727～11.532 token/s**。逐题回答、统计口径与原始命令集中在 [LLM 专属验证记录](model-prep-llm.md#2026-10-21-最小正常推理验证)。第一个问题来自新初始化进程，后两条复用模型、均不保留历史；未清文件页缓存，只有三个不同问题，不据此报告冷启动基准或 P95。
+
+loader 实际报告 runtime **1.3.0**、driver **0.9.8**、模型内部 Toolkit **1.3.0**、目标 **RK3588 / W8A8 / 3 NPU 核**。maps 核实加载项目私有 `deps/rkllm-1.3.0/lib/librkllmrt.so`，路径与 SHA-256 已归档；原有系统及私有 SDK 版本未更换。实际请求上下文 2048、最多输出 128，未验证模型声明的 4096 上限。自定义模板关闭 SDK 的自动模板解析，本次非思考输出由显式闭合 think 后缀提供，不能仅凭 enable_thinking 参数推断自动开关生效。
+
+getrusage 峰值 RSS **2,195,032 KiB**，/proc 采样 RSS/PSS 峰值 **2,195,576 / 2,192,761 KiB**（约 **2.094 / 2.091 GiB**）；最低 MemAvailable **5,314,940 KiB（约 5.069 GiB）**，swap 采样全程为 0。不同内存计数口径和采样时刻已分别保留，不能当作全部 NPU/驱动内存或模型共驻余量。没有新增内核错误或 OOM。
+
+三条都观察到 token 248046 后正常 FINISH，未达到输出上限；公开 SDK 结果不提供显式停止原因或内部 EOS 配置，仍保留 eos_proven=false。模型继续 **candidate**：本次满足最小正常流程，不代表 A04/A08、M0 或正式 LLM adapter 完成。主动取消、完整固定问题集、反复初始化、长稳、共驻、实时引擎与音频均未执行；转换原始 revision 和完整校准资料仍缺。
+
+本次新增私有探针、CMake 入口与运行器位于 `deps/model-prep/llm/minimal-20261021/`，未修改公共源码或 SDK。首次私有编译补充 `<cstddef>` 后通过；首次运行尝试因 `/usr/bin/time` 缺失在 exec 前终止，未启动模型。此前专属文档误写 GNU time 已存在，现已按静态 JSON 更正；运行器改用 /proc / getrusage，无需安装软件。上述失败与修正均保留证据，成功运行不混入失败尝试的耗时。
+
+更新后的清单通过 `voice_engine --check-config` 资产检查（1 个模型、1 个直接依赖、15 条文件记录，退出 0）；使用本次证据目录内独立 YAML，不加载模型或打开音频。公共模型清单仅更新 Qwen 当前验证元数据，原有文件路径、大小、SHA-256、来源和 candidate 状态保留；`models/llm/qwen3.5-2b/provenance.json` 仍作为 2026-10-20 准备阶段快照，不覆盖历史。其它模型条目和依赖清单不变，本机 `config/local.yaml` 中模型仍禁用。已有暂存内容、系统运行库、内核、驱动和音频配置均保留，未提交或推送。
+
+本机证据（Git 忽略）：
+
+- `output/runs/llm-minimal-20261021-113633/`：私有构建及失败修正、执行命令、源码/二进制哈希、`review.json`、`delivery-checks.json` 和证据清单；成功运行的日志、锁证据、maps、资源和返回值在 `normal-attempt-2/`。
+- `output/runs/llm-minimal-merge-20261021-113529/`：修改前备份、系统与 Git 基线、独立核对的 `consolidation.json`、公共清单资产检查及最终一致性审计。
+
+## 39. GitHub CLI 安装与板端重新认证
+
+2026-10-21（Asia/Shanghai），用户明确要求登录板端 GitHub。检查时当前系统未安装 gh，也没有当前用户的 gh 登录配置；此前文档中的认证记录保留为历史。已安装官方 GitHub CLI 2.102.1 Linux arm64 发布包，下载后核对官方 checksums 文件中的 SHA-256，通过后安装到 `/home/orangepi/.local/share/github-cli/2.102.1/bin/gh`，入口为 `/home/orangepi/.local/bin/gh`。未使用 sudo 或修改系统软件包。
+
+- 在用户 `.bashrc` 前增加无输出的用户 bin PATH 设置，使新的 SSH 命令可直接运行 gh；原文件备份为 `/home/orangepi/.cache/rk3588-github-login/2.102.1/bashrc.before-20261021-114937`。
+- 由用户在 GitHub 网页完成设备授权，板端独立调用 API 确认当前账号为 **jzh03**，gh auth status 返回 0。已执行 gh auth setup-git，HTTPS Git 凭据助手配置完成。
+- API 确认仓库 `jzh03/rk3588_voice_engine` 的 push 权限为 true；本轮仅核验权限，没有执行 commit、push 或 pull，也未调整 Git 作者身份或 origin。
+- SSH 环境下 CLI 报告凭据回退保存在当前用户配置文件。目录 `/home/orangepi/.config/gh` 已设为 0700，hosts.yml/config.yml 为 0600。令牌内容未输出、未复制到工程或文档。
+
+本机证据（Git 忽略）：`output/runs/github-login-20261021-115145/auth-result.json`。记录官方发布来源、包和二进制哈希、账号与仓库权限、配置文件权限；不含设备码、密码或令牌。本轮认证操作没有修改或暂存项目代码，保留原有暂存及未暂存内容。

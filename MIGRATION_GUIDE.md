@@ -1,15 +1,15 @@
 # 新镜像迁移与 Codex 配置交接
 
-更新：2026-10-19，Asia/Shanghai。适用设备为**普通 Orange Pi 5 / RK3588S / 8 GB**。用户计划自行重装香橙派官方 Ubuntu 26.04 LTS，通过 GitHub 迁移工程，不安排整卡备份。本文件负责新系统的恢复顺序；详细配置契约和日常命令仍以 [README](README.md)、[配置模板](config/default.yaml)为准。
+更新：2026-10-20，Asia/Shanghai。适用设备为**普通 Orange Pi 5 / RK3588S / 8 GB**。用户最终选择保留官方 Orange Pi 1.2.4 / Ubuntu 22.04.5 / BSP 6.1.99，工程已通过 GitHub 恢复；此前 26.04 选择与旧系统内容保留为迁移背景。本文件负责新系统的恢复顺序；详细配置契约和日常命令仍以 [README](README.md)、[配置模板](config/default.yaml)为准。
 
-**当前尚在旧系统，本文不是新镜像配置成功报告。** 本轮只做只读盘点和文档交接，没有刷卡、安装、切换内核、重启或推送 Git。新会话先读 [AGENTS.md](AGENTS.md)、本文件和 [执行计划](EXECUTION_PLAN.md)，再按实际新系统配置。
+**当前恢复进度：**网络、公钥 SSH、自动校时、构建依赖及工程已恢复，Release / env_check / 8 项通用测试通过。音频组件已安装并恢复 PipeWire；AP6275P M.2 已启用并完成扫描，vivo TWS 4 播放及 10 秒录音回放已由用户确认正常；用户指定的约一分钟双向检查已结束且听感正常，短测时长偏差保留、不排查；空闲重连检查未通过，出盒重连及恢复 mSBC 后双向节点可用，本机配置已校验，见[一分钟检查与重连](docs/environment.md#34-ap6275p-耳机长时稳定性及重连检查)。音频集成已运行失败，长时录放、重连与完整链路未验收；见[音频恢复记录](docs/environment.md#31-音频链路恢复)。SDK/runtime 的同日更新以环境记录为准。下文旧环境摘要不是新系统参数。
 
 ## 1. 接手时先确认这几件事
 
 - 这是独立 C++17 / CMake / Ninja 工程，板端原生编译。参考项目的 ROS2 Humble、colcon、M1066、WebRTC AEC3、PREEMPT_RT 和在线豆包服务，**不是当前工程的安装依赖**。不配置 WSL。
 - P1-01 工程骨架已完成；P1-02 真实音频后端、DSP 和 `audio_probe` 已实现，旧环境自动回归 9/9 通过，但耳机连接超时，A01/A02 实机验收未完成。模型适配及完整语音对话尚未实现。
-- P0-02 仍在进行中。旧系统当前运行 RKNPU `0.9.7`；已并存安装的官方 BSP `6.1.99` / `0.9.8` 候选从未启动。用户再次完整观察启动过程仍未看到内核菜单，现改走整镜像重装，不继续执行旧系统的菜单测试或候选安装脚本。
-- 用户决定不备份整卡；工程由用户上传 GitHub。已授权的是本次交接文档。后续安装或系统配置变更沿用用户“先说明并确认再安装”的要求；凭据在用户终端/浏览器输入。
+- P0-02 仍在进行中。当前内核 6.1.99-rockchip-rk3588，厂商 RKNPU 0.9.8 已核验；后续准备配套 SDK/runtime 与模型，不再执行旧系统菜单测试或候选安装脚本。
+- 用户决定不备份整卡；工程已恢复到 /home/orangepi/projects/rk3588_voice_engine。本轮明确授权网络、时间与构建依赖配置，已完成；未扩展到音频服务或 SDK 安装。
 
 ### 26.04 的 NPU 核验条件
 
@@ -285,6 +285,8 @@ audio:
 | 3 | [mock 控制](README.md#终端控制与-jsonl-日志) | `MOCK_READY`；start/stop/cancel/quit 正常，区分模拟与真实录放 |
 | 4 | [真实音频诊断](README.md#真实音频诊断) | 耳机节点和 profile 确认后进行 10 s 双向试听，再做 [A01/A02](docs/ACCEPTANCE.md#a01a02-实机执行步骤) |
 | 5 | 下节 NPU/SDK | 驱动前提与最小模型分别验证，不能由编译或 mock 通过推断 |
+
+**当前 Jammy 音频测试限制：**PipeWire 0.3.48 / WirePlumber 0.4.8 的私有音频测试已实测失败，候选适配未通过全部断言；详细结果及试验差异见[音频恢复记录](docs/environment.md#31-音频链路恢复)。不能因组件已安装就计为 9/9。
 
 **已识别的跨版本测试风险：**旧机 WirePlumber 为 `0.4.17`。[音频集成测试](tests/integration/audio_probe.py)的私有 `POLICY_CONFIG` 直接引用 0.4 的 Lua 策略脚本和组件。WirePlumber 0.5 改变了配置/组件加载方式，因此新机若使用 0.5，需实际检查这份测试策略是否可加载；不能直接宣称兼容，也不要为测试降级整套系统音频服务。[WirePlumber 官方迁移说明](https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/migration.html)
 

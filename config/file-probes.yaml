@@ -1,0 +1,22 @@
+# File diagnostics only. These names are labels, never real audio devices.
+# Do not use this profile to start audio_probe or a real-time audio engine.
+audio:
+  source: file-input
+  sink: file-output
+  profile: file-only
+  sample_rate: 16000
+  channels: 1
+  frame_ms: 20
+models:
+  vad: {enabled: true, id: silero-vad-v5.0}
+  asr: {enabled: true, id: zipformer-bilingual-zh-en-rk3588-fp16}
+  tts: {enabled: true, id: vits-melo-tts-zh-en-fp32}
+  llm: {enabled: false, id: ""}
+  kws: {enabled: false, id: ""}
+assets:
+  models_manifest: ../models/manifest.json
+  deps_manifest: ../deps/manifest.json
+threads:
+  vad: 1
+  asr: 1
+  tts: 2

@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "tts_01",
+      "text": "你好，我是小派，很高兴为你服务。",
+      "category": "chinese_common"
+    },
+    {
+      "id": "tts_02",
+      "text": "请把窗户关上，然后坐下来休息。",
+      "category": "chinese_common"
+    },
+    {
+      "id": "tts_03",
+      "text": "这是一段离线合成的中文测试语音。",
+      "category": "chinese_common"
+    },
+    {
+      "id": "tts_04",
+      "text": "今天是2026年10月20日。",
+      "category": "numbers_dates"
+    },
+    {
+      "id": "tts_05",
+      "text": "当前温度是23.5度，一共有123个样本。",
+      "category": "numbers_dates"
+    },
+    {
+      "id": "tts_06",
+      "text": "请在下午3点15分提醒我开会。",
+      "category": "numbers_dates"
+    },
+    {
+      "id": "tts_07",
+      "text": "请确认：文件已经保存，任务可以结束！",
+      "category": "punctuation"
+    },
+    {
+      "id": "tts_08",
+      "text": "你好！准备好了吗？我们现在开始。",
+      "category": "punctuation"
+    },
+    {
+      "id": "tts_09",
+      "text": "请打开浏览器，搜索 hello world。",
+      "category": "code_switch"
+    },
+    {
+      "id": "tts_10",
+      "text": "本次 test 已经完成，请保存结果。",
+      "category": "code_switch"
+    }
+  ]
+}

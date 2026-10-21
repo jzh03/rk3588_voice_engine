@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "dataset_id": "melo-synthetic-zh-regression-v1",
+  "synthetic": true,
+  "reference_origin": "Manually authored before synthesis; never derived from ASR output. Numbers are explicit spoken forms.",
+  "normalization": {
+    "id": "nfkc-casefold-strip-punctuation-space-v1",
+    "unicode_form": "NFKC",
+    "case": "casefold",
+    "remove": "Unicode punctuation categories P* and whitespace",
+    "digits": "no numeral or digit rewriting; spoken Chinese number references are explicit"
+  },
+  "samples": [
+    {
+      "sample_id": "zh_01",
+      "category": "chinese_common",
+      "input_text": "请把客厅的窗户打开，让新鲜空气进来。",
+      "reference_text": "请把客厅的窗户打开，让新鲜空气进来。",
+      "normalized_reference": "请把客厅的窗户打开让新鲜空气进来",
+      "keywords": [
+        "客厅",
+        "窗户",
+        "新鲜空气"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "zh_02",
+      "category": "chinese_common",
+      "input_text": "桌子上放着一本蓝色封面的书。",
+      "reference_text": "桌子上放着一本蓝色封面的书。",
+      "normalized_reference": "桌子上放着一本蓝色封面的书",
+      "keywords": [
+        "桌子",
+        "蓝色",
+        "书"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "zh_03",
+      "category": "chinese_common",
+      "input_text": "我们沿着河边慢慢走回家。",
+      "reference_text": "我们沿着河边慢慢走回家。",
+      "normalized_reference": "我们沿着河边慢慢走回家",
+      "keywords": [
+        "河边",
+        "慢慢",
+        "回家"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "zh_04",
+      "category": "chinese_common",
+      "input_text": "请先保存文件，然后关闭程序。",
+      "reference_text": "请先保存文件，然后关闭程序。",
+      "normalized_reference": "请先保存文件然后关闭程序",
+      "keywords": [
+        "保存",
+        "文件",
+        "关闭",
+        "程序"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "zh_05",
+      "category": "chinese_common",
+      "input_text": "厨房里还有牛奶和新鲜的水果。",
+      "reference_text": "厨房里还有牛奶和新鲜的水果。",
+      "normalized_reference": "厨房里还有牛奶和新鲜的水果",
+      "keywords": [
+        "厨房",
+        "牛奶",
+        "水果"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "zh_06",
+      "category": "chinese_common",
+      "input_text": "外面正在下雨，出门记得带伞。",
+      "reference_text": "外面正在下雨，出门记得带伞。",
+      "normalized_reference": "外面正在下雨出门记得带伞",
+      "keywords": [
+        "下雨",
+        "出门",
+        "带伞"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "zh_07",
+      "category": "chinese_common",
+      "input_text": "这段语音只用于离线功能测试。",
+      "reference_text": "这段语音只用于离线功能测试。",
+      "normalized_reference": "这段语音只用于离线功能测试",
+      "keywords": [
+        "语音",
+        "离线",
+        "测试"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "zh_08",
+      "category": "chinese_common",
+      "input_text": "会议结束以后，请把椅子摆整齐。",
+      "reference_text": "会议结束以后，请把椅子摆整齐。",
+      "normalized_reference": "会议结束以后请把椅子摆整齐",
+      "keywords": [
+        "会议",
+        "椅子",
+        "整齐"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "num_01",
+      "category": "numbers_dates",
+      "input_text": "今天是2026年10月20日。",
+      "reference_text": "今天是二零二六年十月二十日。",
+      "normalized_reference": "今天是二零二六年十月二十日",
+      "keywords": [
+        "二零二六年",
+        "十月",
+        "二十日"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "num_02",
+      "category": "numbers_dates",
+      "input_text": "当前温度是23.5度。",
+      "reference_text": "当前温度是二十三点五度。",
+      "normalized_reference": "当前温度是二十三点五度",
+      "keywords": [
+        "温度",
+        "二十三点五度"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "num_03",
+      "category": "numbers_dates",
+      "input_text": "箱子里一共有123个样本。",
+      "reference_text": "箱子里一共有一百二十三个样本。",
+      "normalized_reference": "箱子里一共有一百二十三个样本",
+      "keywords": [
+        "一百二十三",
+        "样本"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "num_04",
+      "category": "numbers_dates",
+      "input_text": "请在下午3点15分提醒我开会。",
+      "reference_text": "请在下午三点十五分提醒我开会。",
+      "normalized_reference": "请在下午三点十五分提醒我开会",
+      "keywords": [
+        "下午",
+        "三点十五分",
+        "开会"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "num_05",
+      "category": "numbers_dates",
+      "input_text": "本次订单金额是九十九元五角。",
+      "reference_text": "本次订单金额是九十九元五角。",
+      "normalized_reference": "本次订单金额是九十九元五角",
+      "keywords": [
+        "订单",
+        "九十九元",
+        "五角"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "q_01",
+      "category": "short_question",
+      "input_text": "你知道附近的图书馆在哪里吗？",
+      "reference_text": "你知道附近的图书馆在哪里吗？",
+      "normalized_reference": "你知道附近的图书馆在哪里吗",
+      "keywords": [
+        "附近",
+        "图书馆",
+        "哪里"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "q_02",
+      "category": "short_question",
+      "input_text": "明天下午我们几点出发？",
+      "reference_text": "明天下午我们几点出发？",
+      "normalized_reference": "明天下午我们几点出发",
+      "keywords": [
+        "明天下午",
+        "几点",
+        "出发"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "q_03",
+      "category": "short_question",
+      "input_text": "请问现在可以开始测试了吗？",
+      "reference_text": "请问现在可以开始测试了吗？",
+      "normalized_reference": "请问现在可以开始测试了吗",
+      "keywords": [
+        "现在",
+        "开始",
+        "测试"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "q_04",
+      "category": "short_question",
+      "input_text": "这条消息需要保存多久？",
+      "reference_text": "这条消息需要保存多久？",
+      "normalized_reference": "这条消息需要保存多久",
+      "keywords": [
+        "消息",
+        "保存",
+        "多久"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "mix_01",
+      "category": "code_switch",
+      "input_text": "请打开浏览器，搜索 hello world。",
+      "reference_text": "请打开浏览器，搜索 hello world。",
+      "normalized_reference": "请打开浏览器搜索helloworld",
+      "keywords": [
+        "浏览器",
+        "hello",
+        "world"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "mix_02",
+      "category": "code_switch",
+      "input_text": "请播放 music，然后调低音量。",
+      "reference_text": "请播放 music，然后调低音量。",
+      "normalized_reference": "请播放music然后调低音量",
+      "keywords": [
+        "music",
+        "调低",
+        "音量"
+      ],
+      "expected_behavior": "speech"
+    },
+    {
+      "sample_id": "mix_03",
+      "category": "code_switch",
+      "input_text": "本次 test 已经完成，请保存结果。",
+      "reference_text": "本次 test 已经完成，请保存结果。",
+      "normalized_reference": "本次test已经完成请保存结果",
+      "keywords": [
+        "test",
+        "完成",
+        "保存"
+      ],
+      "expected_behavior": "speech"
+    }
+  ]
+}

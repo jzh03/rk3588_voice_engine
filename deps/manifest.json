@@ -1,0 +1,614 @@
+{
+  "schema_version": 1,
+  "dependencies": [
+    {
+      "id": "rknn-runtime",
+      "version": "2.3.2",
+      "source_url": "https://github.com/airockchip/rknn-toolkit2",
+      "revision": "42aa1d426c0a9e0869b6374edba009f7208a1926",
+      "license": "Upstream LICENSE; see rknn-2.3.2/upstream/LICENSE",
+      "platform": "Linux-aarch64",
+      "status": "candidate",
+      "run_id": "npu-runtimes-20261020",
+      "files": [
+        {
+          "path": "rknn-2.3.2/upstream/CHANGELOG.md",
+          "size_bytes": 5396,
+          "sha256": "2833a7e28619ed104c434a5a430f11c2f794f5a33a623959ca1d845e0589e0d6"
+        },
+        {
+          "path": "rknn-2.3.2/upstream/LICENSE",
+          "size_bytes": 1301,
+          "sha256": "d846f57d942c7dfdca7b8b54f9e8bb39e1e226790dc4f5ee205d6fd678961720"
+        },
+        {
+          "path": "rknn-2.3.2/upstream/README.md",
+          "size_bytes": 3267,
+          "sha256": "ee5e13be34a4cdc98b08b9124434d4dc27fb69c7dd9ed71f411f564011272e75"
+        },
+        {
+          "path": "rknn-2.3.2/lib/librknnrt.so",
+          "size_bytes": 7726232,
+          "sha256": "d31fc19c85b85f6091b2bd0f6af9d962d5264a4e410bfb536402ec92bac738e8"
+        },
+        {
+          "path": "rknn-2.3.2/include/rknn_api.h",
+          "size_bytes": 35707,
+          "sha256": "c48e11a6f41b451a5fd1e4ad774ea60252d3d94f78bee9b21ea3d21b21deba9a"
+        },
+        {
+          "path": "rknn-2.3.2/include/rknn_custom_op.h",
+          "size_bytes": 6056,
+          "sha256": "af5983da0ca244ca31dc3162aa683322b0285531196c7a770f29cd2e3b8ccaa6"
+        },
+        {
+          "path": "rknn-2.3.2/include/rknn_matmul_api.h",
+          "size_bytes": 18598,
+          "sha256": "aaadd9a7118de30a06b222996b6731db77095d00f5931a7a98c83a67f14a4d42"
+        }
+      ]
+    },
+    {
+      "id": "rkllm-runtime",
+      "version": "1.3.0",
+      "source_url": "https://github.com/airockchip/rknn-llm",
+      "revision": "878f9361fd3afa7e167b7079918918f78d2c1c2a",
+      "license": "Upstream LICENSE; see rkllm-1.3.0/upstream/LICENSE",
+      "platform": "Linux-aarch64",
+      "status": "candidate",
+      "run_id": "npu-runtimes-20261020",
+      "files": [
+        {
+          "path": "rkllm-1.3.0/upstream/CHANGELOG.md",
+          "size_bytes": 4083,
+          "sha256": "bd951184239563b5af436b3a174a2a4ca91987e64e1f20b70b8bcaa430eff747"
+        },
+        {
+          "path": "rkllm-1.3.0/upstream/LICENSE",
+          "size_bytes": 3310,
+          "sha256": "8d670a646eb8cf28fb7c63a5c9126c224a3a3f8124b00a3b9184df9a2ed298b8"
+        },
+        {
+          "path": "rkllm-1.3.0/upstream/README.md",
+          "size_bytes": 7504,
+          "sha256": "26b8dc75b4d81fd84d0722a075d370e834bb1d9ca22a0fa7a9db98e7361ab965"
+        },
+        {
+          "path": "rkllm-1.3.0/lib/librkllmrt.so",
+          "size_bytes": 7617472,
+          "sha256": "6a9e4fc5324c68921c3a900340361e107af7599fe34dc8fa7759b2c5ae22a6e6"
+        },
+        {
+          "path": "rkllm-1.3.0/include/rkllm.h",
+          "size_bytes": 22925,
+          "sha256": "80596a578f7f8e70df6eda1c2cbead3bfced14623a190258f2bd009a3d1f72cf"
+        }
+      ]
+    },
+    {
+      "id": "sherpa-onnx-cpu",
+      "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.14/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu.tar.bz2",
+      "revision": "26aa2fa93210376a89de3a65a1a4dd320c37f5e9",
+      "license": "Apache-2.0",
+      "version": "1.12.14",
+      "status": "candidate",
+      "platform": "Linux aarch64 CPU; Ubuntu 22.04.5 / glibc 2.35 tested",
+      "files": [
+        {
+          "path": "model-prep/speech/downloads/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu.tar.bz2",
+          "size_bytes": 23484407,
+          "sha256": "ad3e41f19899754735a074938db955a6818153b305fd2959bffc33405976e180"
+        },
+        {
+          "path": "model-prep/speech/include/sherpa-onnx/c-api/c-api.h",
+          "size_bytes": 72388,
+          "sha256": "e286ded904e93b670ad229d88151dfade58671fc2740a0afb11b0372f3595100"
+        },
+        {
+          "path": "model-prep/speech/include/sherpa-onnx/c-api/cxx-api.h",
+          "size_bytes": 18387,
+          "sha256": "fe86a5d9ba230d60c4c2dc38c155d06a878bf2f20ea1dc7f6ec60087c843b59a"
+        },
+        {
+          "path": "model-prep/speech/inspect_onnx",
+          "size_bytes": 98944,
+          "sha256": "6daabcaa3b50347b9ae9599b181c1bb33319eff527f42a45512cefb4874ed2ec"
+        },
+        {
+          "path": "model-prep/speech/inspect_onnx.cpp",
+          "size_bytes": 1192,
+          "sha256": "bcd067c84bcf88335b82f4c0ddc6d75709dde98a48bb2894ebeb94ce254b9634"
+        },
+        {
+          "path": "model-prep/speech/make_fragments.py",
+          "size_bytes": 6817,
+          "sha256": "73e077cfd2e3fafbac1eb67d19f79f308d6ac4ddf972c088930e62a1b309915d"
+        },
+        {
+          "path": "model-prep/speech/measure.py",
+          "size_bytes": 2942,
+          "sha256": "77c2b1df2db9bff4a9a5fe0fabea3d5ba23b841c2988f356731db328e71ade9e"
+        },
+        {
+          "path": "model-prep/speech/runtime_probe",
+          "size_bytes": 13512,
+          "sha256": "fa49705a52a253d18c5d3001ee8e55415b3d39a995814aa6592fce06d0da2e5f"
+        },
+        {
+          "path": "model-prep/speech/runtime_probe.cpp",
+          "size_bytes": 282,
+          "sha256": "4cee8ba4bf71cafdaa32b67657cc38ab1d4e5e4a74c43b34553db12ce0ebab6e"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sense-voice-simulate-streaming-alsa-cxx-api",
+          "size_bytes": 68544,
+          "sha256": "559d8a90a248e7cce5bd469fa2c68d4f80f4318a911825857a047e69041de2dd"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx",
+          "size_bytes": 1971528,
+          "sha256": "db3ff73def329dd8787a6a82bab066a72bf269e0aa56e56b01d380dc99ca90f5"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-alsa",
+          "size_bytes": 1971632,
+          "sha256": "e7f98a6a4002e16dbc6106fca0b4dea67cf31a95f1a7400d5d46a23f3fee09d9"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-alsa-offline",
+          "size_bytes": 1906136,
+          "sha256": "2644619d5771cd497ad94109b208389057cac08a49f6f9bca0038e7f9e7f4e96"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-alsa-offline-audio-tagging",
+          "size_bytes": 331336,
+          "sha256": "79f5f7e9e5c3e261337035c7c81bb196613869ec14d0229c1260c3bcd68351b2"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-alsa-offline-speaker-identification",
+          "size_bytes": 331384,
+          "sha256": "3359843abad3d77186a56ebe0de91888567db24c88a5cc233c620aa86f95a8bd"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-keyword-spotter",
+          "size_bytes": 594712,
+          "sha256": "618506979b0a7d222ff7d1fbedd15fd0636caeb4b69d11251401df0cb1e59d7e"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-keyword-spotter-alsa",
+          "size_bytes": 594808,
+          "sha256": "d6e7a1b311273ce498cd49380541df409b60d57b47e40cedc3884ed9ac251c3b"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-keyword-spotter-microphone",
+          "size_bytes": 726880,
+          "sha256": "cb074cb740889241d8b61651378c1e584d14004cf6a6794be927f134a9f60d0e"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-microphone",
+          "size_bytes": 2103744,
+          "sha256": "02f2234f5c6c025cbd414ed8da16ce9fef9360e6cc1782fd9e875fe791b02183"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-microphone-offline",
+          "size_bytes": 2038184,
+          "sha256": "4f0b55a947876b11b9d2c3da701eedeb89861b51dffc8578572f1094db64db58"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-microphone-offline-audio-tagging",
+          "size_bytes": 397872,
+          "sha256": "8d81a793de9ab164d8ff968f3bf44b061a55ac9fec7c9e6614845bb3fca8b9ab"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-microphone-offline-speaker-identification",
+          "size_bytes": 463456,
+          "sha256": "25af08ad6724d3811283de7177c52d4584a3d95aeb776ad400ae8b137dd2c156"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline",
+          "size_bytes": 1906024,
+          "sha256": "7b18e8a77ab34f9c1d99cb2fb9618f68d95c4073cfc2b8895b148043de8aecec"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-audio-tagging",
+          "size_bytes": 265632,
+          "sha256": "c7e29c9ef0763c8a19aa2a9714348bb2038c142a32213229eec51488f2209aa7"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-denoiser",
+          "size_bytes": 265560,
+          "sha256": "b0c08324231f243fa7cc7654b793937afec921c7e43409b141608c176454eb57"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-language-identification",
+          "size_bytes": 265632,
+          "sha256": "88ee74b1c4f127455a2dd24e95260f8b958944b2c0c41fe1523f98f905b87335"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-parallel",
+          "size_bytes": 1906032,
+          "sha256": "1af265a93c644dc04de411d075c3792af2cf27d0eee1ff6428b496a06bac9f0a"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-punctuation",
+          "size_bytes": 200016,
+          "sha256": "e7fc453b79aaa9950185ab6d74eecd42b475cd99fee463484c78c2afe94f5c09"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-source-separation",
+          "size_bytes": 265560,
+          "sha256": "786de65d5b69416943d10a1c5832a79c82d14519e52ab0b10b245965b1a227f9"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-speaker-diarization",
+          "size_bytes": 396840,
+          "sha256": "71b9598c939c7ac330ad06619718b044cb18bc7e7e68c1dfe463dc92e0d63484"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-tts",
+          "size_bytes": 2366312,
+          "sha256": "aeb19a3d250f97023d6b6ec257449c3945b40de45069b51491148642e218ea75"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-tts-play",
+          "size_bytes": 2498440,
+          "sha256": "2523764c0d5f14f7893b7f69cf13152db0c7ce56d6f69f0e16fa9510a3d6f5f0"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-tts-play-alsa",
+          "size_bytes": 2366456,
+          "sha256": "6e6296d64a19d0cfbc4926ccf72fca9ca6628d0f05ec51a5de76d1450534569d"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-websocket-server",
+          "size_bytes": 2234336,
+          "sha256": "39589bdd67a497aed698012c729739ee45554b687a594682a8355df4bf9ecb1a"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-zeroshot-tts",
+          "size_bytes": 2366312,
+          "sha256": "88346e6f3195ba3dc519b4341750e9c327a4c9fd019129d96eaebd59ab273cd0"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-online-punctuation",
+          "size_bytes": 265720,
+          "sha256": "d366314bf5b34be55b3090f4074cb28a85f01b77f8d1ce21fc75d74a4772b054"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-online-websocket-client",
+          "size_bytes": 528512,
+          "sha256": "ae5acaf767315f99632a08ac4d3d6517f5edc3b9348a721d48102c9ad35a9035"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-online-websocket-server",
+          "size_bytes": 2299856,
+          "sha256": "3d50d7aad2c672bb6ac51058ddd08d47a28e3a6c4d7dc0c7bfda761a34097550"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-pa-devs",
+          "size_bytes": 134512,
+          "sha256": "165e3082d407f6fa8cb29daffb1a4cb78baf09caf710726521c71235ee168cb7"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-vad",
+          "size_bytes": 265544,
+          "sha256": "5ebe89cef9b1e3cc4d15e14414ab9b122edb75adc4075c59d4fe82cd9a5bb790"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-vad-alsa",
+          "size_bytes": 265656,
+          "sha256": "fb8b76dafd7ab8bf2451f5bb86ff33621ebda77681b17f21771810a509f8028b"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-vad-alsa-offline-asr",
+          "size_bytes": 1971656,
+          "sha256": "d14013ceccf3a6df361a3625c8c6147f4198993e7dd330ccb773a356897caa99"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-vad-microphone",
+          "size_bytes": 397768,
+          "sha256": "4b83cbc5fa8c05e52abdf63f6c9aea235f6b94439296961c88b577d43bdd5646"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-vad-microphone-offline-asr",
+          "size_bytes": 2103712,
+          "sha256": "93ee2ee665e6db4857bad25b10ad17eb1795cc5f947d4d4e6afaa3499e1d0579"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-vad-microphone-simulated-streaming-asr",
+          "size_bytes": 2103808,
+          "sha256": "752475f796083494435cbd5ef1bf42d0f21b0e23b81b8c46d5cfdd4aec01112d"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-vad-with-offline-asr",
+          "size_bytes": 1971560,
+          "sha256": "f80409949c0fb66c059d5621465389b38f1eea48c267f560f9b60b4bed8e0598"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-vad-with-online-asr",
+          "size_bytes": 2037064,
+          "sha256": "777702a75f2375eab8df5204d8f27d30488dd52698c7587deea47296349ffd69"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/sherpa-onnx-version",
+          "size_bytes": 67640,
+          "sha256": "a2cde6e4a91eb087ad47b6880910263a5954b7101621cd09b713f3fdb55d3899"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/bin/zipformer-ctc-simulate-streaming-alsa-cxx-api",
+          "size_bytes": 68544,
+          "sha256": "247e44ff1e3811d2ccedd30d427cc8085fc173f9e9fb5648b09526621d4a976a"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libsherpa-onnx-c-api.so",
+          "size_bytes": 4949040,
+          "sha256": "d0c812de58bd8360b8c2084721137d91e9c8c0899150efbbec38221cc02f47e5"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libsherpa-onnx-cxx-api.so",
+          "size_bytes": 90288,
+          "sha256": "7910528157e08e0067c601351fe15ae86efeb2a32456c19ccc88d44caab2b566"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/.github/workflows/aarch64-linux-gnu-shared.yaml",
+          "size_bytes": 8287,
+          "sha256": "4358f5f831be755fb921300ecbc742e1eebc9210b8beed6da26f2b025b4f2ef9"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/.github/workflows/aarch64-linux-gnu-static.yaml",
+          "size_bytes": 5701,
+          "sha256": "21c57da38752f5003bf147eadbb366ba58eda229409dcf3cef347c593f5dca9b"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/.github/workflows/build-wheels-aarch64-cuda.yaml",
+          "size_bytes": 4175,
+          "sha256": "2935ba9ed8c3c37c2965780aea8180b5ff988fe7586aa04cc0900c8b6e600a4f"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/.github/workflows/build-wheels-aarch64-rknn.yaml",
+          "size_bytes": 5650,
+          "sha256": "d3d477b373db10815dc6245b4a1ce550867df96e33308ffb95581b2e29cabf9d"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/.github/workflows/build-wheels-aarch64.yaml",
+          "size_bytes": 12460,
+          "sha256": "888d6b5053cf6165ebec39bf245d8db500729f412ad3dbfc45390900d4da56d2"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/.github/workflows/export-melo-tts-to-onnx.yaml",
+          "size_bytes": 5024,
+          "sha256": "fc90fc412fd6f3c8a7d593743372a077dd63b2c8ce0780ed9c3a7e05cc8b659e"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/.github/workflows/linux-jni-aarch64.yaml",
+          "size_bytes": 6101,
+          "sha256": "7f9a4e1c718d3e894c43a6f96ba3ffef205b56e25c4e38fb72513ec3eb06e594"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/.github/workflows/npm-addon-linux-aarch64.yaml",
+          "size_bytes": 3420,
+          "sha256": "a4c27b1f4fdc5bc79dd7214008c8cde91d74f57ac19926bc5dd0d9bf5b1275c9"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/.github/workflows/rknn-linux-aarch64.yaml",
+          "size_bytes": 8186,
+          "sha256": "61b97f2430c10fb90818817979b4a6bea8cf0381fa9d43625cea65f8620a30f9"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/.github/workflows/test-nodejs-addon-npm-aarch64.yaml",
+          "size_bytes": 2290,
+          "sha256": "9fb8dc53bc7148fab23d3409daa8a8e9631b966d3c4c1ec92d6ae6a9836d386c"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/LICENSE",
+          "size_bytes": 11358,
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/cmake/onnxruntime-linux-aarch64.cmake",
+          "size_bytes": 2827,
+          "sha256": "eed765c9a6f8a27d451f27da504974ea8d2e33e98f73a6103fc52b2a0678c902"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/scripts/melo-tts/README.md",
+          "size_bytes": 257,
+          "sha256": "ae6e44dead53dfdbd5b4a77106226f3118eb910222b46cb5533a3860773fc6c7"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/scripts/melo-tts/export-onnx-en.py",
+          "size_bytes": 6253,
+          "sha256": "d517c432e86771a9a45d2ecf2955e934bb681a89cd3aec0abe1bbedf8a128843"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/scripts/melo-tts/export-onnx.py",
+          "size_bytes": 8829,
+          "sha256": "c0be7727d59ad6ceaf39e909b4560b57e704091c69ac3fab6f2f2abfd931c916"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/scripts/melo-tts/run.sh",
+          "size_bytes": 853,
+          "sha256": "e2afb98d9028eded2983f780468337fc019a8306db926f89e3bdeed18af867bb"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/scripts/melo-tts/show-info.py",
+          "size_bytes": 1637,
+          "sha256": "33a5c61d46e4d40b52bf8860acaa3782c6c1819098c9c8ea810e2ac0fb4cfbe7"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/scripts/melo-tts/test.py",
+          "size_bytes": 5064,
+          "sha256": "55af98eacbbfd9a7e174add9f61913e8291672abc0935a723dc00dcd75420651"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/sherpa-onnx/csrc/offline-tts-vits-impl.h",
+          "size_bytes": 17129,
+          "sha256": "33694d647bc92cbf4bd4bc512b5c7e26edd24fe80e5b6e8d2791599871f75bac"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/sherpa-onnx/csrc/offline-tts-vits-model.cc",
+          "size_bytes": 12602,
+          "sha256": "0dbe70a46b0f57738d8a56ce28fd0b3db1e896fa70c87f68787c68456f11d8d9"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/sherpa-onnx/csrc/offline-tts.cc",
+          "size_bytes": 7607,
+          "sha256": "9aadba4f1b4124e0b493a05cd20e172bb61f02211d57d374d07eab5d964459a8"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/sherpa-onnx/csrc/sherpa-onnx-offline-tts.cc",
+          "size_bytes": 3989,
+          "sha256": "5795488ea4cf70679a00a5dc1c790de54edf09e2992fe7f35ce846d8d060ff96"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/sherpa-onnx/csrc/sherpa-onnx-vad.cc",
+          "size_bytes": 2987,
+          "sha256": "2e56148d5d29ef40585f9ea63b1554bcdc46c27111d88ad4e5c02fd241748416"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/sherpa-onnx/csrc/silero-vad-model.cc",
+          "size_bytes": 13420,
+          "sha256": "be93e7e8b6b8e43ad9a41f841fc3cdddce38b0c37a83883968cca43069454855"
+        },
+        {
+          "path": "model-prep/speech/source-evidence/sherpa-onnx/csrc/voice-activity-detector.cc",
+          "size_bytes": 7769,
+          "sha256": "065d3aa2c692cfacce70d9b56c560ecf5ff12558d49ec5d0b4a5587d77b6b6fd"
+        },
+        {
+          "path": "model-prep/speech/validate_tts.py",
+          "size_bytes": 1821,
+          "sha256": "016a76c489d215e44b3719103b977b3c79954070e50ff2fc917304ffb2d28fce"
+        },
+        {
+          "path": "model-prep/speech/validate_vad.py",
+          "size_bytes": 2899,
+          "sha256": "26ac4225c00b0b72d3bc730e3a7d82d9593860730f6b3848abff24e6239ffa42"
+        }
+      ],
+      "header_source_url": "https://github.com/k2-fsa/sherpa-onnx/tree/26aa2fa93210376a89de3a65a1a4dd320c37f5e9/sherpa-onnx/c-api",
+      "requires": [
+        {
+          "id": "onnxruntime-cpu",
+          "version": "1.17.1-patched"
+        }
+      ],
+      "runtime_library_dir": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib",
+      "system_abi_dependencies": "Jammy glibc, libstdc++, libgcc; actual paths and SHA-256 in runtime-loading.json; no system files changed",
+      "run_id": "model-prep-speech-20261020-201140"
+    },
+    {
+      "id": "onnxruntime-cpu",
+      "source_url": "https://github.com/csukuangfj/onnxruntime-libs/releases/download/v1.17.1/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched.zip",
+      "revision": "8f5c79cb63f09ef1302e85081093a3fe4da1bc7d; patched archive sha256:6e0e68985f8dd1f643e5a4dbe7cd54c9e176a0cc62249c6bee0699b87fc6d4fb",
+      "license": "MIT; see bundled ThirdPartyNotices.txt",
+      "version": "1.17.1-patched",
+      "actual_runtime_version": "1.17.1",
+      "status": "candidate",
+      "platform": "Linux aarch64 CPU; Ubuntu 22.04.5 / glibc 2.35 tested",
+      "files": [
+        {
+          "path": "model-prep/speech/downloads/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched.zip",
+          "size_bytes": 5073164,
+          "sha256": "6e0e68985f8dd1f643e5a4dbe7cd54c9e176a0cc62249c6bee0699b87fc6d4fb"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/GIT_COMMIT_ID",
+          "size_bytes": 41,
+          "sha256": "a79aef06d28ff838483256e9503339e7e67f1c8839f159997495a6ff1f53bad7"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/LICENSE",
+          "size_bytes": 1073,
+          "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/Privacy.md",
+          "size_bytes": 2469,
+          "sha256": "9a15f9fd9d4c7b6dfc35f237f461863f84f8f73cf6189e330818a674d3828871"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/README.md",
+          "size_bytes": 6615,
+          "sha256": "423abaabb1703251f0db88c571019b36ce4dd5fe9f6b55b8052d11f19d4e4bfb"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/ThirdPartyNotices.txt",
+          "size_bytes": 338538,
+          "sha256": "4f9e2bb7b4b407d710a68168615bbc6f70e3d7cc8ba9410fb6c65d92fa71accf"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/VERSION_NUMBER",
+          "size_bytes": 7,
+          "sha256": "b1529c94047dde76b6f72d4c16618daae5a7b89be3b36604513c1ec4c5a24b8d"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/cpu_provider_factory.h",
+          "size_bytes": 397,
+          "sha256": "0de52d129c718c07ee71a16b4953d8d483df019746a11caad77a0650a2f4ed47"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_c_api.h",
+          "size_bytes": 206358,
+          "sha256": "7e47eb78563da119f740dc0ddfda96800e779e0bcbd169a9a49e9c10746c4cd5"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_cxx_api.h",
+          "size_bytes": 107925,
+          "sha256": "5cfb60c7222086b89724d3168267ab25af9951e15864bf54a8fdf7429b771021"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_cxx_inline.h",
+          "size_bytes": 76150,
+          "sha256": "d8b059c29ef378eee31c0b4d54347489a0e3abe1a4135c7a19c49b32661bfbc3"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_float16.h",
+          "size_bytes": 18154,
+          "sha256": "ecdcb4a53176c8b3bbcf674788fcf5ec923fb2b5c762c3f6cfb56fdb6c259aa1"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_run_options_config_keys.h",
+          "size_bytes": 1622,
+          "sha256": "25b0d8e767fc72d560532541537ac07d404a8bf94dffaf78f3069fc20240b76e"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_session_options_config_keys.h",
+          "size_bytes": 16702,
+          "sha256": "dacc5b8a417f9fe9dc9452255dabad408772e94d6d981d5fc463f90cf52f0438"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_training_c_api.h",
+          "size_bytes": 35491,
+          "sha256": "62e71166562f82be485b2d48af31efc6236add1f5c3a9da2b029466a56f4a03e"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_training_cxx_api.h",
+          "size_bytes": 19207,
+          "sha256": "349076bd5579c044ab876d63b39eb8baced0ba910ab771feef9d2024587a8133"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_training_cxx_inline.h",
+          "size_bytes": 12847,
+          "sha256": "3f133849e78052ae9a5c776cb7e95f6411139387339ccb9ccb40456ab658646c"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/provider_options.h",
+          "size_bytes": 480,
+          "sha256": "cb7206ffd06ba31b9f7e5f6089a6206f0c720c10c3adcc61db7f829c86691cfc"
+        },
+        {
+          "path": "model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/lib/libonnxruntime.so",
+          "size_bytes": 13056112,
+          "sha256": "89abc6da8d7ac84e5270349fe8a44ee7469d9a958797eed004f1a3f5c7df21d4"
+        },
+        {
+          "path": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libonnxruntime.so",
+          "size_bytes": 13056112,
+          "sha256": "89abc6da8d7ac84e5270349fe8a44ee7469d9a958797eed004f1a3f5c7df21d4"
+        }
+      ],
+      "loaded_library": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libonnxruntime.so",
+      "run_id": "model-prep-speech-20261020-201140"
+    }
+  ]
+}
