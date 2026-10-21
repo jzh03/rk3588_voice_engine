@@ -4,18 +4,21 @@
 
 ## 当前进度
 
-**P0-02 SDK 配套进行中**：固定 RKNPU 0.9.8 / RKNN 2.3.2 / RKLLM 1.3.0 已有单模型实跑证据。系统库、头文件与私有库的版本锁保持不变；Qwen 模型加载日志亦报告内部 Toolkit 1.3.0 / RK3588 / W8A8。完整验收及来源缺项继续保留。备份和回退见[环境记录 §30](docs/environment.md#30-npu-runtime-指定版本更新2026-10-20)，配套依据见[兼容性记录](docs/compatibility.md)。
+**P0-01、P0-02 已完成**：开发与构建基线复用既有证据；固定 RKNPU 0.9.8 / RKNN 2.3.2 / RKLLM 1.3.0 的驱动、头文件、ABI、官方例程和实际加载路径已核对闭环。系统和私有 SDK 组合保持不变。配套依据见[兼容性记录](docs/compatibility.md#p0-02-配套闭环复核2026-10-21)，备份和回退见[环境记录 §30](docs/environment.md#30-npu-runtime-指定版本更新2026-10-20)。
 
-**P0-03/04 模型准备进行中**：2026-10-21 经用户授权，Qwen3.5-2B 完成一次初始化、三条简短中文问答及正常释放；初始化约 3.0 s，首 token 324～352 ms，生成 10.73～11.53 token/s，采样峰值 RSS 约 2.09 GiB。Zipformer 官方 WAV 5/5 匹配，VAD/TTS 已有文件验证。模型均保持 candidate；LLM 主动取消、完整 A04/A08、共驻与实时接入尚未完成。[LLM 本次结果](docs/model-prep-llm.md#2026-10-21-最小正常推理验证)；[环境汇总](docs/environment.md#38-qwen35-2b-最小正常推理验证)。
+**P0-01～P0-04 已完成，M0 技术可行通过**：四类模型及四项私有依赖已冻结为首个 `verified` 组合，范围限于 P0 的资产、SDK 配套和各模型最小推理。选定 R 配置复用固定十问两批 10/10，本轮主动取消至空闲 97.467 ms、清 KV 后同句柄恢复成功。用户确认直接使用社区预转换 LLM，未公开的转换步骤保留未知记录，不再追查或阻塞 P0。完整应用验收仍按原标准执行；见[收尾结果](docs/environment.md#43-p0-收尾与首个已验证组合)和[冻结组合](output/runs/p0-r-closeout-20261021-161053/verified-combination.json)。
 
 **P1-01 已在新系统复核；P1-02 进行中**：Release 构建、ENV_CHECK_OK 与 8 项通用 CTest 通过；新系统音频集成测试已运行但失败。已完成两套音频服务对照并恢复 PipeWire；AP6275P M.2 已启用，Wi-Fi/蓝牙扫描通过；vivo TWS 4 播放及 10 秒录音回放已由用户确认正常。按用户要求完成约一分钟双向检查，未见断连/溢出/欠载，用户确认听感正常；短测时长偏差保留、不继续排查。耳机出盒后自动重连，双向节点及本机配置已恢复；A01/A02 完整验收尚未完成。模型推理尚未接入实时引擎。[一分钟检查与重连](docs/environment.md#34-ap6275p-耳机长时稳定性及重连检查)；[此前音频排查](docs/environment.md#31-音频链路恢复)。
 
 **P1-03 工程回归集已交付；P2-01/03 文件探针已实现**：固定 20 条合成语音、6 条边界、10 条 TTS 文本及 20 个静态 LLM 问题；`asr_probe` 支持增量分块/reset，`tts_probe` 支持分句和 44.1 → 16 kHz 转换。ASR 三批各 13/20 条关键词全对、中文 CER 15.96%，未达质量门槛；10/20/37 ms 分块结果一致。TTS 4 线程 RTF P95 0.883 达标，2 线程 1.326 未达标，尚未试听。测试集为合成工程回归集，不代表自然语音独立验收。[本轮结果与限制](docs/environment.md#36-固定测试集与文件模型探针)。
 
+参考项目源码审阅已归档，短首分句、常驻 LLM adapter、原子输出提交及 ASR/VAD 端点接入建议已纳入执行计划，均待实施；见[参考项目总结](doc/voicenpu-reference-review.md)。参考建议仍按执行计划分阶段验证。
+
 ## 文档入口
 
 - [协作与文件同步规范](AGENTS.md)：Windows Codex / SSH / 板端开发分工、各类文件归属、每次更新的同步要求与交付检查。
 - [执行计划](EXECUTION_PLAN.md)：任务依赖、里程碑与交付条件。
+- [参考项目总结与实施建议](doc/voicenpu-reference-review.md)：Windows 参考源码索引、四项借鉴建议、限制与后续验证。
 - [新镜像迁移交接](MIGRATION_GUIDE.md)：Windows Codex 的 SSH 配置、板端依赖与工程恢复步骤。
 - [环境记录](docs/environment.md)：系统、依赖版本和音频设备设置。
 - [SDK 兼容性](docs/compatibility.md)：驱动、SDK 与模型配套。
@@ -58,10 +61,12 @@ rk3588_voice_engine/
 │   ├── fixtures/                 # 固定输入、参考结果和用例清单
 │   ├── unit/                     # 单元测试
 │   └── integration/              # 模块联调与完整链路测试
+├── doc/                         # 按本次约定保存参考项目总结
+│   └── voicenpu-reference-review.md # 参考源码审阅与实施建议
 ├── docs/
 │   ├── environment.md            # 开发环境与已完成基线
 │   ├── compatibility.md          # SDK、驱动和模型兼容性
-│   ├── model-prep-llm.md          # 2B 权重来源、下载校验与未运行范围
+│   ├── model-prep-llm.md          # 2B 来源、固定十问、取消与验证限制
 │   ├── model-prep-asr.md          # Zipformer 转换、文件推理与限制
 │   ├── model-prep-speech.md       # VAD/TTS 私有依赖及最小验证
 │   ├── file-fixtures.md          # 固定合成工程集、来源、哈希和限制
@@ -169,7 +174,7 @@ ctest --test-dir build/native-audio-only --output-on-failure
 
 ### 资产清单
 
-`--check-config` 只检查已启用模型及其声明的依赖，不自动下载。`models.<模块>.id` 绑定模型清单中的同名 `id`；所有模型禁用时不读取两份 manifest，输出的三个资产计数均为 `0`。两份清单已合并本轮实际取得的模型及 RKNN 2.3.2 / RKLLM 1.3.0 / sherpa-onnx 1.12.14 / ORT 1.17.1-patched 依赖；模型保持 candidate。各模型运行状态见专属准备记录。文件校验通过不代表推理验收；文件探针的适配器可单独运行，实时控制入口尚未接入它们。
+`--check-config` 只检查已启用模型及其声明的依赖，不自动下载。`models.<模块>.id` 绑定模型清单中的同名 `id`；所有模型禁用时不读取两份 manifest，输出的三个资产计数均为 `0`。两份清单已合并本轮实际取得的模型及 RKNN 2.3.2 / RKLLM 1.3.0 / sherpa-onnx 1.12.14 / ORT 1.17.1-patched 依赖；当前模型和依赖已按 `verification_scope` 标记为 P0/M0 最小基线 verified。各模型阶段结果见专属准备记录。文件校验通过不代表推理验收；文件探针的适配器可单独运行，实时控制入口尚未接入它们。
 
 `assets.models_manifest` 与 `assets.deps_manifest` 可用绝对路径，或相对于所加载 YAML 所在目录的路径；每个 `files[].path` 则相对于对应 manifest 所在目录。资产文件必须是目录内的普通文件，禁止绝对路径、`..` 以及解析后逃出目录的符号链接；同一条目内不得重复声明同一文件。检查逐文件精确比较非负整数 `size_bytes` 和 64 个十六进制字符的 `sha256`，流式调用构建时找到的 `sha256sum`，不把大文件读入进程内存。
 
@@ -184,7 +189,7 @@ ctest --test-dir build/native-audio-only --output-on-failure
 
 每份清单限制为 4 MiB、最多 64 层 JSON 嵌套，拒绝重复 JSON 键和重复条目 ID；允许添加转换命令、校准来源等扩展元数据。加载的清单会检查根结构和全部条目 ID，详细元数据、文件和依赖仅校验选中条目。计数中的 models/dependencies 分别按选中 ID 去重；files 为这些条目中实际校验的文件声明总数，同一文件被不同条目引用时分别计数。
 
-元数据用于完整性、追溯记录与版本字符串匹配；程序不联网核实来源 URL、不验证 `run_id` 证据，也不判断平台/量化/SDK 字符串的兼容性。`candidate` 可以通过文件校验，`verified` 标签仍须按执行计划取得推理证据；`ASSETS_OK` 不证明 ABI、驱动、官方真实性或推理已经通过。
+元数据用于完整性、追溯记录与版本字符串匹配；程序不联网核实来源 URL、不验证 `run_id` 证据，也不判断平台/量化/SDK 字符串的兼容性。`candidate` 可以通过文件校验，`verified` 标签仍须按执行计划取得推理证据，并读取条目的 `verification_scope`；当前组合只覆盖 P0/M0，范围字段不由程序强制执行；`ASSETS_OK` 不证明 ABI、驱动、官方真实性或推理已经通过。
 
 ## 终端控制与 JSONL 日志
 
@@ -297,6 +302,8 @@ git status --short --branch
 git pull --ff-only
 # 编辑并验证后，按具体文件名执行 git add、git commit 和 git push
 ```
+
+提交还需要独立的 Git 作者配置 `user.name` 和 `user.email`。GitHub CLI 登录负责远程认证，不能替代作者信息；出现 `no email was given and auto-detection is disabled` 时，应在板端仓库补齐作者配置。2026-10-21 已修复本仓库身份并通过严格身份检查，见[作者配置记录](docs/environment.md#40-提交作者身份配置修复)。
 
 推送出现 `Invalid username or token` 或 `Authentication failed` 时，在开发板终端重新认证：
 

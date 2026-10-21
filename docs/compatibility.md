@@ -4,10 +4,10 @@
 
 ## 官方要求与本机差距
 
-**当前实测（2026-10-21）：**官方 Jammy 22.04.5 / BSP 6.1.99 运行 RKNPU 0.9.8、RKNN 2.3.2 / RKLLM 1.3.0。系统与私有 runtime/头文件保持版本锁；Qwen3.5-2B 已通过一次初始化、三条短问答及正常释放，loader 报告内部 Toolkit 1.3.0 / RK3588 / W8A8。它和 ASR 的分别成功不证明共驻或完整验收。网络、时间和构建恢复见[当前环境](environment.md#26-官方-jammy-系统网络时间与构建依赖恢复)。下文 2026-10-20 及更早记录保留历史语义。
+**当前实测（2026-10-21）：**官方 Jammy 22.04.5 / BSP 6.1.99 运行 RKNPU 0.9.8、RKNN 2.3.2 / RKLLM 1.3.0。系统与私有 runtime/头文件、ABI、官方例程及实际加载证据已满足 P0-02；P0-03/04 与 M0 现已按分别推理的最小基线关闭，见[首个已验证组合](#p0m0-首个已验证组合2026-10-21)。历史转换未知项保留，分别成功不能证明共驻。下文早期阶段保留历史语义。
 
 
-来源：[瑞芯微 RKLLM SDK 1.3.1 中文手册](https://github.com/airockchip/rknn-llm/blob/main/doc/Rockchip_RKLLM_SDK_CN_1.3.1.pdf)。
+此前调查参考（保留历史版本，不作为当前库/头文件来源）：[瑞芯微 RKLLM SDK 1.3.1 中文手册](https://github.com/airockchip/rknn-llm/blob/main/doc/Rockchip_RKLLM_SDK_CN_1.3.1.pdf)。
 
 | 条款 | 官方说明摘要 | 本项目结论 |
 |---|---|---|
@@ -19,6 +19,23 @@
 0.9.8 是 RKNPU 驱动版本，与 Ubuntu 24.04、Linux 6.1 的版本号不同。官方门槛已经明确，当前驱动前置已通过，剩余工作是具体模型/runtime 的板端验收和性能测试。
 
 RKNN/Zipformer 所选版本的要求需另查其发布资料，这份 RKLLM 手册不能替代所有 SDK 的兼容矩阵。驱动适配、备份恢复、候选分支和推理验证顺序统一见执行计划 §3.2。
+
+## P0-02 配套闭环复核（2026-10-21）
+
+按原 P0-02 条件核查，固定 SDK 与官方例程、厂商驱动、头文件、ABI 和实际加载证据均齐，**P0-02 已完成**。当前 RKLLM 的直接依据是固定提交 `878f9361fd3afa7e167b7079918918f78d2c1c2a` 的 [1.3.0 英文手册](https://github.com/airockchip/rknn-llm/blob/878f9361fd3afa7e167b7079918918f78d2c1c2a/doc/Rockchip_RKLLM_SDK_EN_1.3.0.pdf)：第 13 页 §2.2 要求库/头文件配套，§2.3 要求 GCC 不低于 10.2；第 14 页 §2.4 要求 RKNPU 0.9.8。当前 GCC 11.4、glibc 2.35、实际厂商驱动 0.9.8 满足这些前置条件；BSP 6.1.99 的实际加载证据另行保留，不称为手册参考内核 6.1.84。
+
+本地手册 `deps/model-prep/llm/upstream-1.3.0/doc/Rockchip_RKLLM_SDK_EN_1.3.0.pdf` 为 4,532,840 B，SHA-256 `29cbfcf307db952cc315a2aa8ffc2991014cc34be2262161fa604bc729e73e19`；复用既有完整校验，本次复核对应提取文本与固定 Git blob。40 份小源码匹配既有固定来源；48 项清单登记库/头文件等哈希匹配，系统两库与四头文件 6/6 对应私有版本；11 组 ELF / `ldd -r` 无缺库或未解析符号。
+
+| 库 | 实际要求的最高符号版本 |
+|---|---|
+| RKNN 2.3.2 | GLIBC 2.17 / GLIBCXX 3.4.22 / CXXABI 1.3.8 |
+| RKLLM 1.3.0 | GLIBC 2.29 / GLIBCXX 3.4.26 / CXXABI 1.3.11 / GOMP 4.0 |
+| sherpa-onnx 1.12.14 C API | GLIBC 2.17 / GLIBCXX 3.4.18 / CXXABI 1.3.5 |
+| ORT 1.17.1-patched | GLIBC 2.17 / GLIBCXX 3.4.19 / CXXABI 1.3.7 |
+
+当前原生探针最高需要 GLIBC 2.34 / GLIBCXX 3.4.29，现机可满足；sherpa 使用同版 C API 规避已记录的旧 C++ 字符串 ABI，ASR 的非 PIC fbank 适配仅作用于其可选目标。实际库映射复用已核验的 ASR、LLM 进程记录，开发构建仍使用当前板端绝对私有路径；这不证明可搬移发布或 P2 同进程模型共驻。SDK 子任务未运行模型或编译。
+
+证据：`output/runs/p0-sdk-20261021-144205/` 中 `report.json`、`evidence-catalog.json`、ABI/库头文件/来源核对；统一状态见[环境记录 §41](environment.md#41-p0-剩余任务核查与十问取消验证)。模型溯源、内容质量和 verified 组合由 P0-03/04 自身条件判断，不作为重新打开已满足 SDK 前置条件的理由。
 
 ## 指定 runtime 版本锁（2026-10-20）
 
@@ -211,3 +228,9 @@ SDK 警告 `rkllm_set_chat_template` 会禁用包括 `enable_thinking` 在内的
 - 已阅读第 12～13 页完整正文；驱动 0.9.7 来自本对话此前完成的 SSH 盘点，见 [environment.md](environment.md)。
 
 主线文件可能变化；后续复查应比较哈希或固定官方提交版本。
+
+## P0/M0 首个已验证组合（2026-10-21）
+
+固定组合见 [verified-combination.json](../output/runs/p0-r-closeout-20261021-161053/verified-combination.json) 与 [独立复核](../output/runs/p0-r-closeout-20261021-161053/review/final-review.md)。本轮未变更驱动、runtime、头文件或模型；Qwen 实际加载 `deps/rkllm-1.3.0/lib/librkllmrt.so`，maps 和 loader 再次确认 1.3.0 / RKNPU 0.9.8。ASR 的 RKNN 2.3.2、CPU 的 sherpa-onnx 1.12.14 / ORT 1.17.1 配套继续复用既有 ABI/加载证据。
+
+四模型和四依赖的清单 `status=verified`、`run_id=p0-r-closeout-20261021-161053`，另存原 `preparation_run_id`，范围明确为 P0/M0 单模型 SDK 最小可行性。用户明确使用社区预转换 LLM，不再追查其转换步骤；产物身份已固定，历史转换未知保持未知。完整 A04/A08、共驻库冲突、正式 adapter、实时与发布验收尚未完成。详细结果及边界集中见[环境记录 §43](environment.md#43-p0-收尾与首个已验证组合)。

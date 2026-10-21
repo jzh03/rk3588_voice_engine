@@ -1,5 +1,7 @@
 # Zipformer 模型准备与官方文件验证
 
+当前结论（2026-10-21）：P0/M0 最小基线已验证并冻结；下列准备阶段及历史 candidate/缺项结论保留当时语义，最新范围见本文末尾收尾记录。
+
 记录日期：2026-10-20（Asia/Shanghai）。本轮唯一证据目录：`output/runs/model-prep-asr-20261020-200730/`。当前状态：源模型、配套资源、三份 FP16 RKNN 与原生 C++ 示例已备齐；在固定 runtime 上完成一次官方 WAV 推理，识别文本精确匹配。这里不代表主引擎已接入流式 ASR。
 
 ## 来源与固定版本
@@ -102,3 +104,15 @@ bash deps/model-prep/asr/validate_file.sh /home/orangepi/projects/rk3588_voice_e
 关键证据：`provenance.json`、`pip-plan.json`、`pip-install.json`、`pip-freeze.txt`、`pip-check.txt`、`conversion-package-files.json`、`wheelhouse-catalog.json`、`native-build-fixed.log`、`native-ldd.txt`、`convert-{decoder,joiner,encoder}.{log,json}`、`inference.log`、`inference.json`、`result.json`、`rknn-tensor-io.txt`、`rknn-embedded-metadata.json` 和 `models.fragment.json`。
 
 清单片段根为 schema_version=1，模型 id 为 `zipformer-bilingual-zh-en-rk3588-fp16`，文件路径按未来 `models/manifest.json` 所在目录计算，依赖 `rknn-runtime` 2.3.2。**状态保持 candidate**：本轮只验证1次官方中文文件，没有完成 A03 的更广泛验收、英文样本、增量麦克风接入、取消/reset、多模型同进程共存或长稳测试。模型准备与最小 ASR NPU 文件验证已完成；无遗留转换阻塞。
+
+## 2026-10-21 P0-03 资产复核
+
+本轮静态核对现有 16 条 ASR 文件记录、固定 HF / Model Zoo / Toolkit2 revision、三份实际转换 argv、脚本及 fbank 构建支持证据。encoder / decoder / joiner、词表、特征参数、缓存/输入形状和官方 WAV 齐备，FP16 转换采用 do_quantization=False，量化校准不适用。公共模型清单新增实际转换命令与脚本完整性证据索引；ASR 的准备资产和转换链本项无新缺口。证据为 `output/runs/p0-assets-20261021-144234/asr-build-support.json` 及同目录报告。
+
+A03 的 P0 官方 WAV 五次精确匹配复用 `output/runs/asr-probe-official5-20261020-212111/`，未重新运行 ASR。固定工程集三批各 13/20 和 CER 15.96% 的后续质量失败保留，不能因资产溯源齐备而改为 A03 全项通过。模型仍为 candidate；四类资产的整体 P0-03 状态见[环境记录 §41](environment.md#41-p0-剩余任务核查与十问取消验证)。
+
+## 2026-10-21 P0 收尾
+
+本轮复用官方 WAV 连续 5/5 精确匹配和固定转换/构建/加载证据，没有重跑 ASR 或重新转换。三份源与输出、词表/特征/缓存约定、Toolkit2 2.3.2 build `c7d6ffcf`、实际三份转换 argv 和大小/SHA 保持不变。文件 stat 与既有完整校验链复核见[来源报告](../output/runs/p0-r-closeout-20261021-161053/sources/report.md)。
+
+清单标为限定 P0/M0 的 verified，原准备 run_id 保留；不代表 A03 固定集质量或主引擎流式接入通过。原三批 13/20、中文 CER 15.96% 及边界缺项不改写。总状态与[组合冻结](../output/runs/p0-r-closeout-20261021-161053/verified-combination.json)见[环境记录 §43](environment.md#43-p0-收尾与首个已验证组合)。

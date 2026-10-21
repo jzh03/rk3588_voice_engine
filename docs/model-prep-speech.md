@@ -1,5 +1,7 @@
 # CPU VAD / TTS 模型准备与最小验证
 
+当前结论（2026-10-21）：P0/M0 最小基线已验证并冻结；下列准备阶段及历史 candidate/缺项结论保留当时语义，最新范围见本文末尾收尾记录。
+
 本次日期为 **2026-10-20，Asia/Shanghai**。运行标识 `model-prep-speech-20261020-201140`，证据目录为 `output/runs/model-prep-speech-20261020-201140/`。在 Orange Pi 5 的 `/home/orangepi/projects/rk3588_voice_engine` 经 SSH 完成下载、编译小型检查程序与验证；没有修改系统运行库、NPU SDK、音频服务或 Windows 参考副本。模型仍标 `candidate`。
 
 ## 固定组合及来源
@@ -96,3 +98,21 @@ flock -x /tmp/rk3588_voice_engine_model_validation.lock   python3 deps/model-pre
 ## 尚未验证
 
 自然录音 VAD 误检/漏检/边界、TTS 声音质量与用户确认、英文与词典外词、INT8 权重、持续热运行/预热分位数、取消延迟、多模型共驻与同进程 SDK 共存、耳机播放和实时引擎接入均未验证。KWS 模型本轮未准备。短例通过不代表完整语音链路或发布验收通过。
+
+## 2026-10-21 P0-03 资产复核
+
+本轮只复核资产与来源，复用此前 VAD/TTS 的运行证据，没有再执行 CPU 模型或改变 sherpa-onnx 1.12.14 / ORT 1.17.1-patched。现有 Melo 包内 20 个文件及完整归档均已登记；FP32 权重、tokens、lexicon、dict 和四个 FST 齐备。公共清单补充原始 ONNX 输入/输出、UTF-8 前端、sid=0、speed=1 及 `date → number → phone → new_heteronym` 规则顺序，不改变实际运行参数。
+
+来源补充保存在 `models/tts/vits-melo-tts-zh_en/third-party/`：FST 来源模型卡、Apache-2.0 文本、CppJieba MIT 参考文本及 `provenance.json`，均有大小和 SHA-256。四个现存 FST 的 Git blob 与发布者仓库 `csukuangfj/icefall-tts-aishell3-vits-low-2024-04-06` 固定 revision `57345c004e13ed640e408c4c29ab56187b18f065` 内容一致，模型卡声明 Apache-2.0；这证明相同内容的固定来源，不证明该 revision 就是历史 Melo 打包时下载的 revision。原 MyShell MIT 许可证保留，清单按组件分别说明。
+
+CppJieba 参考 tag 固定到 `f03dd931a00330c279c8590275850fd1f6749a18`，其仓库 MIT 文本已保留；尚未证明实际词典归档的历史内容身份，不用该参考声称词典完整溯源已解决。固定 sherpa 导出工作流仅为路线参考，不能冒充此模型包的实际导出记录。
+
+Silero v5.0 原始模型提交已固定，但实际历史 ONNX exporter 版本和命令仍未知；Melo 原始权重 revision、历史 exporter revision/命令/工具链和词典完整历史来源仍缺。FP32 的量化校准不适用，runtime 版本不等于 exporter 版本。上述缺项按执行计划 §7 保留，**P0-03 尚不能关闭**；TTS 未试听及完整 A05 留在后续阶段。详细逐项判定和小型来源获取记录见 `output/runs/p0-assets-20261021-144234/`，总状态见[环境记录 §41](environment.md#41-p0-剩余任务核查与十问取消验证)。
+
+## 2026-10-21 P0 来源收尾与范围
+
+本轮复用 CPU VAD 的静音 0 段/合成语音 2 段及中文、数字日期 TTS WAV 证据，未再次运行 VAD/TTS或试听。完整包、私有 sherpa-onnx 1.12.14 / ORT 1.17.1 和输入输出约定不变。P0/M0 最小基线 verified 不代表完整 A05、发音或声音质量获确认。
+
+新增[固定发布快照](https://huggingface.co/csukuangfj/vits-melo-tts-zh_en/tree/a0d5c6a264c0ef92d70d8661d8cc502d79627cd6)与现有 Melo FP32 的 LFS SHA/大小相符；这是发布内容身份，不是原始 checkpoint revision。14 个小配套文件及 133 B INT8 指针另核 Git blob，4 个大配套仅核大小；INT8 指针仍不可加载，没有换用 INT8。
+
+从现存 ONNX 小范围读取的 ModelProto 自述：Melo producer `pytorch 2.3.1`、Silero producer `spox`（未写版本），两者 IR version=8。它们补充产物元数据，不证明完整历史生成工具链；精确导出命令、Melo 原权重与词典历史仍 unknown。按用户确认的预转换产物使用范围，本轮有界来源核查完成，不再以未公开历史阻塞 P0。发布者声明、匹配内容、参考许可和未知项继续分开；详见[来源报告](../output/runs/p0-r-closeout-20261021-161053/sources/report.md)及[元数据证据](../output/runs/p0-r-closeout-20261021-161053/sources/onnx-producer-metadata.json)。总状态见[环境记录 §43](environment.md#43-p0-收尾与首个已验证组合)。

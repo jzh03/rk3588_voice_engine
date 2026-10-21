@@ -10,8 +10,8 @@
       "quantization": "W8A8",
       "toolkit_version": "1.3.0",
       "runtime_version": "1.3.0",
-      "status": "candidate",
-      "run_id": "model-prep-llm-20261020-200730",
+      "status": "verified",
+      "run_id": "p0-r-closeout-20261021-161053",
       "dependencies": [
         {
           "id": "rkllm-runtime",
@@ -31,11 +31,13 @@
       },
       "input_mode": "text",
       "vision_encoder_required": false,
-      "validation": "Minimal normal flow passed 2026-10-21: one initialization, three short Chinese answers, normal FINISH/run returns and successful destroy. Full A04/A08, cancel, repeated initialization, long run and coexistence are untested.",
+      "validation": "P0/M0 private SDK baseline verified with user-selected R: reuse two original fixed-ten batches scoring 10/10 each; one generating cancel and same-handle KV-clear recovery passed in this run. Complete A04/A08, formal adapter, coexistence and general answer accuracy remain unverified.",
       "limitations": [
-        "Actual source-weight revision and complete conversion/calibration inputs remain undisclosed.",
-        "One initialization and three short text cases only; selected custom template worked, but internal EOS configuration and SDK stop reason are not exposed.",
-        "Full A04/A08, active cancellation, repeated initialization, long/context stress, coexistence and realtime engine integration are not validated."
+        "Original Qwen conversion-weight revision, complete conversion recipe/build and licensed calibration tensors/source/hashes remain undisclosed.",
+        "R_repeat1 passed only the frozen ten questions twice, not general accuracy or P2 20x3. S/P have four unsupported cutoff-year claims; K has four first-batch failures. All historical failures retained.",
+        "Selected R now has one active cancel and same-handle recovery; one tail token arrived after the request. Multi-turn, long input, timeout recovery, full A08, coexistence, realtime adapter and stability acceptance remain incomplete. Historical tuning observed ten independent init/release sequences across five profiles.",
+        "Historical 4.953-second TTFT was not reproduced in 100 new formal requests; root cause unresolved. Scheduling-wait correlation for a 681.308-ms prefill is not full causal attribution. Sampling/cache/order effects remain; no general P95 or speed guarantee.",
+        "Observed last tokens do not independently expose internal converted-model EOS or SDK explicit stop reason."
       ],
       "files": [
         {
@@ -89,7 +91,7 @@
           "sha256": "49e2b6e395f959f077f1e992b338919c0d4a9732fc6e613995e06557f843500c"
         }
       ],
-      "validation_run_id": "llm-minimal-20261021-113633",
+      "validation_run_id": "p0-r-closeout-20261021-161053",
       "observed_model_metadata": {
         "runtime_version": "1.3.0",
         "rknpu_driver_version": "0.9.8",
@@ -137,7 +139,466 @@
         "cancel_tested": false,
         "full_A04_A08_passed": false
       },
-      "preparation_provenance_scope": "The file llm/qwen3.5-2b/provenance.json is the unchanged 2026-10-20 preparation snapshot; current execution evidence is recorded in minimal_normal_validation."
+      "preparation_provenance_scope": "Preparation, minimal_normal_validation, p0_validation, private_tuning and p0_03_asset_review retain historical scope. Current P0 verification is limited by verification_scope; historical conversion unknowns remain recorded and are not further pursued as P0 blockers per user clarification.",
+      "p0_03_asset_review": {
+        "date": "2026-10-21",
+        "run": "output/runs/p0-assets-20261021-144234",
+        "runtime_assets_complete": true,
+        "conversion_provenance_complete": false,
+        "unresolved": [
+          "actual original Qwen weights revision",
+          "exact conversion command and parameters",
+          "exact converter SDK build identity beyond 1.3.0",
+          "calibration source text/data and licenses",
+          "full calibration embedding tensors and hashes",
+          "calibration tensor generation/tokenization/preprocessing recipe"
+        ],
+        "release_status": "candidate; no promotion"
+      },
+      "source_recheck": {
+        "date": "2026-10-21",
+        "fixed_repository_revision": "888bdd28aa55fc77ce135ab3e1b0c6c395f5b108",
+        "weight_lfs_sha256": "946daf4377bbf5913d8d5226180991b8e6b4a3068d8b5959bdc81a9492311a09",
+        "publisher_card_sha256": "2ad824a11d70447533b69261b120a7c662343efa7de7c1eb99d06b605aea182c",
+        "source_evidence": "output/runs/p0-assets-20261021-144234/source-identity.json",
+        "complete_conversion_provenance": false
+      },
+      "p0_validation": {
+        "date": "2026-10-21",
+        "initial_run": "output/runs/p0-llm-20261021-144257",
+        "short_answer_recheck_run": "output/runs/p0-llm-20261021-145026-short-answer",
+        "reports": [
+          "output/runs/p0-llm-20261021-144257/report.json",
+          "output/runs/p0-llm-20261021-145026-short-answer/report.json"
+        ],
+        "shared_lock": "/tmp/rk3588_voice_engine_model_validation.lock",
+        "model_processes": 2,
+        "total_rkllm_run_calls": 22,
+        "ten_question_original_fixture_unchanged": true,
+        "question_ids": [
+          "llm_01",
+          "llm_02",
+          "llm_03",
+          "llm_04",
+          "llm_05",
+          "llm_06",
+          "llm_07",
+          "llm_08",
+          "llm_09",
+          "llm_10"
+        ],
+        "max_context_len": 2048,
+        "qa_max_new_tokens": 64,
+        "cancel_max_new_tokens": 128,
+        "initial_content_passes": 6,
+        "short_answer_recheck_content_passes": 9,
+        "content_failures_remaining": [
+          "llm_01: claims unavailable real-time speech/music capabilities"
+        ],
+        "all_ten_content_passed": false,
+        "first_attempt_incomplete_case_ids": [
+          "llm_03",
+          "llm_04",
+          "llm_05",
+          "llm_07",
+          "llm_08",
+          "llm_10"
+        ],
+        "short_answer_recheck_incomplete_case_ids": [],
+        "active_cancel_count": 1,
+        "cancel_request_to_idle_ms": 102.016,
+        "post_cancel_request_tail_tokens": 1,
+        "same_instance_recovery_after_explicit_kv_clear": true,
+        "recovery_answer": "恢复成功。",
+        "short_answer_template_cancel_retested": false,
+        "short_answer_system_template": "<|im_start|>system\n你是离线中文语音助手。请只用一句简短中文直接回答当前问题。不要展开解释，不要铺垫或重复问题，不用Markdown。若用户要求若干要点，在同一句话中用顿号列出指定数量。没有实时数据就如实说明，不要编造。不要输出思考过程或控制标记。<|im_end|>\n",
+        "initial_metrics": {
+          "run": "output/runs/p0-llm-20261021-144257",
+          "result_sha256": "15af52909241262125ae0eea04507407de7f644eefa2ad3db2b047ac86670c0b",
+          "duration_seconds": 83.51666382600001,
+          "init_ms": 31257.743818,
+          "destroy_ms": 868.905036,
+          "normal_questions": 10,
+          "normal_runs_finish_idle": 10,
+          "four_dimension_pass_count": 6,
+          "four_dimension_failed_ids": [
+            "llm_03",
+            "llm_04",
+            "llm_05",
+            "llm_09"
+          ],
+          "truncated_or_incomplete_ids": [
+            "llm_03",
+            "llm_04",
+            "llm_05",
+            "llm_07",
+            "llm_08",
+            "llm_10"
+          ],
+          "ttft_ms_min": 339.591,
+          "ttft_ms_max": 411.325,
+          "sdk_tokens_per_second_min": 10.741538258156664,
+          "sdk_tokens_per_second_max": 11.337880831707707,
+          "resources": {
+            "sample_count": 294,
+            "min_MemAvailable_kib": 5308332,
+            "initial_MemAvailable_kib": 7507784,
+            "final_MemAvailable_kib": 7510516,
+            "initial_SwapUsed_kib": 0,
+            "max_SwapUsed_kib": 0,
+            "final_SwapUsed_kib": 0,
+            "probe_peak_sampled_Rss_kib": 2195792,
+            "probe_peak_sampled_Pss_kib": 2192798,
+            "probe_peak_sampled_VmHWM_kib": 2195364,
+            "probe_peak_sampled_VmSwap_kib": 0,
+            "caveat": "sampling may miss peaks; process RSS/PSS and SDK VmHWM do not account for all NPU/driver memory"
+          },
+          "model_execution_owner": "/root/p0_llm"
+        },
+        "short_answer_metrics": {
+          "run": "output/runs/p0-llm-20261021-145026-short-answer",
+          "result_sha256": "32f17cb5d6867264bcd8a0c6d99a827b0319db99914a767faeb4b0ebdeaa8376",
+          "duration_seconds": 29.21424329599995,
+          "init_ms": 3123.5444,
+          "destroy_ms": 864.651666,
+          "normal_questions": 10,
+          "normal_runs_finish_idle": 10,
+          "four_dimension_pass_count": 9,
+          "four_dimension_failed_ids": [
+            "llm_01"
+          ],
+          "truncated_or_incomplete_ids": [],
+          "ttft_ms_min": 792.238,
+          "ttft_ms_max": 4953.233,
+          "sdk_tokens_per_second_min": 6.862660914672403,
+          "sdk_tokens_per_second_max": 11.289975481651757,
+          "resources": {
+            "sample_count": 104,
+            "min_MemAvailable_kib": 5252200,
+            "initial_MemAvailable_kib": 7510984,
+            "final_MemAvailable_kib": 7510616,
+            "initial_SwapUsed_kib": 0,
+            "max_SwapUsed_kib": 0,
+            "final_SwapUsed_kib": 0,
+            "probe_peak_sampled_Rss_kib": 2195636,
+            "probe_peak_sampled_Pss_kib": 2192817,
+            "probe_peak_sampled_VmHWM_kib": 2195116,
+            "probe_peak_sampled_VmSwap_kib": 0,
+            "caveat": "sampling may miss peaks; process RSS/PSS and SDK VmHWM do not account for all NPU/driver memory"
+          },
+          "model_execution_owner": "/root/p0_llm"
+        },
+        "specific_stop_reason_exposed": false,
+        "full_A04_A08_passed": false,
+        "P0_04_complete": false,
+        "M0_closed": false
+      },
+      "private_tuning": {
+        "date": "2026-10-21",
+        "run": "output/runs/llm-tuning-20261021-153941",
+        "protocol_sha256": "adf564340e4c8ffe498c75ee31fa504dfb8ee3e7c916687210d5063d36a55edd",
+        "formal_case_count": 100,
+        "warmup_count": 10,
+        "original_questions_and_rubric_unchanged": true,
+        "profiles": {
+          "L_long": {
+            "batch_scores": [
+              9,
+              9
+            ],
+            "formal_count": 20,
+            "metrics": {
+              "count": 20,
+              "ttft_ms": {
+                "min": 755.585,
+                "median": 770.245,
+                "max": 861.472
+              },
+              "first_visible_ms": {
+                "min": 755.585,
+                "median": 770.245,
+                "max": 861.472
+              },
+              "complete_ms": {
+                "min": 1183.465,
+                "median": 1935.8780000000002,
+                "max": 2502.921
+              },
+              "sdk_speed_tps": {
+                "min": 11.015183601707168,
+                "median": 11.649454873592713,
+                "max": 11.96892831922337
+              },
+              "prefill_ms": {
+                "min": 751.35498046875,
+                "median": 766.1699829101562,
+                "max": 857.2570190429688
+              },
+              "prefill_tokens": {
+                "min": 86,
+                "median": 86.5,
+                "max": 90
+              },
+              "generate_tokens_total": 248,
+              "budget_hit_count": 0,
+              "batches_same_answer_count": 10
+            },
+            "quality_note": "两批均夸称音频和音乐能力"
+          },
+          "S_short": {
+            "batch_scores": [
+              10,
+              10
+            ],
+            "formal_count": 20,
+            "metrics": {
+              "count": 20,
+              "ttft_ms": {
+                "min": 416.155,
+                "median": 436.9025,
+                "max": 468.665
+              },
+              "first_visible_ms": {
+                "min": 416.155,
+                "median": 436.9025,
+                "max": 468.665
+              },
+              "complete_ms": {
+                "min": 850.637,
+                "median": 1785.9715,
+                "max": 3084.251
+              },
+              "sdk_speed_tps": {
+                "min": 10.525179033465767,
+                "median": 11.462267621389177,
+                "max": 11.70541672731485
+              },
+              "prefill_ms": {
+                "min": 412.3599853515625,
+                "median": 433.1330108642578,
+                "max": 464.8489990234375
+              },
+              "prefill_tokens": {
+                "min": 56,
+                "median": 56.5,
+                "max": 60
+              },
+              "generate_tokens_total": 282,
+              "budget_hit_count": 0,
+              "batches_same_answer_count": 10
+            },
+            "quality_note": "两批均无依据自报知识截止2026年"
+          },
+          "K_topk20": {
+            "batch_scores": [
+              6,
+              10
+            ],
+            "formal_count": 20,
+            "metrics": {
+              "count": 20,
+              "ttft_ms": {
+                "min": 417.819,
+                "median": 437.19849999999997,
+                "max": 467.529
+              },
+              "first_visible_ms": {
+                "min": 417.819,
+                "median": 437.19849999999997,
+                "max": 467.529
+              },
+              "complete_ms": {
+                "min": 851.986,
+                "median": 1889.721,
+                "max": 4733.194
+              },
+              "sdk_speed_tps": {
+                "min": 11.063292920532415,
+                "median": 11.494414231777913,
+                "max": 11.864276385733579
+              },
+              "prefill_ms": {
+                "min": 414.01800537109375,
+                "median": 433.4235076904297,
+                "max": 463.64801025390625
+              },
+              "prefill_tokens": {
+                "min": 56,
+                "median": 56.5,
+                "max": 60
+              },
+              "generate_tokens_total": 353,
+              "budget_hit_count": 0,
+              "batches_same_answer_count": 2
+            },
+            "quality_note": "首批拒答、数量、算术及天气失败"
+          },
+          "R_repeat1": {
+            "batch_scores": [
+              10,
+              10
+            ],
+            "formal_count": 20,
+            "metrics": {
+              "count": 20,
+              "ttft_ms": {
+                "min": 415.019,
+                "median": 437.48900000000003,
+                "max": 685.283
+              },
+              "first_visible_ms": {
+                "min": 415.019,
+                "median": 437.48900000000003,
+                "max": 685.283
+              },
+              "complete_ms": {
+                "min": 848.383,
+                "median": 1641.532,
+                "max": 3139.616
+              },
+              "sdk_speed_tps": {
+                "min": 9.544589556434076,
+                "median": 11.59916068993978,
+                "max": 11.765701168647617
+              },
+              "prefill_ms": {
+                "min": 411.2590026855469,
+                "median": 433.6730041503906,
+                "max": 681.3079833984375
+              },
+              "prefill_tokens": {
+                "min": 56,
+                "median": 56.5,
+                "max": 60
+              },
+              "generate_tokens_total": 274,
+              "budget_hit_count": 0,
+              "batches_same_answer_count": 10
+            },
+            "quality_note": "本固定集未见上述额外事实问题"
+          },
+          "P_presence2": {
+            "batch_scores": [
+              10,
+              10
+            ],
+            "formal_count": 20,
+            "metrics": {
+              "count": 20,
+              "ttft_ms": {
+                "min": 416.986,
+                "median": 435.337,
+                "max": 502.474
+              },
+              "first_visible_ms": {
+                "min": 416.986,
+                "median": 435.337,
+                "max": 502.474
+              },
+              "complete_ms": {
+                "min": 847.117,
+                "median": 1776.8635,
+                "max": 2432.912
+              },
+              "sdk_speed_tps": {
+                "min": 10.38740375135913,
+                "median": 11.590234547729288,
+                "max": 11.793269031258335
+              },
+              "prefill_ms": {
+                "min": 413.19500732421875,
+                "median": 431.614990234375,
+                "max": 498.6319885253906
+              },
+              "prefill_tokens": {
+                "min": 56,
+                "median": 56.5,
+                "max": 60
+              },
+              "generate_tokens_total": 268,
+              "budget_hit_count": 0,
+              "batches_same_answer_count": 10
+            },
+            "quality_note": "两批均无依据自报知识截止2026年"
+          }
+        },
+        "recommended_private_profile": "R_repeat1",
+        "recommendation_scope": "Exploratory on frozen ten questions only; not deployed to public config or adapter.",
+        "profile_config": "output/runs/llm-tuning-20261021-153941/runner/configs/04-b1-R_repeat1.json",
+        "new_candidate_cancel_tested": false,
+        "historical_cancel_evidence": "output/runs/p0-llm-20261021-144257",
+        "historical_prefill_outlier_reproduced": false,
+        "historical_prefill_root_cause": "unresolved",
+        "grading_report": "output/runs/llm-tuning-20261021-153941/grader/grading.json",
+        "telemetry_report": "output/runs/llm-tuning-20261021-153941/telemetry/report.json",
+        "execution_audit": "output/runs/llm-tuning-20261021-153941/execution-audit.json"
+      },
+      "selected_private_baseline": {
+        "profile_id": "R_repeat1",
+        "selected_by_user": true,
+        "selected_at": "2026-10-21T16:08:25.646254+08:00",
+        "selection_file": "deps/model-prep/llm/selected-candidate.json",
+        "selection_sha256": "65bd5f71a4446f8fbaaf890030d902ad171149a0b1e1b13fb51ff52e3524bde8",
+        "source_config": "output/runs/llm-tuning-20261021-153941/runner/configs/04-b1-R_repeat1.json",
+        "scope": "Subsequent private example validation only; not public config or formal adapter deployment",
+        "status": "verified",
+        "new_validation_in_this_selection": false,
+        "cancel_recovery_verified_for_selected_configuration": true,
+        "verification_run_id": "p0-r-closeout-20261021-161053",
+        "verification_scope": "P0 private example only; selected-candidate.json is unchanged historical selection, not the current verification ledger.",
+        "historical_selection_note": "new_validation_in_this_selection=false describes the earlier selection event; this later run supplies validation."
+      },
+      "preparation_run_id": "model-prep-llm-20261020-200730",
+      "verification_scope": {
+        "phase": "P0/M0 individual-model SDK minimum feasibility",
+        "includes": [
+          "Fixed published asset identity and explicit provenance gaps",
+          "Fixed SDK, headers, ABI and actual library loading",
+          "ASR official WAV 5/5; CPU VAD silence/speech and TTS WAV examples",
+          "Selected R fixed ten questions in two batches, one active cancel and same-handle recovery"
+        ],
+        "excludes": [
+          "Complete A03/A04/A05 or A08 acceptance",
+          "P2-04 coexistence and real-time adapters",
+          "M1/M2/M3 or deployment/redistribution readiness",
+          "Complete historical conversion reproduction"
+        ],
+        "scope_is_machine_enforced": false
+      },
+      "p0_verification": {
+        "verified_at": "2026-10-21T16:28:15.053858+08:00",
+        "combination_id": "p0-m0-rk3588-20261021-R",
+        "evidence": "output/runs/p0-r-closeout-20261021-161053/review/final-review.json",
+        "asset_integrity": "output/runs/p0-r-closeout-20261021-161053/sources/readiness-stat.json",
+        "hash_policy": "Reuse prior complete SHA-256 chain for unchanged files; this run checks stat/size and hashes small new provenance files. No new full-weight hash pass.",
+        "preparation_and_earlier_validation_records": "Historical subsections retain their original scope and results."
+      },
+      "p0_source_closeout": {
+        "evidence": "output/runs/p0-r-closeout-20261021-161053/sources/report.json",
+        "publication_identity_traceable": true,
+        "complete_conversion_provenance": false,
+        "unknown_details_are_P0_blocker": false,
+        "followup_policy": "Stop pursuing the downloaded preconverted LLM historical conversion steps per explicit user clarification; preserve unknown fields without guessing."
+      },
+      "selected_R_cancel_recovery": {
+        "evidence": "output/runs/p0-r-closeout-20261021-161053/runner/report.json",
+        "init_ms": 2981.123458,
+        "request_to_run_return_ms": 97.463454,
+        "request_to_idle_ms": 97.466954,
+        "post_request_tail_tokens": 1,
+        "tail_text": "的",
+        "tail_after_request_ms": 97.27154,
+        "clear_kv_before": 90,
+        "clear_kv_after": 0,
+        "same_handle_recovery_answer": "恢复成功。",
+        "recovery_ttft_ms": 460.100185,
+        "recovery_wall_ms": 751.676224,
+        "recovery_sdk_tokens_per_second": 10.27819634717519,
+        "peak_sampled_rss_kib": 2195960,
+        "minimum_MemAvailable_kib": 5279600,
+        "max_swap_used_kib": 0,
+        "full_A04_A08_passed": false
+      }
     },
     {
       "id": "zipformer-bilingual-zh-en-rk3588-fp16",
@@ -148,8 +609,8 @@
       "quantization": "FP16; do_quantization=False",
       "toolkit_version": "2.3.2",
       "runtime_version": "2.3.2",
-      "status": "candidate",
-      "run_id": "model-prep-asr-20261020-200730",
+      "status": "verified",
+      "run_id": "p0-r-closeout-20261021-161053",
       "dependencies": [
         {
           "id": "rknn-runtime",
@@ -276,6 +737,56 @@
         "vocabulary": "asr/zipformer-bilingual-zh-en-epoch99-exp96/vocab.txt",
         "feature_config": "asr/zipformer-bilingual-zh-en-epoch99-exp96/feature-config.json",
         "official_wav": "asr/zipformer-bilingual-zh-en-epoch99-exp96/test.wav"
+      },
+      "p0_03_asset_review": {
+        "date": "2026-10-21",
+        "run": "output/runs/p0-assets-20261021-144234",
+        "runtime_assets_complete": true,
+        "conversion_provenance_complete": true,
+        "unresolved": [],
+        "release_status": "candidate; no promotion"
+      },
+      "conversion_evidence": {
+        "commands": [
+          "output/runs/model-prep-asr-20261020-200730/convert-encoder.json",
+          "output/runs/model-prep-asr-20261020-200730/convert-decoder.json",
+          "output/runs/model-prep-asr-20261020-200730/convert-joiner.json"
+        ],
+        "script_integrity": "output/runs/p0-assets-20261021-144234/asr-build-support.json",
+        "calibration_data": "not applicable: FP16 conversion with do_quantization=False",
+        "measured_inference": "output/runs/model-prep-asr-20261020-200730/result.json"
+      },
+      "p0_sdk_baseline": {
+        "official_wav_repeats": 5,
+        "exact_reference_matches": 5,
+        "evidence": "output/runs/asr-probe-official5-20261020-212111",
+        "reused_without_model_rerun_on": "2026-10-21",
+        "full_A03_complete": false
+      },
+      "preparation_run_id": "model-prep-asr-20261020-200730",
+      "verification_scope": {
+        "phase": "P0/M0 individual-model SDK minimum feasibility",
+        "includes": [
+          "Fixed published asset identity and explicit provenance gaps",
+          "Fixed SDK, headers, ABI and actual library loading",
+          "ASR official WAV 5/5; CPU VAD silence/speech and TTS WAV examples",
+          "Selected R fixed ten questions in two batches, one active cancel and same-handle recovery"
+        ],
+        "excludes": [
+          "Complete A03/A04/A05 or A08 acceptance",
+          "P2-04 coexistence and real-time adapters",
+          "M1/M2/M3 or deployment/redistribution readiness",
+          "Complete historical conversion reproduction"
+        ],
+        "scope_is_machine_enforced": false
+      },
+      "p0_verification": {
+        "verified_at": "2026-10-21T16:28:15.053858+08:00",
+        "combination_id": "p0-m0-rk3588-20261021-R",
+        "evidence": "output/runs/p0-r-closeout-20261021-161053/review/final-review.json",
+        "asset_integrity": "output/runs/p0-r-closeout-20261021-161053/sources/readiness-stat.json",
+        "hash_policy": "Reuse prior complete SHA-256 chain for unchanged files; this run checks stat/size and hashes small new provenance files. No new full-weight hash pass.",
+        "preparation_and_earlier_validation_records": "Historical subsections retain their original scope and results."
       }
     },
     {
@@ -283,8 +794,8 @@
       "quantization": "FP32",
       "toolkit_version": "upstream preconverted ONNX; exact exporter toolchain not recorded by upstream asset",
       "runtime_version": "sherpa-onnx 1.12.14; ONNX Runtime 1.17.1",
-      "status": "candidate",
-      "run_id": "model-prep-speech-20261020-201140",
+      "status": "verified",
+      "run_id": "p0-r-closeout-20261021-161053",
       "dependencies": [
         {
           "id": "sherpa-onnx-cpu",
@@ -385,6 +896,63 @@
             "max_rss_kib": 38288
           }
         ]
+      },
+      "p0_03_asset_review": {
+        "date": "2026-10-21",
+        "run": "output/runs/p0-assets-20261021-144234",
+        "runtime_assets_complete": true,
+        "conversion_provenance_complete": false,
+        "unresolved": [
+          "exact historical ONNX export command",
+          "exact ONNX exporter/toolchain version"
+        ],
+        "release_status": "candidate; no promotion"
+      },
+      "generation_provenance": {
+        "model_version": "v5.0",
+        "original_model_revision": "5cd2ba54db059f961e7545d4f211b44f005a6dfb",
+        "exact_exporter_version": "unknown",
+        "exact_export_command": "unknown",
+        "runtime_version_is_not_exporter_version": true,
+        "calibration_data": "not applicable: FP32"
+      },
+      "preparation_run_id": "model-prep-speech-20261020-201140",
+      "verification_scope": {
+        "phase": "P0/M0 individual-model SDK minimum feasibility",
+        "includes": [
+          "Fixed published asset identity and explicit provenance gaps",
+          "Fixed SDK, headers, ABI and actual library loading",
+          "ASR official WAV 5/5; CPU VAD silence/speech and TTS WAV examples",
+          "Selected R fixed ten questions in two batches, one active cancel and same-handle recovery"
+        ],
+        "excludes": [
+          "Complete A03/A04/A05 or A08 acceptance",
+          "P2-04 coexistence and real-time adapters",
+          "M1/M2/M3 or deployment/redistribution readiness",
+          "Complete historical conversion reproduction"
+        ],
+        "scope_is_machine_enforced": false
+      },
+      "p0_verification": {
+        "verified_at": "2026-10-21T16:28:15.053858+08:00",
+        "combination_id": "p0-m0-rk3588-20261021-R",
+        "evidence": "output/runs/p0-r-closeout-20261021-161053/review/final-review.json",
+        "asset_integrity": "output/runs/p0-r-closeout-20261021-161053/sources/readiness-stat.json",
+        "hash_policy": "Reuse prior complete SHA-256 chain for unchanged files; this run checks stat/size and hashes small new provenance files. No new full-weight hash pass.",
+        "preparation_and_earlier_validation_records": "Historical subsections retain their original scope and results."
+      },
+      "observed_onnx_producer": {
+        "producer_name": "spox",
+        "producer_version": null,
+        "ir_version": 8,
+        "evidence": "output/runs/p0-r-closeout-20261021-161053/sources/onnx-producer-metadata.json",
+        "evidence_level": "artifact_self_declared_metadata; not a full historical exporter/toolchain proof"
+      },
+      "p0_source_closeout": {
+        "evidence": "output/runs/p0-r-closeout-20261021-161053/sources/report.json",
+        "publication_identity_traceable": true,
+        "complete_historical_conversion_reproducibility": false,
+        "unknown_details_are_P0_blocker": false
       }
     },
     {
@@ -392,8 +960,8 @@
       "quantization": "FP32",
       "toolkit_version": "upstream preconverted ONNX; exact exporter toolchain not recorded by upstream asset",
       "runtime_version": "sherpa-onnx 1.12.14; ONNX Runtime 1.17.1",
-      "status": "candidate",
-      "run_id": "model-prep-speech-20261020-201140",
+      "status": "verified",
+      "run_id": "p0-r-closeout-20261021-161053",
       "dependencies": [
         {
           "id": "sherpa-onnx-cpu",
@@ -411,7 +979,7 @@
       "id": "vits-melo-tts-zh-en-fp32",
       "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2",
       "revision": "sherpa release asset 203769960 updated 2024-11-03T12:31:05Z; archive sha256:e58351ed7149f290a54534538badd4077cdbe6fddc964b24d0bee870415d1514; model metadata melo-vits version=2",
-      "license": "MIT (LICENSE supplied in upstream MeloTTS bundle)",
+      "license": "Model bundle: MIT (MyShell.ai LICENSE); normalization FST files: Apache-2.0 per byte-matched publisher model card; dictionary MIT repository reference preserved, exact historical dictionary provenance unresolved.",
       "model_path": "tts/vits-melo-tts-zh_en/model.onnx",
       "files": [
         {
@@ -537,6 +1105,30 @@
           "size_bytes": 655,
           "sha256": "d18664a7e12bd7ea1022ddaf951e534e136815016c5a809d6b64156bffb4369d",
           "role": "tts_tokens"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/third-party/LICENSE-cppjieba-reference.txt",
+          "size_bytes": 1066,
+          "sha256": "ba898a14f729ba5e9965da34e3eecd5edd3795f2cc5d7c923b815ba79bb851b0",
+          "role": "license_reference"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/third-party/LICENSE-fst-Apache-2.0.txt",
+          "size_bytes": 11358,
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "role": "license_reference"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/third-party/fst-source-model-card.md",
+          "size_bytes": 28,
+          "sha256": "98b45ea81164d1e1a1dd82255207053b15cd6c69d922a1c5cf3387ce604d4b74",
+          "role": "license_declaration_source"
+        },
+        {
+          "path": "tts/vits-melo-tts-zh_en/third-party/provenance.json",
+          "size_bytes": 4560,
+          "sha256": "80b4bbd283facf482ae3f51f0a028e84414ea96d8e291b6c41e6f7315d5b2f8b",
+          "role": "component_provenance_supplement"
         }
       ],
       "output": {
@@ -597,7 +1189,164 @@
           "generate_rtf": 1.3,
           "subjective_audio_quality": "not evaluated or user-confirmed"
         }
-      ]
+      ],
+      "p0_03_asset_review": {
+        "date": "2026-10-21",
+        "run": "output/runs/p0-assets-20261021-144234",
+        "runtime_assets_complete": true,
+        "conversion_provenance_complete": false,
+        "unresolved": [
+          "original Melo weight revision",
+          "exact historical exporter revision and command",
+          "exact exporter toolchain versions",
+          "exact dictionary archive provenance; upstream MIT reference only"
+        ],
+        "release_status": "candidate; no promotion"
+      },
+      "component_provenance": "tts/vits-melo-tts-zh_en/third-party/provenance.json",
+      "input_contract": {
+        "frontend": "UTF-8 text via sherpa-onnx 1.12.14 CPU C API",
+        "tokens": "tts/vits-melo-tts-zh_en/tokens.txt",
+        "lexicon": "tts/vits-melo-tts-zh_en/lexicon.txt",
+        "dictionary_dir": "tts/vits-melo-tts-zh_en/dict",
+        "normalization_rule_order": [
+          "date.fst",
+          "number.fst",
+          "phone.fst",
+          "new_heteronym.fst"
+        ],
+        "sid": 0,
+        "speed": 1,
+        "raw_onnx_inputs": [
+          {
+            "name": "x",
+            "onnx_element_type": 7,
+            "shape": [
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "x_lengths",
+            "onnx_element_type": 7,
+            "shape": [
+              -1
+            ]
+          },
+          {
+            "name": "tones",
+            "onnx_element_type": 7,
+            "shape": [
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "sid",
+            "onnx_element_type": 7,
+            "shape": [
+              1
+            ]
+          },
+          {
+            "name": "noise_scale",
+            "onnx_element_type": 1,
+            "shape": [
+              1
+            ]
+          },
+          {
+            "name": "length_scale",
+            "onnx_element_type": 1,
+            "shape": [
+              1
+            ]
+          },
+          {
+            "name": "noise_scale_w",
+            "onnx_element_type": 1,
+            "shape": [
+              1
+            ]
+          }
+        ],
+        "raw_onnx_outputs": [
+          {
+            "name": "y",
+            "onnx_element_type": 1,
+            "shape": [
+              -1,
+              1,
+              -1
+            ]
+          }
+        ],
+        "tensor_element_types": {
+          "1": "float32",
+          "7": "int64"
+        },
+        "evidence": "output/runs/model-prep-speech-20261020-201140/tts-onnx-info.json"
+      },
+      "generation_provenance": {
+        "original_weight_revision": "unknown",
+        "exact_exporter_revision": "unknown",
+        "exact_exporter_toolchain": "unknown",
+        "exact_conversion_command": "unknown",
+        "runtime_version_is_not_exporter_version": true,
+        "calibration_data": "not applicable: FP32"
+      },
+      "preparation_run_id": "model-prep-speech-20261020-201140",
+      "verification_scope": {
+        "phase": "P0/M0 individual-model SDK minimum feasibility",
+        "includes": [
+          "Fixed published asset identity and explicit provenance gaps",
+          "Fixed SDK, headers, ABI and actual library loading",
+          "ASR official WAV 5/5; CPU VAD silence/speech and TTS WAV examples",
+          "Selected R fixed ten questions in two batches, one active cancel and same-handle recovery"
+        ],
+        "excludes": [
+          "Complete A03/A04/A05 or A08 acceptance",
+          "P2-04 coexistence and real-time adapters",
+          "M1/M2/M3 or deployment/redistribution readiness",
+          "Complete historical conversion reproduction"
+        ],
+        "scope_is_machine_enforced": false
+      },
+      "p0_verification": {
+        "verified_at": "2026-10-21T16:28:15.053858+08:00",
+        "combination_id": "p0-m0-rk3588-20261021-R",
+        "evidence": "output/runs/p0-r-closeout-20261021-161053/review/final-review.json",
+        "asset_integrity": "output/runs/p0-r-closeout-20261021-161053/sources/readiness-stat.json",
+        "hash_policy": "Reuse prior complete SHA-256 chain for unchanged files; this run checks stat/size and hashes small new provenance files. No new full-weight hash pass.",
+        "preparation_and_earlier_validation_records": "Historical subsections retain their original scope and results."
+      },
+      "observed_onnx_producer": {
+        "producer_name": "pytorch",
+        "producer_version": "2.3.1",
+        "ir_version": 8,
+        "evidence": "output/runs/p0-r-closeout-20261021-161053/sources/onnx-producer-metadata.json",
+        "evidence_level": "artifact_self_declared_metadata; not a full historical exporter/toolchain proof"
+      },
+      "p0_source_closeout": {
+        "evidence": "output/runs/p0-r-closeout-20261021-161053/sources/report.json",
+        "publication_identity_traceable": true,
+        "complete_historical_conversion_reproducibility": false,
+        "unknown_details_are_P0_blocker": false
+      },
+      "additional_publication_identity": {
+        "url": "https://huggingface.co/csukuangfj/vits-melo-tts-zh_en/tree/a0d5c6a264c0ef92d70d8661d8cc502d79627cd6",
+        "revision": "a0d5c6a264c0ef92d70d8661d8cc502d79627cd6",
+        "fp32_sha256": "bf30582eb1b012250a35b1a4a80e7dfbcf8485e7bb9de0d95efbbeef0e4ad86d",
+        "fp32_size_bytes": 170429550,
+        "evidence": "output/runs/p0-r-closeout-20261021-161053/sources/source-identity.json",
+        "limits": "Not the original checkpoint or exporter revision; four larger companion files matched size only, not newly proved blob identity."
+      }
     }
-  ]
+  ],
+  "p0_verified_combination": {
+    "id": "p0-m0-rk3588-20261021-R",
+    "run_id": "p0-r-closeout-20261021-161053",
+    "record": "output/runs/p0-r-closeout-20261021-161053/verified-combination.json",
+    "scope": "P0/M0 minimum feasibility only; see per-entry verification_scope."
+  }
 }
