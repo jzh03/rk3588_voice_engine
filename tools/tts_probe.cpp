@@ -28,13 +28,13 @@ using Json = nlohmann::json;
 using Clock = std::chrono::steady_clock;
 using namespace voice_engine;
 struct Options {
-    std::string config, cases, output, run_id, only_case;
+    std::string config, cases, output, run_id, only_case, pronunciations;
     int threads = 0, repeat = 3, warmup = 1;
-    bool text_only = false;
+    bool text_only = false, debug_frontend = false;
 };
 const char *usage =
     "tts_probe --config PATH --cases PATH [--output-dir ROOT] --run-id ID [--threads 2|4] "
-    "[--repeat 1..100] [--warmup 0..10] [--case-id ID] [--validate-text-only]\nOutputs native "
+    "[--repeat 1..100] [--warmup 0..10] [--case-id ID] [--validate-text-only] [--debug-frontend] [--pronunciations JSON]\nOutputs native "
     "44100 Hz and resampled 16000 Hz mono WAV; never opens an audio device.\nModel execution "
     "requires: flock -x /tmp/rk3588_voice_engine_model_validation.lock ...\n";
 bool safe_id(const std::string &s) {
@@ -55,6 +55,10 @@ Options parse(int argc, char **argv) {
         const std::string a = argv[i];
         if (!seen.insert(a).second)
             throw std::invalid_argument("duplicate argument: " + a);
+        if (a == "--debug-frontend") {
+            o.debug_frontend = true;
+            continue;
+        }
         if (a == "--validate-text-only") {
             o.text_only = true;
             continue;
@@ -64,6 +68,8 @@ Options parse(int argc, char **argv) {
         const std::string v = argv[++i];
         if (a == "--config")
             o.config = v;
+        else if (a == "--pronunciations")
+            o.pronunciations = v;
         else if (a == "--cases")
             o.cases = v;
         else if (a == "--output-dir")
@@ -86,6 +92,8 @@ Options parse(int argc, char **argv) {
     if (o.cases.empty() || (!o.text_only && o.config.empty()) || !safe_id(o.run_id))
         throw std::invalid_argument(
             "--cases, --config (model mode), and safe --run-id are required");
+    if (o.text_only && (o.debug_frontend || !o.pronunciations.empty()))
+        throw std::invalid_argument("frontend debug/pronunciation supplement requires model mode");
     if (o.output.empty())
         o.output = "output/runs";
     return o;
@@ -277,6 +285,11 @@ int main(int argc, char **argv) {
         for (int i = 0; i < argc; ++i)
             argv_json.push_back(argv[i]);
         report["command"] = argv_json;
+        report["frontend_debug"] = o.debug_frontend;
+        report["frontend_policy"] = "melo-fullwidth-comma-context-v1";
+        report["frontend_policy_scope"] =
+            "internal U+FF0C to U+3001 alias for the fixed Melo frontend; same comma phone, "
+            "one AddBlank per comma-linked bounded segment; original text is retained";
         if (!o.text_only) {
             report["config_sha256"] = file_sha256(o.config);
             report["binary_sha256"] = file_sha256("/proc/self/exe");
@@ -293,6 +306,9 @@ int main(int argc, char **argv) {
                 Json r = c;
                 try {
                     r["segments"] = segment_tts_text(c.at("text"), config.tts);
+                    r["frontend_segments"] = Json::array();
+                    for (const auto &segment : r["segments"])
+                        r["frontend_segments"].push_back(melo_frontend_text(segment.get<std::string>()));
                     r["success"] = true;
                 } catch (const std::exception &e) {
                     r["success"] = false;
@@ -313,10 +329,20 @@ int main(int argc, char **argv) {
         Monitor monitor(output / "resources.jsonl");
         const auto loading = Clock::now();
         model_phase = true;
-        MeloTts model(config, threads);
+        MeloTts model(config, threads, o.debug_frontend, o.pronunciations,
+                      o.pronunciations.empty() ? fs::path{} : output / "derived-lexicon.txt");
         report["adapter_construction_s"] = seconds(loading);
         report["model_initialization_s"] = model.model_initialization_seconds();
         report["runtime_version"] = MeloTts::runtime_version();
+        if (!o.pronunciations.empty()) {
+            report["pronunciation_supplement"] = {
+                {"rules_path", fs::canonical(o.pronunciations).string()},
+                {"rules_sha256", file_sha256(o.pronunciations)},
+                {"derived_lexicon", model.assets().effective_lexicon.string()},
+                {"derived_sha256", file_sha256(model.assets().effective_lexicon)},
+                {"entry_count", model.assets().pronunciation_rule_count},
+                {"base_lexicon_unchanged", true}};
+        }
         report["loaded_libraries"] = libraries();
         report["model_id"] = model.assets().model_id;
         report["resolved_assets"] = {{"model", model.assets().model.string()},
@@ -338,7 +364,7 @@ int main(int argc, char **argv) {
             "and conversion; complete_s includes all segments and final resampler/frame flush, "
             "excludes file I/O. First segment is not first sample streaming latency. Stats are "
             "successful measured attempts only; failures are retained and fail the gate.";
-        report["fixed_options"] = {{"sid", 0},
+        report["fixed_options"] = {{"max_num_sentences", 1}, {"sid", 0},
                                    {"speed", 1.0},
                                    {"silence_scale", 1.0},
                                    {"provider", "cpu"},
@@ -415,6 +441,7 @@ int main(int argc, char **argv) {
                         accept(converter.push(audio.samples.data(), audio.samples.size()));
                         native.insert(native.end(), audio.samples.begin(), audio.samples.end());
                         segments.push_back({{"text", parts[si]},
+                                            {"frontend_text", melo_frontend_text(parts[si])},
                                             {"generate_s", elapsed},
                                             {"adapter_s", segment_wall_s},
                                             {"native_samples", audio.samples.size()}});

@@ -1,0 +1,371 @@
+{
+  "review_schema_version": 1,
+  "artifact_type": "model_acceptance_review",
+  "probe_input": false,
+  "review_date": "2026-10-22",
+  "timezone": "Asia/Shanghai",
+  "scope": "A03 natural corpus evaluation followed by A05 formal output listening; material-freeze records unchanged",
+  "evidence_root": "output/runs/a03-a05-acceptance-20261022-111537",
+  "evidence_is_private_and_git_ignored": true,
+  "code_head": "0d32be5d1aacf577ef61f3fb7e40a70582a0fd5b",
+  "config_sha256": "4acb81bad41c12b2ebc56c5a9f5f4cfbee3eaef2e2ac19fcbb274ec896d2f411",
+  "models_manifest_sha256": "01407413db24b5191e4d80e766b61716d216a4faaf7343ccf43716420bf1dcd2",
+  "deps_manifest_sha256": "324ef5761b79690d389bc83c37d16f3af52ea22ec22d6d0fb5f8c96fa76d31cb",
+  "source_reviews": {
+    "a03-review.json": {
+      "path": "output/runs/a03-a05-acceptance-20261022-111537/a03-review.json",
+      "sha256": "2a13be285553c2fd84f27d2b1eee0a20d1ab9c0bdee26e2a02c1f1a5c61a36d2"
+    },
+    "a05-review.json": {
+      "path": "output/runs/a03-a05-acceptance-20261022-111537/a05-review.json",
+      "sha256": "4045113f61ea7e8b707e7253c8493d5e8ef7d74abbf7a225168bc284b85779fc"
+    },
+    "a05-diagnostic-human.json": {
+      "path": "output/runs/a03-a05-acceptance-20261022-111537/a05-diagnostic-human.json",
+      "sha256": "bf2d3433e613ca9873614afcd0f60c8aadca9aebf010562bd23048c71ab08e67"
+    },
+    "pronunciation-diagnostic.json": {
+      "path": "output/runs/a03-a05-acceptance-20261022-111537/pronunciation-diagnostic.json",
+      "sha256": "5445bc84f62dad9cce5e198aeeebccc282814a9c938b3349f8d6fbeff8c6717a"
+    }
+  },
+  "A03": {
+    "overall_passed": false,
+    "natural_scope_passed": true,
+    "natural_manifest": {
+      "path": "output/runs/p1-natural-review-20261022-104035/natural/manifest.json",
+      "sha256": "f51b14f9e6e23a9af935ab534094c95cba09dcc21c5b4dacd3e96b1e2abd8142"
+    },
+    "probe_binary_sha256": "4bd9c2daf3c1b0f4a170a6d0cfa82f4194a5a611b92aef4e63e6eae6291d9fa8",
+    "natural_batches": [
+      {
+        "run": "natural20ms",
+        "repeat": 1,
+        "samples": 20,
+        "keyword_passed": 18,
+        "exact_match_samples": 15,
+        "chinese_character_errors": 3,
+        "chinese_reference_characters": 213,
+        "chinese_cer": 0.014084507042253521,
+        "categories": {
+          "chinese_common": {
+            "samples": 8,
+            "keyword_passed": 8
+          },
+          "code_switch": {
+            "samples": 3,
+            "keyword_passed": 1
+          },
+          "numbers_dates": {
+            "samples": 5,
+            "keyword_passed": 5
+          },
+          "short_question": {
+            "samples": 4,
+            "keyword_passed": 4
+          }
+        },
+        "quality_passed": true
+      },
+      {
+        "run": "natural20ms",
+        "repeat": 2,
+        "samples": 20,
+        "keyword_passed": 18,
+        "exact_match_samples": 15,
+        "chinese_character_errors": 3,
+        "chinese_reference_characters": 213,
+        "chinese_cer": 0.014084507042253521,
+        "categories": {
+          "chinese_common": {
+            "samples": 8,
+            "keyword_passed": 8
+          },
+          "code_switch": {
+            "samples": 3,
+            "keyword_passed": 1
+          },
+          "numbers_dates": {
+            "samples": 5,
+            "keyword_passed": 5
+          },
+          "short_question": {
+            "samples": 4,
+            "keyword_passed": 4
+          }
+        },
+        "quality_passed": true
+      },
+      {
+        "run": "natural20ms",
+        "repeat": 3,
+        "samples": 20,
+        "keyword_passed": 18,
+        "exact_match_samples": 15,
+        "chinese_character_errors": 3,
+        "chinese_reference_characters": 213,
+        "chinese_cer": 0.014084507042253521,
+        "categories": {
+          "chinese_common": {
+            "samples": 8,
+            "keyword_passed": 8
+          },
+          "code_switch": {
+            "samples": 3,
+            "keyword_passed": 1
+          },
+          "numbers_dates": {
+            "samples": 5,
+            "keyword_passed": 5
+          },
+          "short_question": {
+            "samples": 4,
+            "keyword_passed": 4
+          }
+        },
+        "quality_passed": true
+      },
+      {
+        "run": "natural10ms",
+        "repeat": 1,
+        "samples": 20,
+        "keyword_passed": 18,
+        "exact_match_samples": 15,
+        "chinese_character_errors": 3,
+        "chinese_reference_characters": 213,
+        "chinese_cer": 0.014084507042253521,
+        "categories": {
+          "chinese_common": {
+            "samples": 8,
+            "keyword_passed": 8
+          },
+          "code_switch": {
+            "samples": 3,
+            "keyword_passed": 1
+          },
+          "numbers_dates": {
+            "samples": 5,
+            "keyword_passed": 5
+          },
+          "short_question": {
+            "samples": 4,
+            "keyword_passed": 4
+          }
+        },
+        "quality_passed": true
+      },
+      {
+        "run": "natural37ms",
+        "repeat": 1,
+        "samples": 20,
+        "keyword_passed": 18,
+        "exact_match_samples": 15,
+        "chinese_character_errors": 3,
+        "chinese_reference_characters": 213,
+        "chinese_cer": 0.014084507042253521,
+        "categories": {
+          "chinese_common": {
+            "samples": 8,
+            "keyword_passed": 8
+          },
+          "code_switch": {
+            "samples": 3,
+            "keyword_passed": 1
+          },
+          "numbers_dates": {
+            "samples": 5,
+            "keyword_passed": 5
+          },
+          "short_question": {
+            "samples": 4,
+            "keyword_passed": 4
+          }
+        },
+        "quality_passed": true
+      }
+    ],
+    "warm_rtf": {
+      "chunk_ms": 20,
+      "n": 40,
+      "p95": 0.17535713255033558,
+      "method": "nearest-rank; first batch excluded"
+    },
+    "chunk_consistency": {
+      "chunk_ms": [
+        10,
+        20,
+        37
+      ],
+      "status": "passed for raw/published/normalized text, VAD state, reset, finish and behavior"
+    },
+    "engineered_boundaries": {
+      "new_case_count": 4,
+      "chunk_ms": [
+        10,
+        20,
+        37
+      ],
+      "all_explicit_expectations_passed": true,
+      "legacy_strict_tail_passed": false,
+      "excluded_from_quality_and_rtf_denominators": true
+    },
+    "retained_synthetic_history": {
+      "keywords_per_batch": [
+        13,
+        13,
+        13
+      ],
+      "samples_per_batch": 20,
+      "chinese_character_errors": 34,
+      "chinese_reference_characters": 213,
+      "not_rerun_this_round": true
+    },
+    "known_limits": [
+      "Natural corpus: same prompts as synthetic, one speaker, quiet headset; no population/noise generalization.",
+      "Keyword criterion is 18/20, while whole-text exact match is 15/20.",
+      "Both long cases have whole-text errors; behavior/keyword pass does not mean perfect transcription.",
+      "Original synthetic set historical quality still 13/20 and 15.9624% CER; original strict boundary_tail again fails. Overall A03/P2-01 remains incomplete.",
+      "No real-time engine VAD endpoint scheduling, microphone, LLM or full pipeline acceptance in these probes."
+    ]
+  },
+  "A05": {
+    "passed": false,
+    "status": "failed_pronunciation",
+    "reviewed": 10,
+    "passed_count": 9,
+    "failed_count": 1,
+    "cases_sha256": "9df5b7f5315cce23b98c041cecb9a7836fb24a7f519072a86dbc36bacbe4bc5e",
+    "source_run": "output/runs/tts-probe-20261020-211053/thread4",
+    "source_summary_sha256": "da887062e98462765183d648ef80ca9fcd5f1ade61b39c05cb3f4b0eedd64063",
+    "selected_repeat_index": 0,
+    "warmup": false,
+    "volume_percent": 50,
+    "performance_reused": {
+      "date": "2026-10-20",
+      "threads": 4,
+      "successful": 30,
+      "failed": 0,
+      "generate_rtf_p95": 0.8829772799831287,
+      "complete_rtf_p95": 0.8991460118981032,
+      "first_segment_s_p95": 3.455315131,
+      "scope": "historical 4-thread fixed 10 texts x3, no performance rerun this round"
+    },
+    "cases": [
+      {
+        "id": "tts_01",
+        "sha256": "54c59242d17a904a19ac336ae5a41437977549b3236c2048748fe974ae16d073",
+        "status": "passed",
+        "text_and_pronunciation_correct": true,
+        "number_date_correct": null,
+        "boundaries_complete": true,
+        "no_spoken_control_markers": true,
+        "subjective_quality": "normal"
+      },
+      {
+        "id": "tts_02",
+        "sha256": "20c0e85baa19e46096a8669cfa4ef29575d33df049a9f1087c796fb5c6f23ec6",
+        "status": "passed",
+        "text_and_pronunciation_correct": true,
+        "number_date_correct": null,
+        "boundaries_complete": true,
+        "no_spoken_control_markers": true,
+        "subjective_quality": "normal"
+      },
+      {
+        "id": "tts_03",
+        "sha256": "d24f675ca1a3768ddab720bff0ef20d67e012c30e4acc382c567d5f30822d2c6",
+        "status": "passed",
+        "text_and_pronunciation_correct": true,
+        "number_date_correct": null,
+        "boundaries_complete": true,
+        "no_spoken_control_markers": true,
+        "subjective_quality": "normal"
+      },
+      {
+        "id": "tts_04",
+        "sha256": "8806aad37b137dbd5940da034ab28a31aa2950785a669efb8b78fa9a39c2f7e1",
+        "status": "passed",
+        "text_and_pronunciation_correct": true,
+        "number_date_correct": true,
+        "boundaries_complete": true,
+        "no_spoken_control_markers": true,
+        "subjective_quality": "normal"
+      },
+      {
+        "id": "tts_05",
+        "sha256": "eba6e104df849144782c0552846db4e6344faedf8f29996b54f738496fb1aa57",
+        "status": "passed",
+        "text_and_pronunciation_correct": true,
+        "number_date_correct": true,
+        "boundaries_complete": true,
+        "no_spoken_control_markers": true,
+        "subjective_quality": "normal"
+      },
+      {
+        "id": "tts_06",
+        "sha256": "a03585dffcbc44ec7f203b9bd485660309b9fb897207d7742a47a75eca9327d8",
+        "status": "passed",
+        "text_and_pronunciation_correct": true,
+        "number_date_correct": true,
+        "boundaries_complete": true,
+        "no_spoken_control_markers": true,
+        "subjective_quality": "normal"
+      },
+      {
+        "id": "tts_07",
+        "sha256": "675b1cf7018de4f212e895a962f7909b90278e662ae7432cd45418a97ac7ee91",
+        "status": "passed",
+        "text_and_pronunciation_correct": true,
+        "number_date_correct": null,
+        "boundaries_complete": true,
+        "no_spoken_control_markers": true,
+        "subjective_quality": "normal",
+        "punctuation_pause_or_segment_join_normal": true
+      },
+      {
+        "id": "tts_08",
+        "sha256": "50707ea2a803b561f91f9f42750d0e855b12f35efd2f9bb066c67aae04f9fc25",
+        "status": "passed",
+        "text_and_pronunciation_correct": true,
+        "number_date_correct": null,
+        "boundaries_complete": true,
+        "no_spoken_control_markers": true,
+        "subjective_quality": "normal",
+        "punctuation_pause_or_segment_join_normal": true
+      },
+      {
+        "id": "tts_09",
+        "sha256": "c4f978ab348a33cb3c72084cebeeb36234d77a9bd72e6a464a7227d70ef8e8e3",
+        "status": "failed_pronunciation",
+        "text_and_pronunciation_correct": false,
+        "number_date_correct": null,
+        "boundaries_complete": null,
+        "no_spoken_control_markers": null,
+        "subjective_quality": "pronunciation_issue",
+        "issue": {
+          "expected_fragment": "搜索",
+          "user_heard_fragment": "欧索",
+          "same_file_replayed": true,
+          "root_cause": "not_yet_determined",
+          "original_text_and_wav_unchanged": true
+        }
+      },
+      {
+        "id": "tts_10",
+        "sha256": "34966c7ee74e1c00403fd5d479c328ca55fb0fd32e0f2b0bc49d55918064878c",
+        "status": "passed",
+        "text_and_pronunciation_correct": true,
+        "number_date_correct": null,
+        "boundaries_complete": true,
+        "no_spoken_control_markers": true,
+        "subjective_quality": "normal"
+      }
+    ],
+    "same_r0_native_and_converted_both_reproduced": true,
+    "diagnostic_limit": "Both versions traverse the same mSBC 16k headset/server path; application conversion alone does not explain the issue, but synthesis versus shared playback is not isolated.",
+    "known_separate_fixture_issue": "mix_02 调低 heard as 吊低 remains unresolved and is outside the formal 10 TTS texts"
+  },
+  "task_completion_is_not_acceptance_pass": true,
+  "fixed_inputs_old_reports_and_material_catalogs_unchanged": true,
+  "commit_or_push_performed": false
+}

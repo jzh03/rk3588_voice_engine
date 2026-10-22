@@ -8,11 +8,15 @@
 
 **P0-01～P0-04 已完成，M0 技术可行通过**：四类模型及四项私有依赖已冻结为首个 `verified` 组合，范围限于 P0 的资产、SDK 配套和各模型最小推理。选定 R 配置复用固定十问两批 10/10，本轮主动取消至空闲 97.467 ms、清 KV 后同句柄恢复成功。用户确认直接使用社区预转换 LLM，未公开的转换步骤保留未知记录，不再追查或阻塞 P0。完整应用验收仍按原标准执行；见[收尾结果](docs/environment.md#43-p0-收尾与首个已验证组合)和[冻结组合](output/runs/p0-r-closeout-20261021-161053/verified-combination.json)。
 
-**P1-01 已在新系统复核；P1-02 进行中**：Release 构建、ENV_CHECK_OK 与 8 项通用 CTest 通过；新系统音频集成测试已运行但失败。已完成两套音频服务对照并恢复 PipeWire；AP6275P M.2 已启用，Wi-Fi/蓝牙扫描通过；vivo TWS 4 播放及 10 秒录音回放已由用户确认正常。按用户要求完成约一分钟双向检查，未见断连/溢出/欠载，用户确认听感正常；短测时长偏差保留、不继续排查。耳机出盒后自动重连，双向节点及本机配置已恢复；A01/A02 完整验收尚未完成。模型推理尚未接入实时引擎。[一分钟检查与重连](docs/environment.md#34-ap6275p-耳机长时稳定性及重连检查)；[此前音频排查](docs/environment.md#31-音频链路恢复)。
+**P1-01、P1-02 已完成**：完整 CTest 17/17 及构建/配置回归通过；用户将 A01 正式时长改为 1 分钟并删除原 10 分钟待办，本轮 60 s 连续录放与 A02 空闲/录音/播放三种状态重连均通过。生产音频后端、本机配置与模型组合未改，模型尚未接入实时引擎。见[实机结果](docs/environment.md#45-p1-耳机一分钟录放与三种状态重连)和[自动化回归](docs/environment.md#44-p1-自动化回归与固定集校验加固)。
 
-**P1-03 工程回归集已交付；P2-01/03 文件探针已实现**：固定 20 条合成语音、6 条边界、10 条 TTS 文本及 20 个静态 LLM 问题；`asr_probe` 支持增量分块/reset，`tts_probe` 支持分句和 44.1 → 16 kHz 转换。ASR 三批各 13/20 条关键词全对、中文 CER 15.96%，未达质量门槛；10/20/37 ms 分块结果一致。TTS 4 线程 RTF P95 0.883 达标，2 线程 1.326 未达标，尚未试听。测试集为合成工程回归集，不代表自然语音独立验收。[本轮结果与限制](docs/environment.md#36-固定测试集与文件模型探针)。
+**P1-03 材料与人工审核已完成，P1 全部任务已交付**：新增 20 条耳机自然人声，逐条试听通过；原 20 条合成材料审核完成，19 条通过，`mix_02` 的“调低→吊低”发音缺陷已留档，两条有完整句子的边界样本试听通过。原工程集、参考/关键词、10 条 TTS 文本及 20 个静态 LLM 问题不变。自然 WAV 只保存在板端私有目录，版本化目录保存清单和审核；两组复用相同文本，不代表独立文本覆盖。见[固定测试集](docs/file-fixtures.md)和[本轮证据](docs/environment.md#46-p1-03-自然人声与人工材料审核)。
 
-参考项目源码审阅已归档，短首分句、常驻 LLM adapter、原子输出提交及 ASR/VAD 端点接入建议已纳入执行计划，均待实施；见[参考项目总结](doc/voicenpu-reference-review.md)。参考建议仍按执行计划分阶段验证。
+**P2-01～03 已完成模型侧交付**：ASR按用户选择的自然人声正式范围通过，旧合成失败保留为非阻塞回归，见[范围记录](docs/environment.md#49-a03-自然人声正式验收范围)。LLM三批各20/20及生命周期、预算和取消通过。TTS已修正中文逗号处的上下文处理，A05原十条三批30/30有效、合成RTF P95 0.863；用户确认十条正确完整，三次“搜索”均清楚。本轮全量CTest22/23，唯一模拟音频超时在原测试定向复跑中通过，首次失败保留；详见[复验结果](docs/environment.md#50-p2-03-搜索修正与-a05-复验)。
+
+**P2-04 / A06 已完成**：正式连续运行 304.870 s、完成 44 轮，四模型同进程常驻、ASR/LLM 顺序调度及队列边界通过；全程最小 MemAvailable 4.088 GiB，独立审核未见持续换页；本次固定四模型文件负载无需 LLM 进程隔离。本轮完整 CTest 25/25 通过，最后的预热/换页审核修订补测相关 2/2 通过；前三次严格零换页诊断失败原样保留。见[共驻工具](docs/coexist-probe.md)、[独立验收记录](tests/fixtures/coexist-acceptance.json)和[环境证据](docs/environment.md#51-p2-04-四模型共驻与五分钟验收)。下一项为 P3-01 完整文件链路，实时交互仍按 P4 推进。
+
+参考项目源码审阅已归档，短首分句、常驻 LLM adapter、原子输出提交及 ASR/VAD 端点接入建议已纳入执行计划，模型模块与局部文件验证已推进，主引擎实时接入仍按P4实施；见[参考项目总结](doc/voicenpu-reference-review.md)。参考建议仍按执行计划分阶段验证。
 
 ## 文档入口
 
@@ -23,7 +27,7 @@
 - [环境记录](docs/environment.md)：系统、依赖版本和音频设备设置。
 - [SDK 兼容性](docs/compatibility.md)：驱动、SDK 与模型配套。
 - 模型准备：[Qwen3.5-2B](docs/model-prep-llm.md)、[Zipformer](docs/model-prep-asr.md)、[Silero VAD 与 MeloTTS](docs/model-prep-speech.md)。
-- 文件测试：[固定测试集](docs/file-fixtures.md)、[VAD/ASR 探针](docs/asr-probe.md)、[TTS 探针](docs/tts-probe.md)。
+- 文件测试：[固定测试集](docs/file-fixtures.md)、[VAD/ASR 探针](docs/asr-probe.md)、[TTS/流式联合探针](docs/tts-probe.md)、[LLM 探针](docs/llm-probe.md)、[四模型共驻探针](docs/coexist-probe.md)。
 - [验收用例](docs/ACCEPTANCE.md)：功能、延迟、资源和恢复验证。
 - [规划审阅记录](docs/PLAN_REVIEW.md)：问题和修订依据。
 
@@ -38,7 +42,7 @@ rk3588_voice_engine/
 ├── EXECUTION_PLAN.md             # 当前执行计划
 ├── MIGRATION_GUIDE.md            # 重装后 Windows/板端配置与 Codex 交接
 ├── CMakeLists.txt                # CMake/Ninja 构建入口
-├── cmake/                        # 可选 ASR/TTS 探针的私有依赖与测试目标
+├── cmake/                        # 可选 ASR/LLM/TTS 及联合探针的依赖/测试目标
 ├── src/                          # 应用实现，按模块划分
 │   ├── main.cpp                  # 配置/资产检查与 mock 控制 CLI 入口
 │   ├── audio/                    # 音频 mock、流式 DSP 与 PulseAudio 异步录放
@@ -51,14 +55,17 @@ rk3588_voice_engine/
 │   ├── env_check.cpp             # 基础依赖检查
 │   ├── audio_probe.cpp           # 真实录放、格式转换与设备恢复诊断
 │   ├── asr_probe.cpp             # VAD/RKNN 固定 WAV 与增量分块诊断
-│   └── tts_probe.cpp             # CPU 合成、分句、原生/16 kHz WAV 诊断
+│   ├── tts_probe.cpp             # CPU 合成、分句、读音候选与 WAV 诊断
+│   ├── llm_probe.cpp             # 常驻 LLM、上下文、预算与取消诊断
+│   ├── llm_tts_probe.cpp         # 真实文本流/固定时间线重放到 TTS 文件
+│   └── coexist_probe.cpp         # 四模型同进程常驻、顺序 NPU 与资源采样
 ├── scripts/                      # 构建、检查、启动、回退脚本与适配补丁
 │   ├── install_npu_runtimes.py    # 本机固定版本 runtime 安装、检查与回退
 │   ├── prepare_fixtures.py       # 固定工程语料生成与原生 WAV 重建
 │   └── patches/                  # 固定源码版本的候选驱动补丁
 ├── config/                       # 通用配置；local.yaml 为本机配置
 ├── tests/
-│   ├── fixtures/                 # 固定输入、参考结果和用例清单
+│   ├── fixtures/                 # 固定合成输入、自然录音目录清单及材料/模型审核
 │   ├── unit/                     # 单元测试
 │   └── integration/              # 模块联调与完整链路测试
 ├── doc/                         # 按本次约定保存参考项目总结
@@ -69,16 +76,18 @@ rk3588_voice_engine/
 │   ├── model-prep-llm.md          # 2B 来源、固定十问、取消与验证限制
 │   ├── model-prep-asr.md          # Zipformer 转换、文件推理与限制
 │   ├── model-prep-speech.md       # VAD/TTS 私有依赖及最小验证
-│   ├── file-fixtures.md          # 固定合成工程集、来源、哈希和限制
+│   ├── file-fixtures.md          # 合成与自然材料、人工审核、来源和限制
 │   ├── asr-probe.md              # 增量文件 ASR、测量和未达标样本
-│   ├── tts-probe.md              # 分句/合成/转换接口与线程性能
+│   ├── tts-probe.md              # 分句/读音/流式队列与局部联合诊断
+│   ├── llm-probe.md              # 常驻 LLM、监督运行与模型侧验收
+│   ├── coexist-probe.md          # 四模型共驻、预热、监督采样与 A06
 │   ├── ACCEPTANCE.md             # 验收用例
 │   ├── PLAN_REVIEW.md            # 规划审阅记录
 │   ├── archive/                  # 历史计划，保留原始内容
 │   └── evidence/
 │       ├── environment/          # 板端音频、电脑资源 JSON 快照
 │       └── sdk/                  # 已引用的官方 SDK 手册
-├── models/                       # llm/asr/vad/tts 资产与 manifest.json
+├── models/                       # 原资产 manifest.json；补充读音另列 pronunciation-candidates.json
 ├── deps/                         # 私有 SDK、运行库与 manifest.json
 │   └── model-prep/               # 各任务私有示例、构建和转换环境
 ├── build/                        # 本机编译产物（Git 忽略）
@@ -86,7 +95,7 @@ rk3588_voice_engine/
 └── tmp/                          # 临时检查和中间文件（Git 忽略）
 ```
 
-`config/default.yaml` 保存通用模板，板端 `config/local.yaml` 已保存耳机参数，模型仍全部禁用；本轮未修改该配置。独立文件探针使用 `config/file-probes.yaml`，只启用 VAD/ASR/TTS，LLM/KWS 禁用；其中的文件输入输出标签不能用于真实录放。默认模板的设备字段为空，不能直接用于启动。空目录用 `.gitkeep` 保留；模型与依赖分别登记于 `models/manifest.json`、`deps/manifest.json`。模型、运行库、私有构建/转换环境和运行证据仍被 Git 忽略。
+`config/default.yaml` 保存通用模板，板端 `config/local.yaml` 已保存耳机参数，模型仍全部禁用；本轮未修改该配置。独立文件探针使用 `config/file-probes.yaml`，只启用 VAD/ASR/TTS，LLM/KWS 禁用；其中的文件输入输出标签不能用于真实录放。`config/coexist-probe.yaml` 用于文件模式四模型共驻，禁用 KWS，TTS 4 线程；新增 `config/llm-probe.yaml` 仅启用 LLM，`config/llm-tts-probe.yaml` 仅启用 LLM/TTS（TTS显式4线程）；`config/tts-pronunciations.json` 是须由CLI显式选择的读音候选，不自动应用到主引擎。默认模板的设备字段为空，不能直接用于启动。空目录用 `.gitkeep` 保留；模型与依赖分别登记于 `models/manifest.json`、`deps/manifest.json`。模型、运行库、私有构建/转换环境和运行证据仍被 Git 忽略。
 
 ## 基础环境检查
 
@@ -101,7 +110,9 @@ ctest --test-dir build --output-on-failure
 
 输出 `ENV_CHECK_OK` 表示该检查完成。它只验证编译和库调用，不打开录音、播放或 NPU。
 
-CMake 基础开关默认 `ON`；两个模型文件探针开关默认 `OFF`：
+多人或多代理并行开发时，构建、CTest 和大文件校验也应通过 `flock -x /tmp/rk3588_voice_engine_model_validation.lock <完整命令>` 与模型初始化、推理及性能采样互斥，锁覆盖整个进程。性能采样窗口内不得并行编译或大文件校验。单独运行的上述命令仍使用同一板端构建目录。
+
+CMake 基础开关默认 `ON`；三个模型文件探针开关默认 `OFF`：
 
 | 开关 | 构建内容与依赖 |
 |---|---|
@@ -111,6 +122,7 @@ CMake 基础开关默认 `ON`；两个模型文件探针开关默认 `OFF`：
 | `VOICE_ENGINE_BUILD_ENV_CHECK` | `env_check`，单独检查 libpulse、libsamplerate、libsndfile、yaml-cpp 和 nlohmann-json |
 | `VOICE_ENGINE_BUILD_ASR_PROBE`（OFF） | VAD/RKNN 文件探针；显式开启后检查固定私有 RKNN、sherpa/ORT 与官方 fbank 依赖 |
 | `VOICE_ENGINE_BUILD_TTS_PROBE`（OFF） | CPU TTS 文件探针；显式开启后检查固定私有 sherpa/ORT，复用音频 DSP 与 libsndfile |
+| `VOICE_ENGINE_BUILD_LLM_PROBE`（OFF） | 常驻 RKLLM 文件探针；需 ENGINE 及固定私有 RKLLM 1.3.0。与 TTS 开关同时打开时额外构建 `llm_tts_probe`；三个模型开关全开时再构建 `coexist_probe` |
 
 构建工具使用现有 CMake/Ninja 与 C++17 编译器；引擎依赖通过 pkg-config/CMake 查找。启用引擎测试时还需要 Python 3；真实音频集成测试另需 `pipewire`、`pipewire-pulse`、`wireplumber`、`pactl`，测试服务在独立临时目录运行。`BUILD_TESTING=OFF` 可关闭测试目标。仅构建引擎并运行纯状态 mock：
 
@@ -231,19 +243,20 @@ printf 'status\nstart\nstop\nstart\ncancel\nnew-session\nquit\n' | \
 cmake -S . -B build/model-probes -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DVOICE_ENGINE_BUILD_ASR_PROBE=ON -DVOICE_ENGINE_BUILD_TTS_PROBE=ON
 cmake --build build/model-probes -j2
-ctest --test-dir build/model-probes --output-on-failure -E '^audio_probe$'
+ctest --test-dir build/model-probes --output-on-failure
 python3 tests/integration/check_fixtures.py
 ```
 
-这组 CTest 不初始化模型或访问音频设备；明确排除新系统已有失败的 `audio_probe` 音频集成项，不将它记为本轮通过。完整测试仍用不带 `-E` 的命令，其音频问题单独处理。默认构建不要求私有模型 SDK，三种独立构建边界继续保留。
+这组 CTest 不初始化模型或访问物理音频设备；音频集成项使用完全隔离的合成输入和空输出，现已纳入完整回归。固定集负例也在 CTest 中运行，只变异临时副本。默认构建不要求私有模型 SDK，三种独立构建边界继续保留。
 
 以下只读取固定文件、保存结果。每次把 `NEW_ASR_RUN`、`NEW_TTS_RUN` 改成新 run ID；`--output-dir` 是父目录，已有 `<父目录>/<run-id>` 会被拒绝。初始化、推理和采样全程共用同一锁，未持有锁时程序在模型初始化前退出 2。
 
 ```bash
 flock -x /tmp/rk3588_voice_engine_model_validation.lock \
   timeout 180 build/model-probes/bin/asr_probe \
-  --config config/file-probes.yaml --manifest tests/fixtures/manifest.json \
-  --chunk-ms 20 --repeat 3 --output-dir output/runs --run-id NEW_ASR_RUN
+  --config config/file-probes.yaml \
+  --manifest output/runs/p1-natural-review-20261022-104035/natural/manifest.json \
+  --listening --chunk-ms 20 --repeat 3 --output-dir output/runs --run-id NEW_ASR_RUN
 
 flock -x /tmp/rk3588_voice_engine_model_validation.lock \
   timeout 900 build/model-probes/bin/tts_probe \
@@ -251,7 +264,7 @@ flock -x /tmp/rk3588_voice_engine_model_validation.lock \
   --threads 4 --repeat 3 --warmup 1 --output-dir output/runs --run-id NEW_TTS_RUN
 ```
 
-ASR 的 `--official --repeat 5` 可代替 `--manifest` 复核官方 WAV，`--chunk-ms 10/20/37` 检查分块一致性。TTS `--validate-text-only` 只验证文本和分句。两工具不播放 WAV、不录音、不执行 LLM。退出 6 表示本次质量/行为或性能指标未达标，应保留失败报告；退出 0 也不等于 A03/A05 全项通过。外层 `timeout` 返回 124 时保留部分证据并记为未完成。输入契约、其它错误码、耗时口径和已知限制见 [ASR](docs/asr-probe.md)、[TTS](docs/tts-probe.md)；固定数据、参考和哈希见[测试集说明](docs/file-fixtures.md)。
+上例ASR使用板端私有自然人声正式集；仅有仓库时不能取得该录音。旧合成 `tests/fixtures/manifest.json` 仍可显式用于非阻塞回归，其原质量失败和退出码不改。ASR 的 `--official --repeat 5` 可代替 `--manifest` 复核官方 WAV，`--chunk-ms 10/20/37` 检查分块一致性。TTS `--validate-text-only` 只验证文本和分句。两工具不播放 WAV、不录音、不执行 LLM。退出 6 表示本次质量/行为或性能指标未达标，应保留失败报告；退出 0 也不等于 A03/A05 全项通过。外层 `timeout` 返回 124 时保留部分证据并记为未完成。输入契约、其它错误码、耗时口径和已知限制见 [ASR](docs/asr-probe.md)、[TTS](docs/tts-probe.md)；固定数据、参考和哈希见[测试集说明](docs/file-fixtures.md)。
 
 ## 真实音频诊断
 
@@ -288,7 +301,7 @@ ASR 的 `--official --repeat 5` 可代替 `--manifest` 复核官方 WAV，`--chu
 
 运行目录沿用上文的 `--run-id`、`--output-dir` 和不覆盖旧目录规则。`run.json` 保存配置/可执行文件哈希及参数；`events.jsonl` 保存设备属性、协商格式/缓冲、状态事件与每秒计数；`summary.json` 汇总有效样本、时长误差、RMS/峰值、队列峰值及溢出/断流/重连计数。成功返回 `0`，参数/配置错误 `2`，设备不可用或非交互模式中途断线 `3`，排空超时 `5`，软件计数异常或长录音时长误差超标 `6`，其他运行错误 `1`；信号退出沿用 `130/143`。
 
-报告中的 A01/A02 保持 `not_run`，软件检查通过不会自动确认耳机听感、物理路由或蓝牙尾音。用户需按 [A01/A02 验收步骤](docs/ACCEPTANCE.md#6-当前命令与后续约定)完成 10 min 实机录放与空闲/录音/播放三种状态的重连；结果与证据记入 [环境记录](docs/environment.md)。
+报告中的 A01/A02 保持 `not_run`，软件检查通过不会自动确认耳机听感、物理路由或蓝牙尾音。用户需按 [A01/A02 验收步骤](docs/ACCEPTANCE.md#6-当前命令与后续约定)完成 60 s 实机录放与空闲/录音/播放三种状态的重连；结果与证据记入 [环境记录](docs/environment.md)。
 
 ## 版本管理约定
 

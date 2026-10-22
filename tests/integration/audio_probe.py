@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Exercise audio_probe against a private, hardware-free PipeWire instance.
 
-The custom graph contains only audiotestsrc and a null sink. Every client gets
+The custom graph contains an audiotestsrc, a fixed-format remap source, and a
+null sink. Every client gets
 explicit temporary sockets; no user daemon, sound card, Bluetooth device, or
 global route is queried or changed. This is an integration regression, not
 the physical-headset A01/A02 acceptance test.
@@ -44,7 +45,9 @@ context.modules = [
     { name = libpipewire-module-metadata }
     { name = libpipewire-module-spa-node-factory }
     { name = libpipewire-module-link-factory }
-    { name = libpipewire-module-access args = { access.force = unrestricted } }
+    # Host clients use the normal access policy. On PipeWire 0.3.48,
+    # access.force waits for a permission agent even for 'unrestricted'.
+    { name = libpipewire-module-access }
 ]
 context.objects = [
     { factory = metadata args = { metadata.name = default } }
@@ -56,13 +59,16 @@ context.objects = [
     } }
     { factory = adapter args = {
         factory.name = audiotestsrc
-        node.name = ve_test_source
-        node.description = Test-source
+        node.name = ve_test_generator
+        node.description = Test-generator
         media.class = Audio/Source
-        audio.rate = 48000
-        audio.channels = 1
-        audio.position = [ MONO ]
+        audio.rate = 44100
+        audio.channels = 2
+        audio.position = [ FL FR ]
         node.always-process = true
+        # Keep the synthetic driver alive between capture sessions. This
+        # source has no physical device or user audio to keep running.
+        node.pause-on-idle = false
         adapter.auto-port-config = { mode = dsp monitor = false position = preserve }
     } }
     { factory = adapter args = {
@@ -89,12 +95,11 @@ context.modules = [
     { name = libpipewire-module-client-node }
     { name = libpipewire-module-adapter }
     { name = libpipewire-module-metadata }
-    { name = libpipewire-module-protocol-pulse }
+    { name = libpipewire-module-protocol-pulse args = {
+        server.address = [ "unix:@PRIVATE_PULSE_SOCKET@" ]
+        pulse.min.quantum = 480/48000
+    } }
 ]
-pulse.properties = {
-    server.address = [ "unix:native" ]
-    pulse.min.quantum = 480/48000
-}
 """
 
 POLICY_CONFIG = """
@@ -167,10 +172,14 @@ class PrivatePulse(AbstractContextManager):
             "DBUS_SESSION_BUS_ADDRESS": f"unix:path={self.root}/no-session-bus",
             "DBUS_SYSTEM_BUS_ADDRESS": f"unix:path={self.root}/no-system-bus",
         })
-        for directory in ("config", "data", "state"):
+        for directory in ("config", "data", "state", "pulse"):
             (self.root / directory).mkdir(exist_ok=True)
         (self.root / "core.conf").write_text(CORE_CONFIG, encoding="utf-8")
-        (self.root / "pulse.conf").write_text(PULSE_CONFIG, encoding="utf-8")
+        # Module arguments work on Jammy's PipeWire 0.3.48 too. An absolute
+        # socket avoids version-dependent PIPEWIRE_REMOTE name suffixes.
+        (self.root / "pulse.conf").write_text(
+            PULSE_CONFIG.replace("@PRIVATE_PULSE_SOCKET@",
+                                 str(self.root / "pulse/native")), encoding="utf-8")
         # Only node/link policy is enabled: no hardware monitors, device route
         # policy, Bluetooth profile policy, or persistent user preferences.
         (self.root / "policy.conf").write_text(POLICY_CONFIG, encoding="utf-8")
@@ -204,7 +213,7 @@ class PrivatePulse(AbstractContextManager):
                 [binary, "-c", str(self.root / config)], env=self.env,
                 stdout=log, stderr=log))
 
-        def available():
+        def available(name):
             if any(process.poll() is not None for process in self.processes):
                 raise RuntimeError("private PipeWire process terminated unexpectedly")
             result = self.command(["pactl", "--format=json", "list", "sources"],
@@ -212,9 +221,18 @@ class PrivatePulse(AbstractContextManager):
             if result.returncode:
                 return False
             sources = json.loads(result.stdout)
-            return any(source["name"] == "ve_test_source" for source in sources)
+            return any(source["name"] == name for source in sources)
 
-        wait_for(available, "private PulseAudio source")
+        wait_for(lambda: available("ve_test_generator"), "private PulseAudio generator")
+        # 0.3.48 audiotestsrc initially advertises its 44.1 kHz/stereo enum
+        # default; WirePlumber may change that when linking it. A remap source
+        # exposes a stable 48 kHz/mono device while still carrying real test
+        # PCM. This must not relax the backend's device/format-change checks.
+        self.command(["pactl", "load-module", "module-remap-source",
+                      "master=ve_test_generator", "source_name=ve_test_source",
+                      "rate=48000", "channels=1", "channel_map=mono"])
+        wait_for(lambda: available("ve_test_source"),
+                 "fixed-format private PulseAudio source")
 
     def stop(self):
         for process in reversed(self.processes):
@@ -303,7 +321,7 @@ def main():
                 ["pactl", "--format=json", "list", "cards"]).stdout)
             require(not cards, "private graph unexpectedly contains hardware cards")
             require({source["name"] for source in sources} ==
-                    {"ve_test_source", "ve_test_sink.monitor"},
+                    {"ve_test_generator", "ve_test_source", "ve_test_sink.monitor"},
                     "private graph contains unexpected capture devices")
             require({sink["name"] for sink in sinks} == {"ve_test_sink"},
                     "private graph contains unexpected playback devices")
@@ -323,6 +341,9 @@ def main():
                 require(status["source"] == "ve_test_source" and
                         status["sink"] == "ve_test_sink" and
                         status["profile"] == "none", "incorrect device binding")
+                require((status["capture_rate"], status["capture_channels"],
+                         status["playback_rate"], status["playback_channels"]) ==
+                        (48000, 1, 48000, 1), "private native formats changed")
                 require(status["capture_overflows"] == 0 and
                         status["capture_holes"] == 0 and
                         status["playback_overflows"] == 0,

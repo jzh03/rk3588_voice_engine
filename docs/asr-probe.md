@@ -1,6 +1,6 @@
 # 文件级 VAD / Zipformer 检查
 
-本工具在板端以 C++17 实现真实增量 PCM、Silero CPU VAD 和 RKNN NPU Zipformer。它不是麦克风、蓝牙或完整对话引擎；不初始化 LLM。P2-01、完整 A03 与模型 `candidate` 状态须依实际结果判断，不能由构建成功替代。
+本工具在板端以 C++17 实现真实增量 PCM、Silero CPU VAD 和 RKNN NPU Zipformer。它不是麦克风、蓝牙或完整对话引擎；不初始化 LLM。P0/M0 已冻结限定最小推理范围的 `verified` 组合；A03/P2-01 已按用户选择的自然人声正式范围及相关工程边界通过；旧合成识别失败为非阻塞回归，当前范围见[验收定位](ACCEPTANCE.md#a03-正式集与旧回归集的定位)。P4 实时设备与主引擎接入仍待实施。
 
 ## 构建与运行
 
@@ -18,8 +18,9 @@ flock -x /tmp/rk3588_voice_engine_model_validation.lock \
   --chunk-ms 20 --repeat 5
 flock -x /tmp/rk3588_voice_engine_model_validation.lock \
   build/file-probes/bin/asr_probe --config config/file-probes.yaml \
-  --manifest tests/fixtures/manifest.json --output-dir output/runs \
-  --run-id asr-probe-fixtures-NEW --chunk-ms 20 --repeat 3
+  --manifest output/runs/p1-natural-review-20261022-104035/natural/manifest.json \
+  --listening --output-dir output/runs \
+  --run-id asr-probe-natural-NEW --chunk-ms 20 --repeat 3
 ```
 
 `--official` 与 `--manifest` 互斥；`--sample ID` 可重复，仅选清单内指定样本；`--chunk-ms` 仅 10/20/37，`--repeat` 为 1～20。`--run-id` 为 1～64 个 ASCII 字符，首位字母或数字，后续允许字母、数字、`_ . -`。目录严格新建，拒绝覆盖。固定样本元数据见 [fixture 清单](../tests/fixtures/manifest.json)。可对同一清单分别运行三个 chunk 参数后对照每条 hypothesis。
@@ -65,7 +66,7 @@ EOF→final不等于声学末语音→final；RTF包含流式fbank、ASR和VAD�
 
 固定fbank静态库非PIC，最终exe显式 `-no-pie`；未重编译或替换该依赖。
 
-## 本次验证
+## 2026-10-20 历史验证
 
 验证日期2026-10-20，Asia/Shanghai。无模型VAD聚帧/reset、UTF-8编辑距离/归一化与CLI拒绝测试3项通过。正式验证证据根目录为 `output/runs/asr-probe-validation-20261020-212111/`，含完整命令、二进制哈希、50ms资源采样、实际退出码和当时源码/配置/清单快照；`comparison.json` 汇总跨分块、边界与失败样本。未触发内存/超时保护。
 
@@ -100,3 +101,66 @@ EOF→final不等于声学末语音→final；RTF包含流式fbank、ASR和VAD�
 针对明显丢开头的 `zh_07` 与 `zh_01`，随后用已编译固定官方demo（先整WAV送fbank）复查，未修改输入、参考或模型。官方输出分别为“渔民现功能测试”“行吧课听的窗户打开让新鲜空气进来”，与本工程增量raw输出逐字相同，两次退出0。证据为 `output/runs/asr-probe-native-compare-20261020-212111/comparison.json` 及对应log/metrics。这两例未观察到增量改造相对官方实现的文本回归；模型与合成输入的质量仍需诊断，不能外推全部失败均已定位。
 
 正式性能批次后仅加固fixture预检错误分类：缺失JSON、非法路径及非16k PCM16 WAV头在模型初始化前退出2；新增无模型负例。推理、特征、VAD算法未因质量结果修改，正式批次源码/二进制哈希以冻结快照为准；最终 `build/model-probes` 同时开启ASR/TTS构建通过，15/15非音频CTest通过；`asr_probe_cli`含这3个负例，耗时6.75秒，VAD聚帧与ASR指标测试亦通过。整合证据为 `output/runs/file-probes-merge-20261020-205226/combined-checks.json`、`combined-check-2.log`。未为这类预检修复重复完整性能批次。
+
+
+## 2026-10-22 材料审核补充
+
+P1-03 已补齐 20 条人工确认的私有自然录音，并审完原合成输入。两组使用相同文本，后续分别评分；公共 catalog 不是 probe manifest。合成 `mix_02` 有“调低→吊低”发音问题，原输入/参考和本页历史分数不改，不把全部历史误差归因于 ASR。该材料冻结阶段尚未运行自然集模型；后续评测见下一节。材料路径、已知问题及限制见[固定材料](file-fixtures.md#自然人声材料)。
+
+## 2026-10-22 自然人声评测
+
+使用冻结的私有 `natural/manifest.json`（位置和哈希见[材料说明](file-fixtures.md#自然人声材料)），原参考、关键词、自然与合成 WAV 均不改。固定模型及 `config/file-probes.yaml` 不变；`build/model-probes/bin/asr_probe` 的构建预检为 no work to do，没有重编译。原官方 WAV 五次通过证据复用，本轮没有重跑官方样本或原合成主体三批。
+
+| 本轮运行 | 样本与退出码 | 结果 |
+|---|---|---|
+| 自然 20 ms ×3 批 | 60 条，exit 0 | 每批关键词 18/20，全文精确 15/20；中文 CER 3/213 = 1.40845% |
+| 自然 10 ms / 37 ms 各一批 | 各 20 条，各 exit 0 | 与 20 ms 所有批次的原始/发布/归一化文本、VAD 状态、reset 和 finish 一致 |
+| 六条旧边界＋四条新增工程边界，10/20/37 ms | 各 10 条，各 exit 6 | 三种分块一致；新增四条的显式行为断言全部通过，唯一行为失败仍为旧 `boundary_tail` 严格全文参考 |
+
+三批各类别关键词命中均为：普通中文 8/8、数字日期 5/5、短问句 4/4、中英混说 1/3。不能把 18/20 写成全文准确率。五条非全文精确样本固定如下，其余 15 条归一化全文相同：
+
+| ID | 差异 | 关键词 |
+|---|---|---|
+| `natural_zh_05` | “厨房里还有…”缺“里” | 通过 |
+| `natural_zh_08` | “椅子摆整齐”识别为“椅子白整齐” | 通过 |
+| `natural_q_03` | 末尾“了吗”识别为“了吧” | 通过 |
+| `natural_mix_01` | `hello world` 仅识别出 `HELLO` | 失败 |
+| `natural_mix_03` | “本次 test”识别为“板次 TASK” | 失败 |
+
+20 ms 首批 20 条不计入预热统计，后两批共 N=40，nearest-rank RTF P95 为 **0.175357**。10/37 ms 各只跑一批，没有预热 P95，不能混作新性能统计。六个 ASR 进程的最大子进程 RSS 为 196668 KiB，采样最小 MemAvailable 为 7141744 KiB，子进程 swap 采样最大值为 0；没有触发 1.5 GiB 或每进程 180 s 外层保护，这些不是全部 NPU 内存。
+
+新增边界在推理前独立冻结于本轮私有 `boundary-fixtures/manifest.json`；源句固定取自然集第一条 `natural_zh_01`，未按识别成绩选取，边界不进入主体准确率或预热 RTF 分母：
+
+| ID | 构造与实际覆盖 |
+|---|---|
+| `natural_timeout_silence6` | 6 s 全零，真正触发默认 5 s 等待超时；无语音、发布文本为空 |
+| `natural_timeout_then_speech` | 6 s 全零后接 4.06 s 原自然句；超时后仍完整消费输入，原始 ASR 有文本，VAD 不再确认语音，发布文本为空 |
+| `natural_long_repeat6` | 原句去掉已保留的句前/句后部分后无缝重复六遍，共 20.76 s / 332160 样本；`max_duration_endpoints=1`，完整消费输入、关键词通过；末两遍“请把→亲爸”，全文不精确 |
+| `natural_tail` | 2 s 前导静音，加源句到最后 `abs(PCM)>32` 并最多保留 20 ms 尾部，共 91815 样本；严格全文参考通过 |
+
+这些是工程构造覆盖，六遍重复不是自然连续长发言，幅值尾部也不是人工音素标注。旧 `boundary_tail` 仍为“行吧客厅…”而非“请把客厅…”，旧 15 s 长片段也仍有全文错误。自然集的质量、速度和分块检查达标，但原合成历史 13/20、CER 15.96% 与严格尾部失败没有被替换或消除，**整体 A03 / P2-01 继续未完成**；实时端点调度接入也仍待实施。同文本、单说话人、安静耳机条件不外推独立文本或噪声泛化。
+
+本轮根目录为 `output/runs/a03-a05-acceptance-20261022-111537/`：`a03-plan.json` / `boundary-plan.json` 保存预先冻结方案，`*-commands.json`、`*.metrics.json` 和 `a03/*/` 保存命令、资源、退出码、逐条转写及探针原报告；`verify_model_reviews.py` 独立重算 CER/关键词/全文精确/预热 P95，并逐项比较 VAD、reset/finish 和边界计数，结果为 `a03-review.json`。原探针 `A03_acceptance_complete: false` 保留，当前范围结论另存[版本化审核摘要](../tests/fixtures/model-acceptance-review.json)。
+
+## P2 单轮端点控制（2026-10-22）
+
+`ListeningAsr` 已作为可复用单轮控制器落地，由 `asr_probe --listening` 实际调用。未给该开关时保留完整 WAV 的原评测模式。新增 `--pre-roll-ms N` 仅配合 listening，且不得超过配置 `vad.pre_roll_ms`；不新增 YAML 字段。
+
+`begin` 可先送入真实预录 PCM，`accept` 在同一 512 样本量子内把同一 PCM 增量送给 VAD/ASR，只消费到首个端点并返回消费数；应用必须保留之后的未消费 PCM。`finish` 幂等收尾，`cancel` 丢弃缓存并复位，不对取消轮次做 final decode。控制器不积累整段录音；它不包含实时采集 ring，也未接入 P4 主引擎/设备生命周期。
+
+诊断的预录取 WAV 前 N ms，并只送一次。所有样本坐标包含预录；开口等待计时仅计新输入。报告 `listening.reason` 区分静音端点、start_timeout、max_speech 与 EOF/manual finish，另保存 pre_roll/fresh/endpoint/unused 样本数、finish/reset 标志及取消回归记录。主 RTF 按实际消费 PCM（含预录）计算，同时保留原 WAV 分母，不能把超时/最长发言之后的剩余输入当成当前轮已识别。
+
+固定 Silero v5 的最短语音确认起点需要回看窗口及缓冲；本轮对齐上游窗口规则，修正原估计迟 1664 样本的问题。15 s 硬上限实际截停从 241664 改为 240128 样本（15.008 s），保留窗口量化，不声称人工音素级精度。新自然静音尾部与后接另一句话的工程用例验证端点后输入没有送入旧轮；500 ms 预录和无声等待也有独立检查。
+
+自然三批仍各 18/20 关键词、15/20 全文、中文 CER 3/213=1.41%，最终预热 N=40 的消费量 RTF P95 0.121424。原合成 13/20、严格尾部失败继续保留。natural_mix_01 缺 world、natural_mix_03 test→TASK、旧 boundary_tail 请把→行吧在同模型官方整 WAV demo 中复现，并与工程 raw 输出相同；只支持这三项没有发现增量/端点文本回归，不证明全部模型错误原因已定。
+
+证据为 `output/runs/p2-01-03-20261022-113554/asr/` 的 `review.json`、`handoff.json`、最终自然/边界/端点与官方对照目录及 `final-source/`。109 项独立工程核验通过；最终实机数据对应最终 ASR 二进制，起点修正前的首批报告保留。整体 A03/P2-01 继续进行，R4 模块结构验证不能代替识别质量或 P4 实时验收。
+
+
+## 自然人声正式验收范围（2026-10-22）
+
+用户选择以既有自然人声集作为正式质量验收依据后，A03/P2-01 标为完成：三批各18/20、中文CER1.41%、最终预热RTF P95 0.121424，自然尾部全文、分块一致性、收尾/reset及R4工程边界已通过。此前章节与原报告中的未关闭状态属于范围调整前的历史记录，当前结论由[独立自然集验收](../tests/fixtures/asr-natural-acceptance.json)及[环境 §49](environment.md#49-a03-自然人声正式验收范围)承接。
+
+旧合成13/20、CER15.96%和“请把→行吧”尾部全文失败继续留档，退出当前正式验收的阻塞条件。显式传入 `--manifest tests/fixtures/manifest.json` 仍按原规则计算该集，原失败会保持exit 6；无需为此修改探针或重跑模型。上述正式命令使用板端私有自然manifest，公共catalog不能代替，只有仓库时不能取得私有录音。
+
+自然两条中英关键词失败仍在20条分母内；当前通过不代表所有转写完全正确，也不外推多说话人/噪声环境或P4实时链路。

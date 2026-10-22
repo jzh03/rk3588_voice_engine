@@ -23,28 +23,29 @@ using Clock=std::chrono::steady_clock;
 using voice_engine::ConfigError;
 namespace {
 struct Options {std::string config,manifest,output="output/runs",id;
-int chunk=20,repeat=1;
-bool official=false;
+int chunk=20,repeat=1,pre_roll_ms=0;
+bool official=false,listening=false;
 std::set<std::string> samples;
 };
 Options options(int argc,char** argv){
     Options o;
     for(int i=1;i<argc;++i){std::string a=argv[i];
-    if(a=="--help"){std::cout<<"asr_probe --config PATH (--manifest FIXTURES_JSON | --official) --output-dir ROOT --run-id ID [--chunk-ms 10|20|37] [--repeat 1..20] [--sample ID ...]\nFile-only 16 kHz mono PCM16; no audio device or LLM access. Run complete process under flock -x /tmp/rk3588_voice_engine_model_validation.lock. Exit: 0 applicable checks pass, 2 CLI/config/asset/lock error, 4 model/runtime failure, 6 quality/reset failure. External watchdog handles hard timeouts.\n";
+    if(a=="--help"){std::cout<<"asr_probe --config PATH (--manifest FIXTURES_JSON | --official) --output-dir ROOT --run-id ID [--chunk-ms 10|20|37] [--repeat 1..20] [--sample ID ...] [--listening] [--pre-roll-ms N]\nFile-only 16 kHz mono PCM16; no audio device or LLM access. Run complete process under flock -x /tmp/rk3588_voice_engine_model_validation.lock. Exit: 0 applicable checks pass, 2 CLI/config/asset/lock error, 4 model/runtime failure, 6 quality/reset failure. External watchdog handles hard timeouts.\n";
     std::exit(0);
     }if(a=="--official"){o.official=true;
     continue;
-    }if(i+1==argc)throw ConfigError("missing value: "+a);
+    }if(a=="--listening"){o.listening=true;continue;}if(i+1==argc)throw ConfigError("missing value: "+a);
     std::string v=argv[++i];
         if(a=="--config")o.config=v;
         else if(a=="--manifest")o.manifest=v;
         else if(a=="--output-dir")o.output=v;
         else if(a=="--run-id")o.id=v;
         else if(a=="--sample")o.samples.insert(v);
-        else if(a=="--chunk-ms"||a=="--repeat"){if(!std::regex_match(v,std::regex("[0-9]+")))throw ConfigError("invalid integer: "+a);
+        else if(a=="--chunk-ms"||a=="--repeat"||a=="--pre-roll-ms"){if(!std::regex_match(v,std::regex("[0-9]+")))throw ConfigError("invalid integer: "+a);
         try{int n=std::stoi(v);
         if(a=="--chunk-ms")o.chunk=n;
-        else o.repeat=n;
+        else if(a=="--repeat")o.repeat=n;
+        else o.pre_roll_ms=n;
         }catch(...){throw ConfigError("invalid integer: "+a);
         }}else throw ConfigError("unknown option: "+a);
     }
@@ -52,6 +53,7 @@ Options options(int argc,char** argv){
     if(!std::regex_match(o.id,std::regex("[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")))throw ConfigError("invalid run-id");
     if(o.chunk!=10&&o.chunk!=20&&o.chunk!=37)throw ConfigError("chunk-ms must be 10, 20, or 37");
     if(o.repeat<1||o.repeat>20)throw ConfigError("repeat must be 1..20");
+    if(o.pre_roll_ms&&!o.listening)throw ConfigError("pre-roll-ms requires --listening");
     return o;
 }
 json read_json(const fs::path& path) {
@@ -182,6 +184,7 @@ int main(int argc,char** argv){
     try{
         auto o=options(argc,argv);
         auto config=voice_engine::load_config(o.config);
+        if(o.pre_roll_ms>config.vad.pre_roll_ms)throw ConfigError("pre-roll-ms exceeds configured pre_roll_ms");
         config.models.llm.enabled=false;
         config.models.tts.enabled=false;
         config.models.kws.enabled=false;
@@ -233,15 +236,55 @@ int main(int argc,char** argv){
         auto init_start=Clock::now();
         voice_engine::ZipformerAsr asr(files,config.queues.llm_text_bytes);
         voice_engine::SileroVad vad(vad_file,config.vad,config.threads.vad);
+        voice_engine::ListeningAsr listening(asr,vad,config.vad);
         auto init_end=Clock::now();
         json metadata={{"schema_version",1},{"run_id",o.id},{"mode","asr_probe"},{"backend",{{"asr","RKNN NPU encoder/decoder/joiner"},{"vad","sherpa-onnx CPU"}}},{"config_sha256",voice_engine::file_sha256(config.source_path)},{"models_manifest_sha256",voice_engine::file_sha256(manifest_path)},{"chunk_ms",o.chunk},{"repeat",o.repeat},{"assets",{{"models",assets.models},{"dependencies",assets.dependencies},{"files",assets.files}}},{"initialization_sec",seconds(init_start,init_end)},{"runtime",json::parse(asr.runtime_info_json())},{"vad_runtime",json::parse(vad.runtime_info_json())},{"loaded_libraries",loaded_libraries},{"model_runtime_versions",{{"asr",asr_model.at("runtime_version")},{"vad",vad_model.at("runtime_version")}}},{"memory_before",before},{"memory_after_init",memory()},{"vad_config",{{"pre_roll_ms",config.vad.pre_roll_ms},{"min_speech_ms",config.vad.min_speech_ms},{"end_silence_ms",config.vad.end_silence_ms},{"start_timeout_ms",config.vad.start_timeout_ms},{"max_speech_ms",config.vad.max_speech_ms}}},{"pcm_policy","incremental original PCM to ASR and VAD; publish empty when VAD finds no speech; pre-roll metadata only, no VAD trimming"},{"normalization","fixture normalized_reference; hypothesis ASCII case fold, fullwidth ASCII conversion, CJK/ASCII punctuation and whitespace removal"},{"acceptance_complete",false}};
+        metadata["mode"]=o.listening?"single_turn_listening":"whole_file";
+        metadata["pre_roll_ms"]=o.pre_roll_ms;
+        if(o.listening)metadata["pcm_policy"]="one turn: actual prefix PCM once; incremental ASR and VAD; first VAD/timeout/max endpoint stops consumption; snapshots final then resets; EOF flush preserves valid tail";
         auto deps_path=fs::path(config.assets.deps_manifest);
         if(deps_path.is_relative())deps_path=config.source_path.parent_path()/deps_path;
         metadata["deps_manifest_sha256"]=voice_engine::file_sha256(deps_path);
         if(!o.official)metadata["fixtures_manifest_sha256"]=voice_engine::file_sha256(o.manifest);
         metadata["source_sha256"]=json::object();
-        for(auto p:{"tools/asr_probe.cpp","src/asr/zipformer.cpp","src/asr/silero_vad.cpp","include/voice_engine/asr.hpp","include/voice_engine/vad.hpp","src/asr/text_metrics.hpp"})metadata["source_sha256"][p]=voice_engine::file_sha256(p);
+        for(auto p:{"tools/asr_probe.cpp","src/asr/zipformer.cpp","src/asr/silero_vad.cpp","include/voice_engine/asr.hpp","include/voice_engine/vad.hpp","src/asr/text_metrics.hpp","src/asr/listening_asr.cpp","src/asr/listening_backend.cpp"})metadata["source_sha256"][p]=voice_engine::file_sha256(p);
         save(run/"metadata.json",metadata);
+        // Exercise production cancellation once, outside all measured sample runs.
+        // A full encoder block dirties real caches; cancel then begin/empty-finish
+        // must clear them before the subsequent normal cases use the same handles.
+        if(o.listening){
+            json cancel_check={{"executed",false}};
+            for(const auto& sample:selected){
+                if(sample.at("num_samples").get<std::uint64_t>()<19200)continue;
+                SF_INFO ci{};
+                std::unique_ptr<SNDFILE,decltype(&sf_close)> cw(
+                    sf_open(sample.at("resolved_path").get<std::string>().c_str(),SFM_READ,&ci),sf_close);
+                if(!cw)throw std::runtime_error("cancel-check WAV open failed");
+                std::vector<float> cp(19200);
+                if(sf_readf_float(cw.get(),cp.data(),cp.size())!=19200)throw std::runtime_error("cancel-check WAV incomplete");
+                listening.begin();
+                for(std::size_t pos=0;pos<cp.size()&&listening.state()==voice_engine::ListeningState::listening;){
+                    const auto take=std::min<std::size_t>(320,cp.size()-pos);
+                    pos+=listening.accept(cp.data()+pos,take);
+                }
+                const auto cancelled_chunks=asr.stats().encoder_chunks;
+                const auto cancel_start=Clock::now();
+                listening.cancel();
+                const auto cancel_end=Clock::now();
+                const bool cleared=asr.partial().empty()&&asr.stats().input_samples==0&&
+                    vad.stats().input_samples==0&&vad.segments().empty()&&listening.buffered_samples()==0;
+                listening.begin();
+                const auto empty=listening.finish();
+                const bool isolated=empty.hypothesis.empty()&&empty.asr.input_samples==0&&empty.backends_reset;
+                cancel_check={{"executed",true},{"sample_id",sample.at("sample_id")},
+                    {"encoder_chunks_before_cancel",cancelled_chunks},{"cancel_reset_sec",seconds(cancel_start,cancel_end)},
+                    {"cleared",cleared},{"new_empty_round_isolated",isolated},
+                    {"scope","synchronous worker boundary cancellation; not preemption of an in-flight SDK call"}};
+                if(!cleared||!isolated)throw std::runtime_error("LISTENING cancellation/reset failed");
+                break;
+            }
+            save(run/"cancel-check.json",cancel_check);
+        }
         std::ofstream rows(run/"results.jsonl");
         if(!rows)throw std::runtime_error("cannot open results");
         json all=json::array(),batches=json::array();
@@ -267,24 +310,59 @@ int main(int argc,char** argv){
                     sf_count_t read=0,total=0;
                     std::uint64_t first_chunk_samples=0;
                     auto last_guard=start;
-                    while((read=sf_readf_float(wav.get(),pcm.data(),pcm.size()))>0){asr.accept(pcm.data(),read);
-                    vad.accept(pcm.data(),read);
-                    total+=read;
-                    if(!first_chunk_samples&&asr.stats().encoder_chunks)first_chunk_samples=total;
-                    auto now=Clock::now();
-                    if(seconds(last_guard,now)>1){if(memory().at("MemAvailable_kib").get<long>()<1536*1024)throw std::runtime_error("MemAvailable below 1.5 GiB during inference");
-                    last_guard=now;
-                    }}
-                    if(total!=info.frames||sf_error(wav.get())!=SF_ERR_NO_ERROR)throw std::runtime_error("WAV read incomplete");
-                    auto chunks_before=asr.stats().encoder_chunks;
-                    auto endpoint=Clock::now();
-                    vad.finish();
-                    auto raw=asr.finish();
-                    auto end=Clock::now();
-                    const bool stable_finish=asr.finish()==raw;
-                    auto stat=asr.stats();
-                    auto vs=vad.stats();
-                    auto hypothesis=vs.speech_detected?raw:std::string();
+                    if(o.listening){
+                        const auto prefix_count=std::min<sf_count_t>(info.frames,static_cast<sf_count_t>(o.pre_roll_ms)*16);
+                        std::vector<float> prefix(static_cast<std::size_t>(prefix_count));
+                        if(prefix_count&&sf_readf_float(wav.get(),prefix.data(),prefix_count)!=prefix_count)
+                            throw std::runtime_error("pre-roll WAV read incomplete");
+                        listening.begin(prefix.data(),prefix.size());
+                        total=prefix_count;
+                    }
+                    while((!o.listening||listening.state()==voice_engine::ListeningState::listening)&&
+                          (read=sf_readf_float(wav.get(),pcm.data(),pcm.size()))>0){
+                        if(o.listening)total+=static_cast<sf_count_t>(listening.accept(pcm.data(),read));
+                        else {asr.accept(pcm.data(),read);vad.accept(pcm.data(),read);total+=read;}
+                        const auto streamed_chunks=o.listening&&listening.state()==voice_engine::ListeningState::final?
+                            listening.result().chunks_before_finish:asr.stats().encoder_chunks;
+                        if(!first_chunk_samples&&streamed_chunks)first_chunk_samples=total;
+                        auto now=Clock::now();
+                        if(seconds(last_guard,now)>1){
+                            if(memory().at("MemAvailable_kib").get<long>()<1536*1024)
+                                throw std::runtime_error("MemAvailable below 1.5 GiB during inference");
+                            last_guard=now;
+                        }
+                    }
+                    if((!o.listening&&total!=info.frames)||sf_error(wav.get())!=SF_ERR_NO_ERROR)
+                        throw std::runtime_error("WAV read incomplete");
+                    std::uint64_t chunks_before=asr.stats().encoder_chunks;
+                    const auto endpoint=Clock::now();
+                    std::string raw,hypothesis;
+                    voice_engine::AsrStats stat;
+                    voice_engine::VadStats vs;
+                    std::vector<voice_engine::VadSegment> segments;
+                    bool stable_finish=false;
+                    double endpoint_to_final=0;
+                    if(o.listening){
+                        const auto& result=listening.finish();
+                        raw=result.unfiltered_hypothesis;hypothesis=result.hypothesis;
+                        stat=result.asr;vs=result.vad;segments=result.segments;
+                        chunks_before=result.chunks_before_finish;
+                        endpoint_to_final=result.endpoint_to_final_sec;
+                        stable_finish=listening.finish().hypothesis==hypothesis&&
+                            listening.finish().asr.encoder_chunks==stat.encoder_chunks;
+                        reset_ok=reset_ok&&result.backends_reset;
+                        row["listening"]={{"reason",voice_engine::listening_end_name(result.reason)},
+                            {"pre_roll_samples",result.pre_roll_samples},{"fresh_input_samples",result.input_samples},
+                            {"endpoint_sample",result.endpoint_sample},{"asr_finish_called",result.asr_finish_called},
+                            {"backends_reset",result.backends_reset},{"unconsumed_wav_samples",info.frames-total},
+                            {"timing_scope","VAD confirmation or manual finish call to final/reset; file-driven, no acoustic time"}};
+                    }else{
+                        vad.finish();raw=asr.finish();vs=vad.stats();stat=asr.stats();
+                        hypothesis=vs.speech_detected?raw:std::string();
+                        segments=vad.segments();stable_finish=asr.finish()==raw;
+                        endpoint_to_final=seconds(endpoint,Clock::now());
+                    }
+                    const auto end=Clock::now();
                     auto normalized=voice_engine::asr_metrics::normalize(hypothesis);
                     auto reference=sample.at("normalized_reference").get<std::string>();
                     auto chars=voice_engine::asr_metrics::codepoints(reference).size();
@@ -307,18 +385,22 @@ int main(int argc,char** argv){
                     cer_errors+=errors;
                     }
                     json spans=json::array();
-                    for(auto span:vad.segments())spans.push_back({{"start_sample",span.start_sample},{"end_sample",span.end_sample},{"pre_roll_start_sample",span.pre_roll_start_sample}});
-                    row.update({{"hypothesis",hypothesis},{"asr_unfiltered_hypothesis",raw},{"normalized_hypothesis",normalized},{"exact_match",normalized==reference},{"keyword_results",hits},{"all_keywords_match",keywords},{"cer_eligible",chinese},{"character_errors",errors},{"reference_characters",chars},{"cer",chars?json(static_cast<double>(errors)/chars):json(nullptr)},{"elapsed_sec",elapsed},{"endpoint_to_final_sec",seconds(endpoint,end)},{"audio_sec",duration},{"rtf_original_wav",duration?json(elapsed/duration):json(nullptr)},{"encoder_chunks",stat.encoder_chunks},{"chunks_before_finish",chunks_before},{"first_encoder_chunk_input_samples",first_chunk_samples},{"tail_padding_samples",stat.tail_padding_samples},{"peak_buffered_feature_frames",stat.peak_feature_frames},{"vad",{{"speech_detected",vs.speech_detected},{"start_timed_out",vs.start_timed_out},{"input_samples",vs.input_samples},{"windows",vs.windows},{"tail_valid_samples",vs.tail_valid_samples},{"max_duration_endpoints",vs.max_duration_endpoints},{"segments",spans}}},{"result",hypothesis.empty()?"empty":"text"},{"repeat_consistent",same},{"finish_idempotent",stable_finish},{"memory",memory()}});
+                    for(auto span:segments)spans.push_back({{"start_sample",span.start_sample},{"end_sample",span.end_sample},{"pre_roll_start_sample",span.pre_roll_start_sample}});
+                    row.update({{"hypothesis",hypothesis},{"asr_unfiltered_hypothesis",raw},{"normalized_hypothesis",normalized},{"exact_match",normalized==reference},{"keyword_results",hits},{"all_keywords_match",keywords},{"cer_eligible",chinese},{"character_errors",errors},{"reference_characters",chars},{"cer",chars?json(static_cast<double>(errors)/chars):json(nullptr)},{"elapsed_sec",elapsed},{"endpoint_to_final_sec",endpoint_to_final},{"input_samples",stat.input_samples},{"consumed_audio_sec",stat.input_samples/16000.0},{"rtf_consumed_audio",stat.input_samples?json(elapsed/(stat.input_samples/16000.0)):json(nullptr)},{"audio_sec",duration},{"rtf_original_wav",duration?json(elapsed/duration):json(nullptr)},{"encoder_chunks",stat.encoder_chunks},{"chunks_before_finish",chunks_before},{"first_encoder_chunk_input_samples",first_chunk_samples},{"tail_padding_samples",stat.tail_padding_samples},{"peak_buffered_feature_frames",stat.peak_feature_frames},{"vad",{{"speech_detected",vs.speech_detected},{"start_timed_out",vs.start_timed_out},{"input_samples",vs.input_samples},{"windows",vs.windows},{"tail_valid_samples",vs.tail_valid_samples},{"max_duration_endpoints",vs.max_duration_endpoints},{"max_duration_start_sample",vs.max_duration_start_sample},{"segments",spans}}},{"result",hypothesis.empty()?"empty":"text"},{"repeat_consistent",same},{"finish_idempotent",stable_finish},{"memory",memory()}});
                     // A genuinely empty new stream after nonempty inference tests both
                     // model-state reset and output isolation without another model load.
-                    asr.reset();
-                    vad.reset();
-                    asr.finish();
-                    vad.finish();
-                    reset_ok=reset_ok&&asr.partial().empty()&&asr.stats().encoder_chunks==0&&!vad.stats().speech_detected&&vad.segments().empty();
+                    if(o.listening){
+                        listening.begin();
+                        const auto empty=listening.finish();
+                        reset_ok=reset_ok&&empty.hypothesis.empty()&&empty.asr.encoder_chunks==0&&
+                            !empty.vad.speech_detected&&empty.segments.empty()&&empty.backends_reset;
+                    }else{
+                        asr.reset();vad.reset();asr.finish();vad.finish();
+                        reset_ok=reset_ok&&asr.partial().empty()&&asr.stats().encoder_chunks==0&&!vad.stats().speech_detected&&vad.segments().empty();
+                    }
                     row["reset_empty_stream_ok"]=reset_ok;
                     batch_reset=batch_reset&&reset_ok&&same&&stable_finish;
-                    if(rep>0&&duration>0&&vs.speech_detected&&(main||o.official))warm_rtf.push_back(elapsed/duration);
+                    if(rep>0&&duration>0&&vs.speech_detected&&(main||o.official))warm_rtf.push_back(elapsed/(o.listening?stat.input_samples/16000.0:duration));
                     auto expected=sample.at("expected_behavior").get<std::string>();
                     bool behavior=false;
                     std::string behavior_check;
@@ -335,8 +417,11 @@ int main(int argc,char** argv){
                         behavior=vs.speech_detected&&!hypothesis.empty()&&keywords&&normalized==reference;
                         behavior_check="EOF_flush_full_reference_and_keywords";
                     }else if(expected=="long_audio"){
-                        behavior=vs.speech_detected&&!hypothesis.empty()&&keywords&&stat.input_samples==static_cast<std::uint64_t>(info.frames);
-                        behavior_check="complete_input_and_speech_and_keywords";
+                        behavior=vs.speech_detected&&!hypothesis.empty()&&keywords&&
+                            (o.listening?stat.input_samples==static_cast<std::uint64_t>(total):
+                             stat.input_samples==static_cast<std::uint64_t>(info.frames));
+                        behavior_check=o.listening?"single_turn_consumed_prefix_and_speech_and_keywords; full_file_long_behavior_not_applicable":
+                            "complete_input_and_speech_and_keywords";
                     }else throw ConfigError("unknown expected_behavior: "+expected);
                     row["behavior_check"]=behavior_check;
                     row["expected_behavior_ok"]=behavior;
@@ -357,6 +442,9 @@ int main(int argc,char** argv){
         }
         if(!warm_rtf.empty()&&percentile(warm_rtf,.95)>=1.0)quality_failure=true;
         json summary={{"schema_version",1},{"run_id",o.id},{"rows",all.size()},{"batches",batches},{"runtime_failure",failures},{"quality_failure",quality_failure},{"warm_rtf_count",warm_rtf.size()},{"performance_gate_applicable",!warm_rtf.empty()},{"warm_rtf_p95_below_1",warm_rtf.empty()?json(nullptr):json(percentile(warm_rtf,.95)<1.0)},{"warm_rtf_p95",warm_rtf.empty()?json(nullptr):json(percentile(warm_rtf,.95))},{"memory_end",memory()},{"elapsed_after_initialization_sec",seconds(init_end,Clock::now())},{"elapsed_including_initialization_sec",seconds(begin,Clock::now())},{"A03_acceptance_complete",false},{"limitations",json::array({"File diagnostic only; no microphone, Bluetooth, LLM or engine state-machine integration", "Synthetic fixtures do not establish natural/noisy speech quality", "Endpoint timing is EOF-to-final wall time; not acoustic last-speech timing", "Warm statistics exclude repeat 1; library initialization measured separately", "RUSAGE_SELF peak RSS does not measure all NPU/system memory"})}};
+        summary["mode"]=o.listening?"single_turn_listening":"whole_file";
+        summary["warm_rtf_basis"]=o.listening?"consumed original PCM including pre-roll":"complete original WAV";
+        if(o.listening)summary["limitations"][2]="Endpoint timing is VAD confirmation or manual finish call to final/reset; file-driven, not acoustic time";
         save(run/"summary.json",summary);
         std::cout<<"ASR_PROBE_DONE "<<run<<'\n';
         return failures?4:(quality_failure?6:0);

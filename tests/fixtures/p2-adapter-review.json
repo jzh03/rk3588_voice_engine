@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-22",
+  "scope": "P2-01..03 implementation and separate content acceptance; historical reviews unchanged",
+  "run_directory": "output/runs/p2-01-03-20261022-113554",
+  "tasks": {
+    "P2-01": "in_progress_quality",
+    "P2-02": "completed_model_side",
+    "P2-03": "in_progress_pronunciation"
+  },
+  "acceptance": {
+    "A03": false,
+    "A04_model_side": true,
+    "A05": false,
+    "A08_llm_model_side": true,
+    "A08_full": false,
+    "A06": false
+  },
+  "asr": {
+    "keyword_per_batch": [
+      18,
+      18,
+      18
+    ],
+    "denominator": 20,
+    "cer_errors": 3,
+    "cer_reference_chars": 213,
+    "warm_rtf_p95": 0.121423543,
+    "engineering_checks": 109
+  },
+  "llm": {
+    "content_per_batch": [
+      20,
+      20,
+      20
+    ],
+    "denominator": 20,
+    "lifecycle_count": 10,
+    "multi_turn_groups": 5,
+    "cancel_before_first_token": 5,
+    "cancel_during_generation": 5,
+    "prior_completed_packet_audit": 105,
+    "supplemental_output_caps": {
+      "budgets": [
+        1,
+        4
+      ],
+      "observed_valid_token_ids": [
+        1,
+        4
+      ],
+      "raw_sdk_generate_tokens": [
+        1,
+        3
+      ],
+      "status": "passed",
+      "termination": "token_limit_inferred_from_observed_ids_not_sdk_internal_stop_reason",
+      "fixed_question_scores_unchanged": true
+    }
+  },
+  "tts": {
+    "optional_adjust_down_word": "passed_in_two_contexts",
+    "formal_search": "unresolved",
+    "r1_human_review": "complete_normal_no_disruptive_pauses",
+    "r1_repetitions_per_mode": 3,
+    "r1_tts_cancel_count": 5
+  },
+  "tests": {
+    "ctest_passed": 23,
+    "ctest_total": 23,
+    "ctest_scope": "Full suite before supplemental token-reporting correction; affected tests rerun afterward",
+    "post_correction_ctest_passed": 3,
+    "post_correction_ctest_total": 3,
+    "new_token_observation_stub_cases": 9
+  },
+  "evidence_sha256": {
+    "asr/review.json": "5ec8e104baca54b0b2f1071c825ae69d72257759d02a40af98c3cbefee64e9ee",
+    "asr/review-llm.json": "a8c6573b573ab107b528325771a82a27f6c8b141e939e567857ae988a1800ac6",
+    "llm/content-review.json": "e8116e3b0e38a5ee12b005ba07f49e7ba197dbeaca367529704aa5c2e74c3cdb",
+    "llm/boundary-review.json": "768652430444e766db082d5d8dbbaf9798a36fb73a713da28ffb5dc14cfc9744",
+    "tts/pronunciation-review.json": "af03d5a29d574d9a3b5eb8558fb5d63a55b8772e88944fe551377bb0717dc685",
+    "tts/r1-review.json": "6c3ba155032e5a030cf922d32a6dae477d5a281360001dec0339bb190e5d7ca0",
+    "final-build-tests.json": "c23226a710263c9d58bd6b5ac43d6d755e8d6e3356710f5fbdac7d4f563a1917",
+    "llm/review.json": "75238c586eeba128dc5a364dc69b1b53ff3ec8da79a267047c9286b23b3ffa6e",
+    "llm/packet-integrity-review.json": "a399a59e370c0b085f1f7b9cd05fe973a2a1937ecd1d70c064ace20a08d6f663",
+    "llm/budget-cap-review.json": "3e313d7bb14c4dda4899d129b6a1c5a041c89b3391a9c01d1ac449560c67abf5",
+    "llm/supplemental-token-limit/review.json": "388ecbf409bcb7a892dfb00c375b6e82776eedaf5ded585325a4e4b2d870180b",
+    "tts/post-token-fix-smoke-review.json": "d67f78f5737845ae79f2828d11ee7feb10b9cfc4dbb9afc39ca64596164f4908",
+    "post-token-fix-validation.json": "dc17b943b7250822d38d5781c481ca0b7f73a99d42390f8e0540832463ca718d",
+    "peer-doc-review.json": "984b305392d39c0ff85809a9b82c8557e86e15953c0916a4401948f88a4426aa",
+    "peer-doc-followup.json": "3fcc1150e1405eaf4d8faa15f4d313128c5c3c2af1021d3855bd523d583d1efe",
+    "peer-token-limit-review.json": "01486e2df254c409bcb6898f3e3b4751a67d57dab3d79835ed5189e3f481262b"
+  },
+  "protected": "Original models/dependencies/lexicon/fixtures/references/historical reports unchanged; no commit or push"
+}

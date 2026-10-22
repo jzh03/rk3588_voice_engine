@@ -14,7 +14,7 @@ struct SileroVad::Impl {
     std::vector<VadSegment> spans;
     const SherpaOnnxVoiceActivityDetector* detector=nullptr;
     bool finished=false,active=false;
-    std::uint64_t segment_base=0,active_start=0;
+    std::uint64_t segment_base=0,active_start=0,pre_roll_samples=0,detector_windows=0;
 
     Impl(const std::filesystem::path& model,const VadConfig& c,int threads):config(c){
         probe::require_model_validation_lock();
@@ -60,12 +60,22 @@ struct SileroVad::Impl {
         ++stat.windows;
         if(stat.start_timed_out)return;
         SherpaOnnxVoiceActivityDetectorAcceptWaveform(detector,p,512);
+        ++detector_windows;
         stat.speech_detected=stat.speech_detected||SherpaOnnxVoiceActivityDetectorDetected(detector);
         drain();
         const bool detected=SherpaOnnxVoiceActivityDetectorDetected(detector);
         if(detected&&!active){
             const auto minimum=static_cast<std::uint64_t>(config.min_speech_ms)*16;
-            active_start=std::max(segment_base,stat.input_samples>minimum?stat.input_samples-minimum:0);
+            // Match fixed sherpa 1.12.14's v5 segment timeline: WindowSize
+            // is 512+64, WindowShift is 512, and the first 512 samples are
+            // buffered before its first model window. On first detection the
+            // upstream segment starts at buffer.Tail()-2*WindowSize-minimum.
+            // Merely subtracting minimum from received PCM starts the hard
+            // limit 1664 samples late (104 ms), independent of speech content.
+            const auto model_tail=(detector_windows>1?detector_windows-1:0)*512;
+            const auto lookback=2*(512+64)+minimum;
+            active_start=segment_base+(model_tail>lookback?model_tail-lookback:0);
+            if(!spans.empty())active_start=std::max(active_start,spans.back().end_sample);
             active=true;
         }
         if(!detected)active=false;
@@ -76,11 +86,13 @@ struct SileroVad::Impl {
             drain();
             SherpaOnnxVoiceActivityDetectorReset(detector);
             SherpaOnnxVoiceActivityDetectorClear(detector);
+            stat.max_duration_start_sample=active_start;
             segment_base=stat.input_samples;
+            detector_windows=0;
             active=false;
             ++stat.max_duration_endpoints;
         }
-        if(!stat.speech_detected&&stat.input_samples>=static_cast<std::uint64_t>(config.start_timeout_ms)*16)stat.start_timed_out=true;
+        if(!stat.speech_detected&&stat.input_samples>=pre_roll_samples+static_cast<std::uint64_t>(config.start_timeout_ms)*16)stat.start_timed_out=true;
     }
 };
 
@@ -94,7 +106,8 @@ void SileroVad::finish(){
     impl_->drain();
     impl_->finished=true;
 }
-void SileroVad::reset(){
+void SileroVad::reset(std::size_t pre_roll_samples){
+    if(pre_roll_samples>static_cast<std::uint64_t>(impl_->config.pre_roll_ms)*16)throw std::invalid_argument("VAD pre-roll exceeds configured bound");
     SherpaOnnxVoiceActivityDetectorReset(impl_->detector);
     SherpaOnnxVoiceActivityDetectorClear(impl_->detector);
     impl_->windows.reset();
@@ -104,6 +117,8 @@ void SileroVad::reset(){
     impl_->active=false;
     impl_->segment_base=0;
     impl_->active_start=0;
+    impl_->pre_roll_samples=pre_roll_samples;
+    impl_->detector_windows=0;
 }
 VadStats SileroVad::stats()const{return impl_->stat;}
 std::string SileroVad::runtime_info_json()const{return nlohmann::json({{"backend","CPU"},{"sherpa",SherpaOnnxGetVersionStr()},{"onnxruntime",OrtGetApiBase()->GetVersionString()}}).dump();}

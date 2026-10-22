@@ -147,13 +147,25 @@ struct MeloTts::Impl {
     double initialization_seconds = 0;
     TtsConfig text_config;
     std::size_t max_samples;
-    Impl(const Config &c, int threads)
+    Impl(const Config &c, int threads, bool debug_frontend,
+         const fs::path &pronunciation_rules, const fs::path &derived_lexicon)
         : assets(resolve_melo_tts_assets(c)), text_config(c.tts),
           max_samples(static_cast<std::size_t>(44100) * c.queues.max_tts_audio_ms / 1000) {
         probe::require_model_validation_lock();
         if (threads != 2 && threads != 4)
             throw ConfigError("TTS: threads must be 2 or 4");
-        std::ifstream words(assets.lexicon);
+        assets.effective_lexicon = assets.lexicon;
+        if (!pronunciation_rules.empty()) {
+            if (derived_lexicon.empty())
+                throw ConfigError("TTS: pronunciation supplement requires a new derived lexicon path");
+            assets.pronunciation_rule_count = prepare_tts_pronunciation_lexicon(
+                assets.lexicon, assets.tokens, pronunciation_rules, derived_lexicon);
+            assets.effective_lexicon = fs::canonical(derived_lexicon);
+            assets.pronunciation_rules = fs::canonical(pronunciation_rules);
+        } else if (!derived_lexicon.empty()) {
+            throw ConfigError("TTS: derived lexicon path without pronunciation rules");
+        }
+        std::ifstream words(assets.effective_lexicon);
         std::string line;
         while (std::getline(words, line)) {
             std::istringstream in(line);
@@ -164,14 +176,18 @@ struct MeloTts::Impl {
         SherpaOnnxOfflineTtsConfig t{};
         t.model.vits.model = assets.model.c_str();
         t.model.vits.tokens = assets.tokens.c_str();
-        t.model.vits.lexicon = assets.lexicon.c_str();
+        t.model.vits.lexicon = assets.effective_lexicon.c_str();
         t.model.vits.dict_dir = assets.dictionary.c_str();
         t.model.vits.noise_scale = 0.667F;
         t.model.vits.noise_scale_w = 0.8F;
         t.model.vits.length_scale = 1.0F;
         t.model.num_threads = threads;
+        t.model.debug = debug_frontend ? 1 : 0;
         t.model.provider = "cpu";
         t.silence_scale = 1;
+        // Batching separately AddBlank-padded sentences flips phone/blank
+        // parity in every second sentence, conflicting with Melo language IDs.
+        // melo_frontend_text preserves context across Chinese commas instead.
         t.max_num_sentences = 1;
         std::string rules;
         for (const auto &f : assets.rule_fsts) {
@@ -189,9 +205,10 @@ struct MeloTts::Impl {
                 "TTS: model initialization failed or native sample rate is not 44100 Hz");
     }
 };
-MeloTts::MeloTts(const Config &c, int threads) {
+MeloTts::MeloTts(const Config &c, int threads, bool debug_frontend,
+                 const fs::path &pronunciation_rules, const fs::path &derived_lexicon) {
     probe::require_model_validation_lock();
-    impl_ = std::make_unique<Impl>(c, threads);
+    impl_ = std::make_unique<Impl>(c, threads, debug_frontend, pronunciation_rules, derived_lexicon);
 }
 MeloTts::~MeloTts() = default;
 TtsNativeAudio MeloTts::generate(const std::string &text) {
@@ -200,10 +217,11 @@ TtsNativeAudio MeloTts::generate(const std::string &text) {
     if (segments.size() != 1 || segments[0] != text)
         throw std::invalid_argument(
             "TTS: generate requires one presegmented bounded plain-text segment");
+    const auto frontend_text = melo_frontend_text(text);
     const auto generate_start = std::chrono::steady_clock::now();
     const std::unique_ptr<const SherpaOnnxGeneratedAudio,
                           decltype(&SherpaOnnxDestroyOfflineTtsGeneratedAudio)>
-        a(SherpaOnnxOfflineTtsGenerate(impl_->model.get(), text.c_str(), 0, 1.0F),
+        a(SherpaOnnxOfflineTtsGenerate(impl_->model.get(), frontend_text.c_str(), 0, 1.0F),
           SherpaOnnxDestroyOfflineTtsGeneratedAudio);
     const double generate_seconds =
         std::chrono::duration<double>(std::chrono::steady_clock::now() - generate_start).count();

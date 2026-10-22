@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-22",
+  "timezone": "Asia/Shanghai",
+  "decision_id": "a03-natural-v1",
+  "decision_kind": "acceptance_scope_revision_using_existing_evidence",
+  "basis": "User accepted the natural speech set as sufficient and requested legacy synthetic failures no longer block progress.",
+  "A03": {
+    "status": "passed",
+    "scope": "Frozen 20-item natural speech set plus applicable engineering and natural-tail checks; file/model adapter stage"
+  },
+  "P2_01": "completed",
+  "formal_corpus_id": "natural-headset-zh-v1-20261022",
+  "formal_manifest": "output/runs/p1-natural-review-20261022-104035/natural/manifest.json",
+  "numerical_thresholds_unchanged": {
+    "keyword_each_batch_min": 18,
+    "denominator_each_batch": 20,
+    "batches": 3,
+    "chinese_cer_max": 0.15,
+    "warm_rtf_p95_below": 1
+  },
+  "results": {
+    "keyword_each_batch": [
+      18,
+      18,
+      18
+    ],
+    "exact_text_each_batch": [
+      15,
+      15,
+      15
+    ],
+    "chinese_cer": 0.014084507042253521,
+    "warm_rtf_p95": 0.1214235432885906,
+    "engineering_checks": 109,
+    "natural_tail_checks": [
+      {
+        "chunk_ms": 10,
+        "natural_tail_full_text_match": true,
+        "finish_and_reset": true
+      },
+      {
+        "chunk_ms": 20,
+        "natural_tail_full_text_match": true,
+        "finish_and_reset": true
+      },
+      {
+        "chunk_ms": 37,
+        "natural_tail_full_text_match": true,
+        "finish_and_reset": true
+      }
+    ]
+  },
+  "nonblocking_known_issues": {
+    "legacy_synthetic": {
+      "historical_result": "failed",
+      "keywords_each_batch": "13/20",
+      "chinese_cer": "34/213",
+      "formal_A03_gate": false,
+      "files_and_reports": "retained"
+    },
+    "legacy_synthetic_tail": {
+      "historical_result": "failed_full_text_match",
+      "difference": "请把 -> 行吧; final phrase retained",
+      "formal_A03_gate": false
+    },
+    "natural_code_switch": {
+      "items": [
+        "natural_mix_01: hello world -> HELLO",
+        "natural_mix_03: test -> TASK"
+      ],
+      "retained_in_full_20_item_denominator": true,
+      "within_existing_18_of_20_threshold": true
+    }
+  },
+  "limitations": [
+    "Same-text single-speaker quiet headset set; not independent-text, noisy or multi-speaker validation.",
+    "P4 microphone ring, device lifecycle and real-time engine integration remain separate.",
+    "Long-speech engineering fixtures use repeated utterances; no natural continuous 15-second or phoneme timing claim.",
+    "A05/P2-03 search pronunciation remains unresolved; A06/full A08 and later stages unchanged."
+  ],
+  "new_inference_or_tests": false,
+  "source_model_fixture_or_threshold_change": false,
+  "previous_snapshot": "tests/fixtures/p2-adapter-review.json",
+  "decision_run": "output/runs/asr-natural-scope-20261022-124107",
+  "evidence_sha256": {
+    "tests/fixtures/natural-corpus.json": "81131ec5bfc706e3729dea330f535ae5bc94d99d3552308136dcda7cec63a82b",
+    "output/runs/p1-natural-review-20261022-104035/natural/manifest.json": "f51b14f9e6e23a9af935ab534094c95cba09dcc21c5b4dacd3e96b1e2abd8142",
+    "output/runs/asr-probe-official5-20261020-212111/summary.json": "0898591b02f91c2de890c9971867d24cd1d4c3305aa16c85bfdd08a69bc5ddab",
+    "output/runs/p2-01-03-20261022-113554/asr/review.json": "5ec8e104baca54b0b2f1071c825ae69d72257759d02a40af98c3cbefee64e9ee",
+    "output/runs/p2-01-03-20261022-113554/asr/handoff.json": "66703fd5d430ce710adc89458123bea33cb4cf008de640b9318f541e2b5c3619",
+    "output/runs/a03-a05-acceptance-20261022-111537/a03-review.json": "2a13be285553c2fd84f27d2b1eee0a20d1ab9c0bdee26e2a02c1f1a5c61a36d2",
+    "output/runs/p2-01-03-20261022-113554/asr/runs/final-boundary10/results.jsonl": "a089925a193fb6c057c61e5845ab57e37ba2c4123ee0a8ba00467a89c0bc4d3d",
+    "output/runs/p2-01-03-20261022-113554/asr/runs/final-boundary20/results.jsonl": "3245e331061d675d7c40bfea850fa6cbff3f639679720f7e2646da7b0edb5158",
+    "output/runs/p2-01-03-20261022-113554/asr/runs/final-boundary37/results.jsonl": "2fd7d62c66e2c1504ccd8f0c206132dbe30c7544c5193acadb8dca7e005bcd83"
+  }
+}

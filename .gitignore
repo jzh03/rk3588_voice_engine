@@ -19,6 +19,7 @@ __pycache__/
 /models/*
 !/models/.gitkeep
 !/models/manifest.json
+!/models/pronunciation-candidates.json
 /deps/*
 !/deps/.gitkeep
 !/deps/manifest.json

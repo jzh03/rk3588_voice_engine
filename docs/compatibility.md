@@ -2,6 +2,14 @@
 
 依据核对日期：2026-10-21（Asia/Shanghai）。本文件集中记录官方要求、驱动适配方案与留存来源；实际环境见 [环境记录](environment.md)，实施任务见 [执行计划](../EXECUTION_PLAN.md#3-技术方案与兼容性关口)。
 
+## P2适配与可选读音组合（2026-10-22）
+
+固定模型、SDK、系统库及原P0 verified清单未变。正式LLM使用固定RKLLM 1.3.0/选定R，实际常驻、取消与生命周期证据见[环境 §48](environment.md#48-p2-模型适配端点与流式合成)；原 LLM/TTS 同进程局部实验只覆盖两模型；后续 P2-04 已完成四模型常驻 304.870 s / 44 轮，实际加载固定 RKNN 2.3.2、RKLLM 1.3.0、sherpa-onnx 1.12.14 与 ORT 1.17.1-patched，原始映射/哈希与结束路径复核一致，A06 通过。本次固定四模型文件负载无需 LLM 进程隔离，证据见[环境 §51](environment.md#51-p2-04-四模型共驻与五分钟验收)；模型/runtime 变化或加入 KWS 后需重验，原 P0 verified 清单范围不扩写。
+
+词级“调低”补充是独立候选组合，登记在[pronunciation-candidates.json](../models/pronunciation-candidates.json)，绑定原lexicon/tokens哈希和应用规则哈希。显式CLI选择后在新run派生lexicon；原模型权重、lexicon及主manifest不变，也不扩大主manifest的verified范围。两上下文读音已确认；后续“搜索”由adapter标点上下文修正并完成正式A05复验，见[当前结果](environment.md#50-p2-03-搜索修正与-a05-复验)。诊断ORT输入捕获没有修改SDK，且不用于正式性能采样；接口与限制见[TTS文档](tts-probe.md#p2-流式队列与补充读音2026-10-22)。
+
+本次前端策略绑定现有sherpa-onnx 1.12.14、固定tokens及FST：仅在adapter内部把中文全角逗号映射为同一comma音素的别名，避免该处独立声学推理；ASCII逗号与资产原文件不改。不是SDK二进制补丁或新词典。实际ORT输入验证音素/声调保持且blank位置正确；升级前端或词典组合需重新验证该约定。策略及证据见[TTS契约](tts-probe.md#2026-10-22-搜索修正与-a05-复验)。
+
 ## 官方要求与本机差距
 
 **当前实测（2026-10-21）：**官方 Jammy 22.04.5 / BSP 6.1.99 运行 RKNPU 0.9.8、RKNN 2.3.2 / RKLLM 1.3.0。系统与私有 runtime/头文件、ABI、官方例程及实际加载证据已满足 P0-02；P0-03/04 与 M0 现已按分别推理的最小基线关闭，见[首个已验证组合](#p0m0-首个已验证组合2026-10-21)。历史转换未知项保留，分别成功不能证明共驻。下文早期阶段保留历史语义。

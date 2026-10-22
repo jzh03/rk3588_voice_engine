@@ -1,0 +1,602 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-22",
+  "timezone": "Asia/Shanghai",
+  "task": "P2-04",
+  "task_status": "completed",
+  "acceptance": "A06",
+  "passed": true,
+  "run_directory": "output/runs/p2-04-coexist-20261022-132341",
+  "formal_run": "output/runs/p2-04-coexist-20261022-132341/formal-swap-review",
+  "head": "0d32be5d1aacf577ef61f3fb7e40a70582a0fd5b",
+  "worktree": "uncommitted changes; exact tested files and binary bound by evidence hashes",
+  "measurement": {
+    "duration_sec": 304.869842291,
+    "completed_rounds": 44,
+    "warmup_rounds": 5,
+    "min_mem_available_kib": 4286836,
+    "swap_policy": "review"
+  },
+  "user_decisions": [
+    "A06 changed from 30min/30rounds to 5min/at least5rounds",
+    "按原计划审核持续换页（推荐）"
+  ],
+  "scope": [
+    "four resident models in one PID",
+    "fixed actual SDK paths/hashes",
+    "ASR and LLM serial NPU work",
+    "bounded TTS streaming overlapping LLM"
+  ],
+  "not_covered": [
+    "P3/A07 ASR hypothesis fed to LLM",
+    "P4 real audio state machine and full A08",
+    "P5 KWS",
+    "A14 one-hour stability"
+  ],
+  "process_isolation_required_for_current_combination": false,
+  "previous_failed_runs_preserved": [
+    "formal",
+    "formal-retry",
+    "formal-representative-warmup"
+  ],
+  "verified_manifest_scope_unchanged": "P0/M0",
+  "independent_review": {
+    "schema_version": 2,
+    "evidence_root": "/home/orangepi/projects/rk3588_voice_engine/output/runs/p2-04-coexist-20261022-132341/formal-swap-review",
+    "audit_revision": "Sampling-count assertion corrected to frozen 1.5s gap/endpoints rule; original audit retained. See review-correction.json.",
+    "review_type": "independent original JSONL and supervisor review",
+    "rules": {
+      "minimum_duration_sec": 300,
+      "minimum_complete_rounds": 5,
+      "mem_available_floor_kib": 1572864,
+      "maximum_sample_gap_ns": 1500000000,
+      "maximum_endpoint_gap_ns": 1500000000,
+      "swap_policy": "Recorded zero diagnostic or predeclared sustained-swap review",
+      "swap_review_plan": "sustained-swap-review-plan.json",
+      "sustained_swap_rules": {
+        "consecutive_active_bins": 5,
+        "active_bins_per_30_seconds": 15,
+        "recurring_episodes_per_60_seconds": 3,
+        "recurring_first_last_span_seconds": 30,
+        "final_counter_plateau_seconds": 60,
+        "total_page_or_byte_ceiling": null
+      }
+    },
+    "checks": {
+      "mode_consistent": true,
+      "preflight_never_certifies": true,
+      "child_exit_clean": true,
+      "no_failure_artifact": true,
+      "shared_lock_verified": true,
+      "supervisor_brackets_run": true,
+      "single_event_pid": true,
+      "one_initialization_per_model": true,
+      "four_resident_models": true,
+      "measurement_anchors_consistent": true,
+      "models_destroyed_after_measurement": true,
+      "requested_complete_warmups_excluded": true,
+      "warmup_summary_and_events_consistent": true,
+      "representative_warmup_cycle_coverage": true,
+      "duration_round_counts_consistent": true,
+      "requested_limits_satisfied": true,
+      "formal_300_seconds_AND_five_rounds": true,
+      "consecutive_measured_rounds": true,
+      "no_unfinished_measured_round": true,
+      "all_rounds_complete_reset_and_infer": true,
+      "ordered_npu_intervals": true,
+      "round_event_timestamps_match": true,
+      "llm_idle_KV_clear_and_empty_queue": true,
+      "tts_complete_nonempty_drained": true,
+      "every_round_queue_peaks_bounded": true,
+      "tts_generation_count_matches": true,
+      "tts_intervals_inside_round": true,
+      "tts_overlap_calculated_from_intervals": true,
+      "complete_work_spans_measurement": true,
+      "overlap_summary_matches": true,
+      "probe_1Hz_coverage": true,
+      "supervisor_1Hz_coverage": true,
+      "memory_floor_all_supervised_samples": true,
+      "recognized_swap_policy": true,
+      "swap_policy_consistent": true,
+      "swap_summary_matches_raw_counters": true,
+      "swap_deltas_match_raw_counters": true,
+      "predeclared_no_sustained_swap_review": true,
+      "stable_process_identity": true,
+      "complete_process_resource_fields": true,
+      "sampled_queues_bounded": true,
+      "sampled_peaks_bounded": true,
+      "queue_summary_covers_every_round": true,
+      "thermal_cpu_npu_sensor_inventory": true,
+      "sensors_recorded_or_unavailable": true,
+      "all_four_runtime_families_present": true,
+      "actual_libraries_match_pinned_manifest": true,
+      "runtime_paths_unchanged_after_measurement": true,
+      "runtime_version_contract": true,
+      "no_logged_abi_crash_oom_failure": true
+    },
+    "failures": [],
+    "a06_pass": true,
+    "limits": [
+      "Five-minute four-model coexistence only; not one-hour endurance.",
+      "No audio device/acoustic validation or ASR-to-LLM full-chain quality claim.",
+      "Runtime hashes are checked against the pinned manifest using the probe's prewindow hash evidence; no runtime/model file is rehashed.",
+      "Persistent model ownership is corroborated by reviewed source lifetime, ready/destroy events and one supervised process identity.",
+      "Swap counters are system-wide and cannot attribute activity to this process. Classification uses both traces with at most one accepted sample interval of timing uncertainty; no total page ceiling or one-hour memory-pressure claim is applied."
+    ],
+    "mode": "formal",
+    "probe_A06": "pending_external_review",
+    "probe_sampling": {
+      "count": 351,
+      "max_gap_sec": 1.000975616,
+      "start_gap_sec": 1.166e-06,
+      "end_gap_sec": 0.000501078
+    },
+    "supervisor_sampling": {
+      "count": 296,
+      "max_gap_sec": 1.054952964,
+      "start_gap_sec": 0.992580627,
+      "end_gap_sec": 0.87122169
+    },
+    "swap_policy": "review",
+    "swap_review": {
+      "decision": "no_sustained_observed",
+      "source_decisions": {
+        "probe": "no_sustained_observed",
+        "supervisor": "no_sustained_observed"
+      },
+      "corroboration": "Any sustained trace retains failure evidence; both complete traces must independently support no sustained activity to pass.",
+      "boundary_limit": "Asynchronous first/last samples can differ by one accepted sample interval; raw total deltas need not be identical.",
+      "sources": {
+        "probe": {
+          "decision": "no_sustained_observed",
+          "reasons": [],
+          "samples": 351,
+          "bin_seconds": 1,
+          "bin_assignment": "floor((interval_end_ns - measurement_begin_ns) / 1e9)",
+          "endpoint_rule": "The exact measurement-end sample retains its floor bin.",
+          "total_page_or_byte_ceiling": null,
+          "coverage_sufficient": true,
+          "duration_sec": 304.869842291,
+          "counter_delta_pages": {
+            "in": 0,
+            "out": 0
+          },
+          "active_bins": [],
+          "episodes": [],
+          "max_consecutive_active_bins": 0,
+          "max_active_bins_in_30s": 0,
+          "recurring_episodes_in_60s": [],
+          "final_60s_counter_plateau": true,
+          "start_gap_sec": 1.166e-06,
+          "end_gap_sec": 0.000501078,
+          "maximum_interval_uncertainty_sec": 1.000975616,
+          "active_bin_count": 0,
+          "positive_intervals": [],
+          "densest_30s_window_start_bin": null,
+          "tail_baseline_ns": 13264160854814,
+          "tail_observed_span_sec": 60.103786036,
+          "tail_boundary_uncertainty_sec": 0.104287114,
+          "final_60s_delta_pages": {
+            "in": 0,
+            "out": 0
+          }
+        },
+        "supervisor": {
+          "decision": "no_sustained_observed",
+          "reasons": [],
+          "samples": 296,
+          "bin_seconds": 1,
+          "bin_assignment": "floor((interval_end_ns - measurement_begin_ns) / 1e9)",
+          "endpoint_rule": "The exact measurement-end sample retains its floor bin.",
+          "total_page_or_byte_ceiling": null,
+          "coverage_sufficient": true,
+          "duration_sec": 304.869842291,
+          "counter_delta_pages": {
+            "in": 0,
+            "out": 0
+          },
+          "active_bins": [],
+          "episodes": [],
+          "max_consecutive_active_bins": 0,
+          "max_active_bins_in_30s": 0,
+          "recurring_episodes_in_60s": [],
+          "final_60s_counter_plateau": true,
+          "start_gap_sec": 0.992580627,
+          "end_gap_sec": 0.87122169,
+          "maximum_interval_uncertainty_sec": 1.054952964,
+          "active_bin_count": 0,
+          "positive_intervals": [],
+          "densest_30s_window_start_bin": null,
+          "tail_baseline_ns": 13263764318283,
+          "tail_observed_span_sec": 59.629601955,
+          "tail_boundary_uncertainty_sec": 0.500823645,
+          "final_60s_delta_pages": {
+            "in": 0,
+            "out": 0
+          }
+        }
+      },
+      "policy": "review",
+      "smoke_observational_only": false
+    },
+    "observed": {
+      "pid": 137041,
+      "measurement_duration_sec": 304.869842291,
+      "complete_rounds": 44,
+      "warmup_duration_sec": 28.234534778,
+      "completed_warmup_rounds": 5,
+      "warmup_prompt_coverage": 5,
+      "warmup_input_coverage": 5,
+      "active_round_duration_sec": 304.799729868,
+      "maximum_inter_round_gap_sec": 0.003346546,
+      "tts_llm_overlap_sec": 53.959251192,
+      "queue_peaks": {
+        "llm_text_bytes": 12,
+        "tts_input_bytes": 81,
+        "tts_segments": 1,
+        "tts_pcm_frames": 100
+      },
+      "queue_capacities": {
+        "asr_pending_samples": 512,
+        "llm_text_bytes": 8192,
+        "pending_turns": 1,
+        "tts_input_bytes": 8192,
+        "tts_native_segment_ms": 20000,
+        "tts_pcm_frames": 100,
+        "tts_pcm_ms": 2000,
+        "tts_segments": 4
+      },
+      "minimum_mem_available_kib_all_samples": 4288232,
+      "minimum_mem_available_kib_50ms_guard": 4286836,
+      "rss_kib": {
+        "count": 296,
+        "min": 2965380,
+        "median": 2971716.0,
+        "p95": 2971716,
+        "max": 2971716
+      },
+      "pss_kib": {
+        "count": 296,
+        "min": 890031,
+        "median": 2974858.0,
+        "p95": 2974858,
+        "max": 2974858
+      },
+      "threads": {
+        "count": 296,
+        "min": 11,
+        "median": 11.0,
+        "p95": 11,
+        "max": 11
+      },
+      "fd_count": {
+        "count": 296,
+        "min": 99,
+        "median": 99.0,
+        "p95": 99,
+        "max": 100
+      },
+      "cpu_percent": {
+        "count": 296,
+        "min": 121.21904936310018,
+        "median": 378.9810972823319,
+        "p95": 416.391297641074,
+        "max": 509.4604764693653
+      },
+      "sensor_ranges": {
+        "thermal:thermal_zone0:soc-thermal:millidegC": {
+          "count": 296,
+          "min": 77615,
+          "median": 84076.0,
+          "p95": 85000,
+          "max": 85888
+        },
+        "thermal:thermal_zone1:bigcore0-thermal:millidegC": {
+          "count": 296,
+          "min": 78538,
+          "median": 86777.0,
+          "p95": 88555,
+          "max": 90333
+        },
+        "thermal:thermal_zone2:bigcore1-thermal:millidegC": {
+          "count": 296,
+          "min": 78538,
+          "median": 87666.0,
+          "p95": 89444,
+          "max": 90333
+        },
+        "thermal:thermal_zone3:littlecore-thermal:millidegC": {
+          "count": 296,
+          "min": 78538,
+          "median": 85000.0,
+          "p95": 85888,
+          "max": 85888
+        },
+        "thermal:thermal_zone4:center-thermal:millidegC": {
+          "count": 296,
+          "min": 77615,
+          "median": 81307.0,
+          "p95": 84076,
+          "max": 85000
+        },
+        "thermal:thermal_zone5:gpu-thermal:millidegC": {
+          "count": 296,
+          "min": 76692,
+          "median": 79461.0,
+          "p95": 81307,
+          "max": 81307
+        },
+        "thermal:thermal_zone6:npu-thermal:millidegC": {
+          "count": 296,
+          "min": 77615,
+          "median": 81307.0,
+          "p95": 82230,
+          "max": 83153
+        },
+        "cpu:policy0:kHz": {
+          "count": 296,
+          "min": 408000,
+          "median": 1416000.0,
+          "p95": 1800000,
+          "max": 1800000
+        },
+        "cpu:policy4:kHz": {
+          "count": 296,
+          "min": 408000,
+          "median": 2208000.0,
+          "p95": 2352000,
+          "max": 2352000
+        },
+        "cpu:policy6:kHz": {
+          "count": 296,
+          "min": 408000,
+          "median": 1608000.0,
+          "p95": 2208000,
+          "max": 2208000
+        },
+        "devfreq:dmc:Hz": {
+          "count": 296,
+          "min": 528000000,
+          "median": 1068000000.0,
+          "p95": 2112000000,
+          "max": 2112000000
+        },
+        "devfreq:fb000000.gpu:Hz": {
+          "count": 296,
+          "min": 300000000,
+          "median": 300000000.0,
+          "p95": 300000000,
+          "max": 300000000
+        },
+        "devfreq:fdab0000.npu:Hz": {
+          "count": 296,
+          "min": 800000000,
+          "median": 1000000000.0,
+          "p95": 1000000000,
+          "max": 1000000000
+        }
+      },
+      "libraries": [
+        {
+          "dependency": "onnxruntime-cpu",
+          "path": "/home/orangepi/projects/rk3588_voice_engine/deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libonnxruntime.so",
+          "sha256": "89abc6da8d7ac84e5270349fe8a44ee7469d9a958797eed004f1a3f5c7df21d4",
+          "version": "1.17.1-patched"
+        },
+        {
+          "dependency": "sherpa-onnx-cpu",
+          "path": "/home/orangepi/projects/rk3588_voice_engine/deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libsherpa-onnx-c-api.so",
+          "sha256": "d0c812de58bd8360b8c2084721137d91e9c8c0899150efbbec38221cc02f47e5",
+          "version": "1.12.14"
+        },
+        {
+          "dependency": "rkllm-runtime",
+          "path": "/home/orangepi/projects/rk3588_voice_engine/deps/rkllm-1.3.0/lib/librkllmrt.so",
+          "sha256": "6a9e4fc5324c68921c3a900340361e107af7599fe34dc8fa7759b2c5ae22a6e6",
+          "version": "1.3.0"
+        },
+        {
+          "dependency": "rknn-runtime",
+          "path": "/home/orangepi/projects/rk3588_voice_engine/deps/rknn-2.3.2/lib/librknnrt.so",
+          "sha256": "d31fc19c85b85f6091b2bd0f6af9d962d5264a4e410bfb536402ec92bac738e8",
+          "version": "2.3.2"
+        }
+      ],
+      "timing_by_measurement_half": {
+        "first_half": {
+          "asr_sec": {
+            "count": 23,
+            "min": 0.364414135,
+            "median": 0.447694529,
+            "p95": 0.660072422,
+            "max": 0.789083967
+          },
+          "llm_sec": {
+            "count": 23,
+            "min": 1.457667918,
+            "median": 2.059767121,
+            "p95": 2.784973724,
+            "max": 2.961367275
+          },
+          "round_sec": {
+            "count": 23,
+            "min": 4.403970238,
+            "median": 6.831828245,
+            "p95": 8.403158797,
+            "max": 8.515506611
+          }
+        },
+        "second_half": {
+          "asr_sec": {
+            "count": 21,
+            "min": 0.347791992,
+            "median": 0.439741924,
+            "p95": 0.576264609,
+            "max": 0.603298981
+          },
+          "llm_sec": {
+            "count": 21,
+            "min": 1.389523362,
+            "median": 2.045334658,
+            "p95": 2.670626349,
+            "max": 2.904356293
+          },
+          "round_sec": {
+            "count": 21,
+            "min": 4.75632726,
+            "median": 7.463851318,
+            "p95": 9.198316517,
+            "max": 9.918619059
+          }
+        }
+      },
+      "timing_by_prompt_and_half": {
+        "1": {
+          "first_half_round_sec": {
+            "count": 5,
+            "min": 5.344594493,
+            "median": 5.879063584,
+            "p95": 6.395481296,
+            "max": 6.395481296
+          },
+          "second_half_round_sec": {
+            "count": 4,
+            "min": 6.304778862,
+            "median": 6.4226461495,
+            "p95": 6.708865477,
+            "max": 6.708865477
+          }
+        },
+        "2": {
+          "first_half_round_sec": {
+            "count": 5,
+            "min": 5.828347407,
+            "median": 6.831828245,
+            "p95": 6.976019242,
+            "max": 6.976019242
+          },
+          "second_half_round_sec": {
+            "count": 4,
+            "min": 7.19955201,
+            "median": 7.517724998,
+            "p95": 8.172631385,
+            "max": 8.172631385
+          }
+        },
+        "3": {
+          "first_half_round_sec": {
+            "count": 5,
+            "min": 7.51893657,
+            "median": 8.028387318,
+            "p95": 8.515506611,
+            "max": 8.515506611
+          },
+          "second_half_round_sec": {
+            "count": 4,
+            "min": 8.818241777,
+            "median": 8.871691460000001,
+            "p95": 9.918619059,
+            "max": 9.918619059
+          }
+        },
+        "4": {
+          "first_half_round_sec": {
+            "count": 4,
+            "min": 4.403970238,
+            "median": 4.5778800660000005,
+            "p95": 4.828783317,
+            "max": 4.828783317
+          },
+          "second_half_round_sec": {
+            "count": 5,
+            "min": 4.75632726,
+            "median": 4.979478199,
+            "p95": 5.186141351,
+            "max": 5.186141351
+          }
+        },
+        "5": {
+          "first_half_round_sec": {
+            "count": 4,
+            "min": 7.426263533,
+            "median": 7.904797527,
+            "p95": 8.403158797,
+            "max": 8.403158797
+          },
+          "second_half_round_sec": {
+            "count": 4,
+            "min": 8.135184613,
+            "median": 8.58943876,
+            "p95": 9.198316517,
+            "max": 9.198316517
+          }
+        }
+      },
+      "memory_first_last_60s": {
+        "first_60s": {
+          "rss_kib": {
+            "count": 58,
+            "min": 2965380,
+            "median": 2971716.0,
+            "p95": 2971716,
+            "max": 2971716
+          },
+          "pss_kib": {
+            "count": 58,
+            "min": 2968498,
+            "median": 2974858.0,
+            "p95": 2974858,
+            "max": 2974858
+          }
+        },
+        "last_60s": {
+          "rss_kib": {
+            "count": 58,
+            "min": 2971716,
+            "median": 2971716.0,
+            "p95": 2971716,
+            "max": 2971716
+          },
+          "pss_kib": {
+            "count": 58,
+            "min": 2974858,
+            "median": 2974858.0,
+            "p95": 2974858,
+            "max": 2974858
+          }
+        }
+      }
+    },
+    "frequency_latency_interpretation": "First/second-half and per-prompt timing comparisons are descriptive; input order and ASR content differ. Idle DVFS changes or frequency ranges alone do not establish thermal throttling or its effect. No one-hour A14 memory-growth criterion is applied to this five-minute run.",
+    "evidence_sha256": {
+      "results/summary.json": "363d872e996e543862b3eadd7122ffb3d6523e550f6c52c35e5db317ecb1d01e",
+      "results/events.jsonl": "fd8062ec0bb822ac2a2a8b81a86a3ab49813e55637c531bdb9993335aa010cb2",
+      "results/rounds.jsonl": "cff0db27a9712ff01fa1001ed91ed858b47f7767192e24243f297031f45eb1be",
+      "results/resources.jsonl": "69764a06a69c4a50c28aac82ec90c50c69b2652071f25e4321ee1e60af7d2b82",
+      "results/libraries.json": "64ec709b9b5e6631c233ee053be4a4fed7000cd8386dca12fbf7c7c180bd26eb",
+      "results/libraries-final.json": "59d15089b807e66b4edbaf6b1d9501d9aa1173ee7939e8d11173d07c41e8d43d",
+      "supervisor.json": "cff1ea6c4d57ed2cad86696dd76dc961a7da14df6334ded4b6c530260504ea26",
+      "supervisor-resources.jsonl": "d8e5ac77544c8e5f53344b6047d70887202d8c13b5b4fd02af0b060b85df75bb",
+      "command.json": "9267c738882f7572958febca045252bce9ca0a38446a40f47c054412eb76339b"
+    },
+    "all_observed_checks_pass": true,
+    "status": "A06_pass"
+  },
+  "evidence_sha256": {
+    "output/runs/p2-04-coexist-20261022-132341/sustained-swap-review-plan.json": "d43d3fc5d066af956c624fa175c961dee9a5f792dfa7b872aebd504d92ef3e59",
+    "output/runs/p2-04-coexist-20261022-132341/review/formal-swap-review-audit-corrected.json": "3ba10f819ad42febe5faf9a47a8bba6cc833ae3c16da6dd677e36ac9a4b68629",
+    "output/runs/p2-04-coexist-20261022-132341/review/formal-swap-review-audit.json": "44841038b262727c972d22f52a3a51b30e51564077e5b15e7baf9791fe21ec8b",
+    "output/runs/p2-04-coexist-20261022-132341/review/review-correction.json": "69f21bf8934a1107c35c0bb7290f6375ac6ef651179ed2ac2c0a32ab58453329",
+    "output/runs/p2-04-coexist-20261022-132341/swap-review-classifier-tests.json": "2ef1b203e430567fc1a2a8378ef2db2c17681a70ecc85fab2d3fd82bb16d4e90",
+    "output/runs/p2-04-coexist-20261022-132341/formal-swap-review/results/summary.json": "363d872e996e543862b3eadd7122ffb3d6523e550f6c52c35e5db317ecb1d01e",
+    "output/runs/p2-04-coexist-20261022-132341/formal-swap-review/supervisor.json": "cff1ea6c4d57ed2cad86696dd76dc961a7da14df6334ded4b6c530260504ea26",
+    "output/runs/p2-04-coexist-20261022-132341/formal-swap-review/results/libraries.json": "64ec709b9b5e6631c233ee053be4a4fed7000cd8386dca12fbf7c7c180bd26eb",
+    "output/runs/p2-04-coexist-20261022-132341/formal-swap-review/results/libraries-final.json": "59d15089b807e66b4edbaf6b1d9501d9aa1173ee7939e8d11173d07c41e8d43d",
+    "output/runs/p2-04-coexist-20261022-132341/swap-review-tested-source-hashes.json": "78905d0976f320bc1d18103679a5b03c3ad7ed9ac4670766712ddaa95fa5bf8a",
+    "output/runs/p2-04-coexist-20261022-132341/build-tests.json": "457114f2d41f678c6009c9b0c7b3b4641598c4cd75837a18e0ff45c8b2baebf1",
+    "output/runs/p2-04-coexist-20261022-132341/swap-review-tests.json": "f38ed97b17cc7e4704343a49e5d25fc63dffc1c7924906ccbe0252199a251688",
+    "output/runs/p2-04-coexist-20261022-132341/review/formal-failure-review.json": "fa60de5c2b14419b0dcc8766808f27bd4befae6094fb38a3a95f4b587394f5e9",
+    "output/runs/p2-04-coexist-20261022-132341/review/formal-retry-failure-review.json": "268ec1cdc22b4c4d63664231a7893e74711b04795d54209dd89c332e334437ed",
+    "output/runs/p2-04-coexist-20261022-132341/review/formal-representative-warmup-failure-review.json": "ff1fc5f24a7ff2eb6637002bfc26e8457d1fbe7c7bd4722d6d1ba7259ab0fe86"
+  }
+}

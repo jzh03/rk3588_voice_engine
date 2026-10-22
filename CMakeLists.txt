@@ -7,6 +7,7 @@ option(VOICE_ENGINE_BUILD_PULSE_AUDIO "Build native PulseAudio and streaming DSP
 option(VOICE_ENGINE_BUILD_ENV_CHECK "Build the system dependency check" ON)
 option(VOICE_ENGINE_BUILD_ASR_PROBE "Build the optional VAD/RKNN file diagnostic" OFF)
 option(VOICE_ENGINE_BUILD_TTS_PROBE "Build the optional CPU TTS file diagnostic" OFF)
+option(VOICE_ENGINE_BUILD_LLM_PROBE "Build the optional resident RKLLM diagnostic" OFF)
 
 include(CTest)
 
@@ -155,6 +156,11 @@ if(BUILD_TESTING)
                     "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/check_fixtures.py")
         set_tests_properties(fixed_fixtures PROPERTIES TIMEOUT 30)
 
+        add_test(NAME fixed_fixtures_negative
+            COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/check_fixtures_negative.py")
+        set_tests_properties(fixed_fixtures_negative PROPERTIES TIMEOUT 60)
+
         add_executable(logger_test tests/unit/logger_test.cpp)
         voice_engine_cpp_target(logger_test)
         target_link_libraries(logger_test PRIVATE voice_engine_logging)
@@ -180,7 +186,7 @@ endif()
 
 # File model diagnostics are explicit opt-ins. Default and independent builds
 # continue to work without model SDKs, private weights, or model initialization.
-if(VOICE_ENGINE_BUILD_ASR_PROBE OR VOICE_ENGINE_BUILD_TTS_PROBE)
+if(VOICE_ENGINE_BUILD_ASR_PROBE OR VOICE_ENGINE_BUILD_TTS_PROBE OR VOICE_ENGINE_BUILD_LLM_PROBE)
     if(NOT VOICE_ENGINE_BUILD_ENGINE)
         message(FATAL_ERROR "Model probes require VOICE_ENGINE_BUILD_ENGINE=ON")
     endif()
@@ -205,4 +211,15 @@ if(VOICE_ENGINE_BUILD_ASR_PROBE)
 endif()
 if(VOICE_ENGINE_BUILD_TTS_PROBE)
     include(cmake/tts_probe.cmake)
+endif()
+if(VOICE_ENGINE_BUILD_LLM_PROBE)
+    include(cmake/llm_probe.cmake)
+endif()
+
+if(VOICE_ENGINE_BUILD_LLM_PROBE AND VOICE_ENGINE_BUILD_TTS_PROBE)
+    include(cmake/llm_tts_probe.cmake)
+endif()
+
+if(VOICE_ENGINE_BUILD_ASR_PROBE AND VOICE_ENGINE_BUILD_LLM_PROBE AND VOICE_ENGINE_BUILD_TTS_PROBE)
+    include(cmake/coexist_probe.cmake)
 endif()

@@ -1,0 +1,20 @@
+# Local LLM/TTS file experiment only; no audio devices or ASR/VAD.
+audio:
+  source: file-input
+  sink: file-output
+  profile: file-only
+  sample_rate: 16000
+  channels: 1
+  frame_ms: 20
+models:
+  vad: {enabled: false, id: ""}
+  asr: {enabled: false, id: ""}
+  tts: {enabled: true, id: vits-melo-tts-zh-en-fp32}
+  llm: {enabled: true, id: qwen3.5-2b-rk3588-w8a8}
+  kws: {enabled: false, id: ""}
+assets:
+  models_manifest: ../models/manifest.json
+  deps_manifest: ../deps/manifest.json
+threads:
+  llm: 1
+  tts: 4

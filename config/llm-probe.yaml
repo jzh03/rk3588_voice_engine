@@ -1,0 +1,27 @@
+# Resident LLM diagnostic only; no audio devices or other models are opened.
+audio:
+  source: file-input
+  sink: file-output
+  profile: file-only
+  sample_rate: 16000
+  channels: 1
+  frame_ms: 20
+models:
+  vad: {enabled: false, id: ""}
+  asr: {enabled: false, id: ""}
+  tts: {enabled: false, id: ""}
+  llm: {enabled: true, id: qwen3.5-2b-rk3588-w8a8}
+  kws: {enabled: false, id: ""}
+assets:
+  models_manifest: ../models/manifest.json
+  deps_manifest: ../deps/manifest.json
+llm:
+  context_tokens: 2048
+  max_output_tokens: 128
+  margin_tokens: 64
+threads:
+  llm: 1
+timeouts:
+  llm_first_token_ms: 10000
+  llm_total_ms: 30000
+  cancel_ms: 2000

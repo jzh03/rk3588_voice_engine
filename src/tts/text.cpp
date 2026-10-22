@@ -170,6 +170,24 @@ std::vector<std::string> segment_tts_text(const std::string &text, TtsConfig c) 
         throw std::invalid_argument("TTS: empty/whitespace-only text");
     return out;
 }
+std::string melo_frontend_text(const std::string &plain_text) {
+    // Validate the complete input before normalization; never clean rejected text.
+    const auto runes = decode(plain_text, true);
+    std::string result;
+    result.reserve(plain_text.size());
+    std::size_t begin = 0;
+    for (const auto &r : runes) {
+        // sherpa 1.12.14 maps both runes to the same comma token, but U+3001
+        // keeps acoustic context across the comma and receives AddBlank once.
+        // This preserves words/tones rather than overriding any pronunciation.
+        if (r.c == 0xff0c)
+            result += "\xe3\x80\x81";
+        else
+            result.append(plain_text, begin, r.end - begin);
+        begin = r.end;
+    }
+    return result;
+}
 TtsPcmConverter::TtsPcmConverter(int rate) : resampler_(rate, 16000), max_input_(rate) {}
 std::vector<PaddedAudioFrame> TtsPcmConverter::frame(const std::vector<float> &samples) {
     std::vector<PaddedAudioFrame> result;

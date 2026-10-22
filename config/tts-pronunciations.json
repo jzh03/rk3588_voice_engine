@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "scope": "Optional word-level pronunciation supplement for the fixed Melo phoneme inventory; not a text rewrite or a replacement of the frozen model package.",
+  "entries": [
+    {
+      "word": "调低",
+      "phones": ["t", "iao", "d", "i"],
+      "tones": [2, 2, 1, 1],
+      "reason": "The verb meaning adjust downward uses tiao2; the base lexicon falls back to the single-character diao4 reading.",
+      "validated_scope": "Candidate phoneme correction; acoustic acceptance requires separately recorded listening."
+    }
+  ]
+}

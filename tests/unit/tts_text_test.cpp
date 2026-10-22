@@ -78,6 +78,35 @@ void text_tests() {
     s.push("安全文本");
     rejects([&] { s.push("<thi"); });
 }
+void melo_frontend_tests() {
+    const std::string original = "请打开浏览器，搜索 hello world。";
+    require(melo_frontend_text(original) == "请打开浏览器、搜索 hello world。",
+            "Melo comma context normalization failed");
+    require(original == "请打开浏览器，搜索 hello world。" &&
+                segment_tts_text(original) == std::vector<std::string>{original},
+            "Melo normalization changed original text or application segmentation");
+    require(melo_frontend_text("日期2026年10月20日，温度-23.5度，数量1,234。") ==
+                "日期2026年10月20日、温度-23.5度、数量1,234。",
+            "Melo normalization changed date, signed decimal or ASCII grouping");
+    const std::string unchanged = "Hello, world! 1,234.50; 中文、英文？\n\t";
+    require(melo_frontend_text(unchanged) == unchanged,
+            "Melo normalization changed existing punctuation or whitespace");
+    require(melo_frontend_text("你好，世界，，再见，") == "你好、世界、、再见、",
+            "Melo normalization dropped adjacent or trailing commas");
+    require(melo_frontend_text("没有逗号。") == "没有逗号。",
+            "Melo normalization changed text without commas");
+    const auto normalized = melo_frontend_text(original);
+    require(melo_frontend_text(normalized) == normalized,
+            "Melo normalization is not idempotent");
+    for (const std::string bad : {"正常，<think>秘密</think>", "<|im_start|>", "[INST]",
+                                  "**粗体**", "# 标题", "未闭合<"})
+        rejects([&] { melo_frontend_text(bad); });
+    rejects([&] { melo_frontend_text(std::string("\xc0\xaf", 2)); });
+    rejects([&] { melo_frontend_text(std::string("\xed\xa0\x80", 3)); });
+    rejects([&] { melo_frontend_text(std::string("正常，") + std::string("\xe4\xb8", 2)); });
+    rejects([&] { melo_frontend_text(std::string("a\0b", 3)); });
+    rejects([&] { melo_frontend_text(std::string("正常，") + "\xe2\x80\x8b"); });
+}
 std::vector<float> flatten(const std::vector<PaddedAudioFrame> &frames) {
     std::vector<float> out;
     for (const auto &f : frames) {
@@ -131,6 +160,7 @@ void pcm_tests() {
 int main() {
     try {
         text_tests();
+        melo_frontend_tests();
         pcm_tests();
         std::cout << "TTS_TEXT_PCM_OK\n";
         return 0;

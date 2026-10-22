@@ -6,12 +6,15 @@ def run(args,expected):
  p=subprocess.run([exe]+args,text=True,capture_output=True,timeout=10)
  assert p.returncode==expected,(args,p.returncode,p.stdout,p.stderr)
  return p
-assert 'flock' in run(['--help'],0).stdout
+help_text=run(['--help'],0).stdout
+assert 'flock' in help_text and '--listening' in help_text and '--pre-roll-ms' in help_text
 run([],2)
 run(['--unknown','x'],2)
 run(['--config','missing','--official','--run-id','../escape'],2)
 run(['--config','missing','--official','--run-id','test','--chunk-ms','21'],2)
 run(['--config','missing','--official','--run-id','test','--repeat','0'],2)
+run(['--config','missing','--official','--run-id','test','--pre-roll-ms','500'],2)
+run(['--config','missing','--official','--run-id','test','--listening','--pre-roll-ms','-1'],2)
 run(['--config','missing','--official','--manifest','missing','--run-id','test'],2)
 run(['--config','missing','--official','--run-id','test'],2)
 # These run before lock/model initialization. The optional probe build already

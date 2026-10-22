@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "scope": "Optional application pronunciation candidates, separate from frozen P0 model/dependency manifest; not consumed by validate_assets",
+  "candidates": [
+    {
+      "id": "melo-adjust-down-word-v1",
+      "status": "candidate",
+      "parent_model_id": "vits-melo-tts-zh-en-fp32",
+      "base_assets": {
+        "tts_lexicon": {
+          "path": "tts/vits-melo-tts-zh_en/lexicon.txt",
+          "sha256": "7236884b02435ac5d10cf69b4be40a61b45aa676b5300f0e412f185748fee528"
+        },
+        "tts_tokens": {
+          "path": "tts/vits-melo-tts-zh_en/tokens.txt",
+          "sha256": "d18664a7e12bd7ea1022ddaf951e534e136815016c5a809d6b64156bffb4369d"
+        }
+      },
+      "rules": {
+        "path": "../config/tts-pronunciations.json",
+        "sha256": "ca1f71b57bb22481ad4eee89ad2d3d988b6f47b78199245ab60ea0eb48e8768b"
+      },
+      "application": "Explicit tts_probe --pronunciations only; new derived lexicon per run; never modifies base package",
+      "coverage": "Word 调低 in original music phrase and unseen brightness phrase; user confirmed tiao2. Search issue unresolved; no A05 pass.",
+      "evidence_directory": "output/runs/p2-01-03-20261022-113554/tts",
+      "derived_lexicon_sha256": "147d7fd61eedda1188ae0a70e71abcb1a373e4a39c3c244c4e1cf8a3024eaa9d"
+    }
+  ]
+}

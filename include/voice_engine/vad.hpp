@@ -76,6 +76,7 @@ struct VadStats {
     std::uint64_t windows = 0;
     std::uint64_t tail_valid_samples = 0;
     std::uint64_t max_duration_endpoints = 0;
+    std::uint64_t max_duration_start_sample = 0;
     bool speech_detected = false;
     bool start_timed_out = false;
 };
@@ -88,7 +89,9 @@ public:
     SileroVad& operator=(const SileroVad&) = delete;
     void accept(const float*, std::size_t);
     void finish();
-    void reset();
+    // Prefix samples are real pre-roll and excluded from the fresh-input
+    // start timeout; segment coordinates still begin at prefix sample zero.
+    void reset(std::size_t pre_roll_samples=0);
     VadStats stats() const;
     std::string runtime_info_json() const;
     const std::vector<VadSegment>& segments() const;

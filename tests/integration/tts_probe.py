@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory(prefix='tts-probe-cli-') as tmp:
     invoke(args, 2)
     assert (root/'result'/'cli-test'/'summary.json').read_bytes() == before
     assert not (root/'result'/'cli-test'/'failure.json').exists()
-    for extra in [['--threads', '3'], ['--repeat', '0'], ['--warmup', '-1'], ['--repeat', '1x'], ['--case-id', 'missing'], ['--run-id', '../../escape']]:
+    for extra in [['--debug-frontend'], ['--pronunciations', 'missing.json'], ['--threads', '3'], ['--repeat', '0'], ['--warmup', '-1'], ['--repeat', '1x'], ['--case-id', 'missing'], ['--run-id', '../../escape']]:
         invoke([*args, *extra], 2)
     cases.write_text(json.dumps({'schema_version': 1, 'cases': [{'id': 'reject', 'text': '<think>private</think>回答', 'category': 'control'}, {'id': 'good', 'text': '你好。', 'category': 'plain'}]}, ensure_ascii=False))
     invoke(['--validate-text-only', '--cases', str(cases), '--output-dir', str(root/'rejected'), '--run-id', 'reject'], 2)
