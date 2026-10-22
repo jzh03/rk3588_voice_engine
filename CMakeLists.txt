@@ -222,4 +222,5 @@ endif()
 
 if(VOICE_ENGINE_BUILD_ASR_PROBE AND VOICE_ENGINE_BUILD_LLM_PROBE AND VOICE_ENGINE_BUILD_TTS_PROBE)
     include(cmake/coexist_probe.cmake)
+    include(cmake/voice_file_demo.cmake)
 endif()

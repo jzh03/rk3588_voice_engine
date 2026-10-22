@@ -4,6 +4,8 @@
 
 2026-10-22 当前状态：A03/P2-01按用户选择的自然人声正式集及工程边界通过，旧合成失败保留为非阻塞回归，见[正式集定位](#a03-正式集与旧回归集的定位)。P2-02的A04及A08模型侧条件已满足；P2-03/A05已在修正后以原十条三批复验通过，十条试听10/10且三次“搜索”均清楚，见[独立TTS验收记录](../tests/fixtures/tts-model-acceptance.json)和[环境 §50](environment.md#50-p2-03-搜索修正与-a05-复验)。A05原文本和阈值不改，旧9/10与失败报告保留。A06/P2-04 已按 5 min、至少 5 轮的用户要求完成：304.870 s / 44 轮，详见[独立记录](../tests/fixtures/coexist-acceptance.json)与[环境 §51](environment.md#51-p2-04-四模型共驻与五分钟验收)。完整 A08 与实时链路仍未关闭；模型侧成功不替代设备 flush 和耳机尾音测量。
 
+P3-01/A07 已在原20条自然语音上通过：20/20流程、ASR18/20及CER1.41%、内容18/20；新通用提示的原A04二十问三批各19/20。首轮16/20、当前两条能力表达及礼貌改写失败保留，详见[独立验收记录](../tests/fixtures/file-chain-acceptance.json)与[环境 §53](environment.md#53-p3-01-完整文件链路与-a07-验收)。文件内实际ASR→LLM、session/generation及PCM/WAV关联逐项核验；内容对应性另行人工评分，不能把结构关联成功等同于字词和回答全对。矩阵原阈值不变；本轮软件首段耗时不计为A10耳机实测。
+
 ## 1. 通过规则
 
 每个用例必须有代码版本、配置哈希、模型清单哈希、实际 SDK/驱动版本、测试输入、结果和失败原因。`not_run`、`blocked`、`failed` 不计为通过。文档中的数值是初始工程目标，不是本轮测得的性能。
@@ -141,10 +143,11 @@ LLM 文件/模型探针和 LLM→TTS 局部文件探针已实现，分别按 [LL
 
 四模型 `coexist_probe` 及监督器已实现，按[共驻文档](coexist-probe.md)使用专用配置、五轮代表性预热、`--duration-sec 300 --min-rounds 5 --swap-policy review` 和新证据目录。默认完整采集换页活动，按运行前固定的规则独立审核“没有持续换页”；额外严格 `zero` 模式的任意换页失败不等同于原 A06 条件。用户已确认采用原计划口径，前三次诊断失败保留。
 
-以下完整文件链路及真实主引擎命令仍为 P3～P4 规划，**尚不可作为已可运行程序**：
+P3 文件链路已经实现。使用 `build/model-probes/bin/voice_file_demo`、`config/voice-file-demo.yaml` 及原自然清单；建议通过监督器运行，独立审核器绑定逐条内容评分与原始证据。完整命令、输出与退出码集中在[文件链路说明](voice-file-demo.md)，局部 `--sample` 诊断不计为 A07 正式20条。
+
+以下真实主引擎命令仍为 P4 规划，**尚不可作为已可运行的完整实时链路**：
 
 ```bash
-./build/bin/voice_file_demo --config config/local.yaml --manifest output/runs/p1-natural-review-20261022-104035/natural/manifest.json
 ./build/bin/voice_engine --config config/local.yaml --control stdin
 ```
 

@@ -118,7 +118,7 @@ LlmTermination llm_observed_termination(const LlmResult& r,int observed,int last
     return value;
 }
 std::string llm_system_template() {
-    return "<|im_start|>system\n你是本地中文问答助手，只生成文字，不能联网、播放音乐或操作设备。用一句简短完整的话直接回答；不知道就说明，不展开解释。<|im_end|>\n";
+    return "<|im_start|>system\n你是本地中文问答助手，只能生成文字，没有联网、设备控制、文件操作或定时任务能力。用户要求你代为执行现实或软件操作时，先明确说明无法执行，不得声称已经完成或承诺稍后执行，也不要将请求复述成执行确认。翻译、改写、解释等纯文字任务应直接完成。缺少必要上下文或实时信息时，说明不知道或请用户补充，不猜测具体事实。用一句简短完整的话回答，不展开解释。<|im_end|>\n";
 }
 std::string llm_render_prompt(const std::vector<std::pair<std::string,std::string>>& history,
                               const std::string& text) {

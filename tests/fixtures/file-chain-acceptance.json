@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-22",
+  "timezone": "Asia/Shanghai",
+  "task": "P3-01",
+  "status": "completed",
+  "acceptance": {
+    "A07": "passed",
+    "A04_current_prompt_fixed_20x3": "passed",
+    "A08_full": "not_run",
+    "A10": "not_run"
+  },
+  "base_commit": "76621bd85550b977de53465356bb12ca6710802c",
+  "code_state": "uncommitted board working tree; current build/source snapshot referenced by delivery-audit.json",
+  "run_directory": "output/runs/p3-file-chain-20261022-143159",
+  "formal_run": "formal-v2/results",
+  "initial_failed_run": "formal/results",
+  "input_manifest_sha256": "f51b14f9e6e23a9af935ab534094c95cba09dcc21c5b4dacd3e96b1e2abd8142",
+  "flow": {
+    "completed": 20,
+    "total": 20,
+    "failed": 0,
+    "warmup_excluded": 1,
+    "actual_asr_to_llm": true,
+    "per_sample_new_session": true,
+    "npu_serial": true,
+    "empty_and_silence_no_downstream": true,
+    "pcm_wav_correspondence": "independent per-frame FNV1a64 byte check plus whole-WAV SHA256"
+  },
+  "asr": {
+    "keyword_pass": 18,
+    "total": 20,
+    "chinese_errors": 3,
+    "chinese_reference_characters": 213,
+    "chinese_cer": 0.014084507042253521,
+    "known_keyword_failures": [
+      "natural_mix_01",
+      "natural_mix_03"
+    ]
+  },
+  "content": {
+    "initial_pass": 16,
+    "current_pass": 18,
+    "total": 20,
+    "threshold": 18,
+    "known_current_failures": [
+      "natural_q_01",
+      "natural_mix_03"
+    ],
+    "correspondence_review_pass": 19,
+    "user_adjudication_applied": "initial natural_zh_01 and natural_num_04 misleading execution confirmations are failures",
+    "reviewer": "Codex primary plus independent Astra/high; user adjudicated initial ambiguous pair",
+    "new_user_listening": false
+  },
+  "llm_prompt": {
+    "policy": "generic capability limits and missing-context handling; pure-text tasks allowed; no case-specific answers",
+    "sampling": "selected R sampling unchanged",
+    "fixed_case_regression_per_batch": [
+      19,
+      19,
+      19
+    ],
+    "denominator_per_batch": 20,
+    "known_fixed_case_failure": "llm_16 did not perform requested politeness rewrite",
+    "prior_lifecycle_context_cancel_evidence": "retained; not rerun or relabeled"
+  },
+  "metrics": {
+    "scope": "20 successes; one warmup excluded; software time only, no A10 acoustic result",
+    "first_pcm_s": {
+      "n": 20,
+      "p50": 3.483284827,
+      "p95": 4.470255803,
+      "max": 4.697205964,
+      "min": 2.972429385
+    },
+    "complete_s": {
+      "n": 20,
+      "p50": 4.662195559,
+      "p95": 8.61609319,
+      "max": 10.856988736,
+      "min": 2.977832742
+    },
+    "asr_rtf": {
+      "n": 20,
+      "p50": 0.12442995822368422,
+      "p95": 0.16059807611111113,
+      "max": 0.17173805192307695,
+      "min": 0.08892429564102565
+    },
+    "asr_processing_s": {
+      "n": 20,
+      "p50": 0.458520895,
+      "p95": 0.681638765,
+      "max": 0.803734083,
+      "min": 0.346804753
+    },
+    "llm_ttft_ms": {
+      "n": 20,
+      "p50": 951.77249,
+      "p95": 987.28689,
+      "max": 1005.432439,
+      "min": 900.573013
+    },
+    "llm_complete_ms": {
+      "n": 20,
+      "p50": 2074.339677,
+      "p95": 3406.013222,
+      "max": 4713.582366,
+      "min": 1319.0981
+    },
+    "tts_generate_s": {
+      "n": 20,
+      "p50": 2.592241626,
+      "p95": 6.642151362,
+      "max": 8.989079527000001,
+      "min": 0.981433204
+    },
+    "tts_rtf": {
+      "n": 20,
+      "p50": 0.9632565021008405,
+      "p95": 1.0932892154998086,
+      "max": 1.0981031389956601,
+      "min": 0.8287819319153429
+    },
+    "measurement_s": 114.728939302,
+    "model_initialization_ms": 16297.207036,
+    "full_process_min_mem_available_kib": 3922784,
+    "measurement_supervisor_samples": 111,
+    "measurement_min_mem_available_kib": 3932116,
+    "measurement_peak_rss_kib": 2983664,
+    "measurement_peak_pss_kib": 2987749,
+    "measurement_max_vmswap_kib": 0,
+    "threads_range": [
+      11,
+      11
+    ],
+    "fds_range": [
+      99,
+      101
+    ],
+    "temperature_max_c": 90.333,
+    "internal_resources": {
+      "error": "",
+      "final_swap_in_pages": 5580,
+      "final_swap_out_pages": 119356,
+      "first_sample_ns": 17052898293045,
+      "initial_swap_in_pages": 5221,
+      "initial_swap_out_pages": 116351,
+      "last_sample_ns": 17167148988587,
+      "maximum_sample_gap_ns": 1000236330,
+      "minimum_mem_available_kib": 3932368,
+      "queue_peaks": {
+        "llm_text_bytes": 12,
+        "tts_input_bytes": 90,
+        "tts_pcm_frames": 100,
+        "tts_segments": 1
+      },
+      "samples": 136,
+      "swap_in_pages_delta": 359,
+      "swap_out_pages_delta": 3005,
+      "swap_policy": "review",
+      "swap_policy_description": "observational counters; sustained swap requires independent review"
+    },
+    "external_measurement_swap_delta_pages": {
+      "in": 352,
+      "out": 1667
+    },
+    "asset_and_model_files_checked_before_sampling": true
+  },
+  "r1": {
+    "repetitions_per_mode": 3,
+    "scope": "Same actual token timeline; TTS-only replay with separate initialization per run excluded; not four-model/A10 measurement",
+    "modes": {
+      "stream": {
+        "first_pcm_s": {
+          "n": 3,
+          "p50": 2.335060465,
+          "p95": 2.342129512,
+          "max": 2.342129512,
+          "min": 2.31593201
+        },
+        "complete_s": {
+          "n": 3,
+          "p50": 6.723410298,
+          "p95": 6.810784208,
+          "max": 6.810784208,
+          "min": 6.623779231
+        }
+      },
+      "batch": {
+        "first_pcm_s": {
+          "n": 3,
+          "p50": 8.190831719,
+          "p95": 8.219404736,
+          "max": 8.219404736,
+          "min": 8.180375792
+        },
+        "complete_s": {
+          "n": 3,
+          "p50": 8.192834863,
+          "p95": 8.221115342,
+          "max": 8.221115342,
+          "min": 8.182036524
+        }
+      }
+    },
+    "first_pcm_p50_reduction_percent": 71.4917783064272,
+    "new_listening": false
+  },
+  "tests": {
+    "full_ctest": {
+      "passed": 27,
+      "total": 28,
+      "failure": "audio_probe synthetic capture wait timeout"
+    },
+    "after_prompt_ctest": {
+      "passed": 6,
+      "total": 6
+    },
+    "original_audio_first_retest": "failed; capture-before-signal timeout",
+    "private_audio_diagnostic": "passed once; instrumentation can affect scheduling",
+    "original_audio_final_retest": "passed once after sampling, 13.47 s; root cause unresolved",
+    "new_supervisor_cases": 11,
+    "new_review_unit_cases": 15
+  },
+  "evidence_sha256": {
+    "baseline.json": "401429057c41289c3f19f79ccbdb0e17957f7503132d1b97c5ae8d37bbd9b74b",
+    "measurement-plan.json": "280a9040badadac40e7d42e09e2864595eae9ef79a6f0e40dc6fa92652a20027",
+    "tested-build.json": "18aab2c2f670bbcfbe4ec184edb02d27b741861e34df58be655ceeaf91cad10e",
+    "prompt-revision.json": "7adfd5fbc0b7895c869c8781984e4dca6deff078bd1f8b6d8a9475dbd75f457b",
+    "formal/results/summary.json": "9bc93982c957955484c94b37d0be741103a5ea1f945bcda77aaba76dfb460852",
+    "review/content-initial.json": "0d9ce3cbaff668e76011ebf5c7e7664169bbbef953783e6d59d2b5fa60923a6f",
+    "review/formal-initial.json": "cef8b2a34b5c7872ee452f1826e6033190d5bc3d334cece129bce2616048e4a3",
+    "formal-v2/results/run.json": "034dd285ed474de8ceecaff9ad681e276388367c5fc587febb097c3862cc2439",
+    "formal-v2/results/summary.json": "034dd285ed474de8ceecaff9ad681e276388367c5fc587febb097c3862cc2439",
+    "formal-v2/results/rounds.jsonl": "09cb29d816be8643869f91a944e3fb780213eaccbe530865e8a85a36422eba47",
+    "formal-v2/results/resources.jsonl": "89190e07e6f6cbfec41c46a007c6662c2a545cba1d26b4c53ae2a44a7b439d6d",
+    "formal-v2/supervisor.json": "67e445b730eecc8fd649c841c997f13cf11c85123a867d5c1382504ea4d1d6e5",
+    "formal-v2/supervisor-resources.jsonl": "061b686f023ca794d74b4fb8a408964b611d7da8e96dbfbd43779bead500835a",
+    "review/content-v2.json": "c331ebda9b68c524e40315f6591dba702e9c4e3510fccf5c8bea55083e13ff22",
+    "review/formal-v2.json": "7445e06cb26259288059f6147567b353f9c33a06bf88ce9cdc5d261db3c4cd2b",
+    "review/metrics-v2.json": "d6396969b9be021b23be909d7fb659c4541e9821fd81230fdba2f32b7d0a04f7",
+    "review/llm-v2-content.json": "566bb87a7a2a5e0581037f7ccee0842a6c14dbf06d32b23e662a19675fb67a06",
+    "llm-v2-fixed-20x3/results/run.json": "b3091f5da995a3665163d7c84386f30d9931f9fb3fb4b29000912dff67519987",
+    "llm-v2-fixed-20x3/results/summary.json": "39cb8d89269453ebec65010fc4059e8502285e723124703df0a1670aef506d9c",
+    "review/r1-v2.json": "665bf1b624bcfae34bf9b242f24e7057e0f26fdb7a27372515bd62bf873de1fd",
+    "r1/plan.json": "4189d14a2d6fe28b36ddd0f74415f484efde1660144ca1caf18f0c2ccdf13b81",
+    "review/boundaries.json": "a7953f8cd1edbc5487b3f73da08fea6d380f8d398f14031226a3ac7435a348a4",
+    "review/timeout-diagnostic.json": "d9f220cace015afe705aa04a7703298324027386f35656f4a92ac99695b6c08b",
+    "ctest-full.log": "d594b0461c4821cddc7378644866f6421cb129e8f8eb19bf834f001d7a6e4de9",
+    "ctest-prompt-v2.log": "0bca384cf19959db8b0937e7de948e59fd9ef3400a5ade0f7f8e7dcf6885b8ad",
+    "audio-retest.log": "8c0ab960e8d59e3e5f9e60556a09a27214f1edde60af607b4f163a00ce59101c",
+    "audio-diagnostic.log": "eb4bfd201002c9be659de6bf9cb00e41cf658b72ea40f75fa60fb258b83b1edd",
+    "audio-final-original.log": "5291627ed4a18ba82eb7343d9a938a52ae484fad2892ca1fff6d60546d76e466",
+    "audio-final-original.json": "06af5b7beb295e7be53108e6ba1032cf4d4fb4f50c952740e8d3100e273618be"
+  },
+  "limits": [
+    "File pipeline only; actual earphone latency/flush/A08/A10 remain P4",
+    "Two LLM capability-expression failures and two known mixed-English ASR failures retained",
+    "Four-model streaming TTS RTF p95 1.093 is descriptive and differs from standalone A05 load",
+    "Nonzero system swap observed; this short P3 run is not a new A06 pass",
+    "Synthetic audio intermittent timeout unresolved; all failed logs retained"
+  ],
+  "protected": "Models, SDKs, lexicon, frozen fixture texts/references/recordings and historical reports unchanged; no commit or push"
+}

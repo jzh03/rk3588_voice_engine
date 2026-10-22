@@ -2,7 +2,7 @@
 
 `llm_probe` 使用常驻 `LlmAdapter` 验证固定 Qwen3.5-2B W8A8 与 RKLLM 1.3.0 的文本生成、上下文、超时和取消。探针仅处理文本及文件日志，不打开录放设备。它对应 P2-02 的模型侧工作；完整验收条件仍以 [ACCEPTANCE](ACCEPTANCE.md) 的 A04/A08 为准，本轮 P2-02 模型侧交付已通过，运行结果及限制由[环境记录 §48](environment.md#48-p2-模型适配端点与流式合成)集中维护。
 
-实现入口为 [LLM 接口](../include/voice_engine/llm.hpp)、[常驻适配器](../src/llm/adapter.cpp)、[RKLLM 后端](../src/llm/rkllm.cpp)和[探针](../tools/llm_probe.cpp)。当前沿用选定 R 的通用短答模板及固定采样配置；模型、SDK、题目、题目预算和评分门槛均不随探针模式改变。
+实现入口为 [LLM 接口](../include/voice_engine/llm.hpp)、[常驻适配器](../src/llm/adapter.cpp)、[RKLLM 后端](../src/llm/rkllm.cpp)和[探针](../tools/llm_probe.cpp)。当前保留选定 R 的固定采样配置；P3 集成后已加固通用系统提示，明确不能代为执行、不能承诺稍后执行、缺少上下文时不猜测，同时允许翻译/改写等纯文字任务。原二十问三批回归各19/20、残留问题与旧提示结果分开记录，见[环境 §53](environment.md#53-p3-01-完整文件链路与-a07-验收)。模型、SDK、题目、题目预算和评分门槛均不随探针模式改变。
 
 **构建需显式开启 `VOICE_ENGINE_BUILD_LLM_PROBE`。** 默认构建关闭该工具，不依赖私有 RKLLM SDK。开启后需要 `VOICE_ENGINE_BUILD_ENGINE=ON`、板端 `deps/rkllm-1.3.0/include/rkllm.h` 和配套 `lib/librkllmrt.so`；运行时还会按资产清单核对固定模型、runtime 及实际加载路径。不会自动下载或替换依赖。
 
@@ -131,7 +131,7 @@ TTFT 使用提交到首次有 token ID 的回调时间；`first_speakable_text_m
 
 **固定题内容评分和验收边界保持独立。** [20 题 fixture](../tests/fixtures/llm_cases.json) 的原文、每题 64 token 和原定三批要求不变。按照 [ACCEPTANCE](ACCEPTANCE.md) 逐题记录“切题、无明显事实矛盾、符合短答范围、无思考/控制标记泄漏”，每批相关且符合短答要求至少 18/20；实时信息题不能编造联网数据。固定测试结果只覆盖这些题目，不能推广为通用知识或工具调用能力。
 
-`cancel` 模式覆盖 A08 的 LLM 首 token 前/生成中各 5 次模型取消及恢复；旧 callback、连续 start、提交竞态、立即新会话和关闭生命周期还由无模型回归覆盖。它没有测量 TTS 合成中/播报中取消、停止软件提交 PCM 的 P95 ≤100 ms、停止后旧 PCM 提交数、播放 flush 或耳机尾音。后续 P2-04 的共驻与顺序 NPU 调度、P3 的完整文件链路以及 P4 的实时状态机/音频与完整 A08/A10，仍需按执行计划分别验证。LLM→TTS 的局部文件联调说明放在 [TTS 探针文档](tts-probe.md)，不能替代这些整机条件。
+`cancel` 模式覆盖 A08 的 LLM 首 token 前/生成中各 5 次模型取消及恢复；旧 callback、连续 start、提交竞态、立即新会话和关闭生命周期还由无模型回归覆盖。它没有测量 TTS 合成中/播报中取消、停止软件提交 PCM 的 P95 ≤100 ms、停止后旧 PCM 提交数、播放 flush 或耳机尾音。P2-04 共驻与顺序 NPU 调度已有独立验收，P3 完整文件链路已完成[本轮 A07](environment.md#53-p3-01-完整文件链路与-a07-验收)；P4 的实时状态机/音频与完整 A08/A10 仍需按执行计划验证。LLM→TTS 的局部文件联调说明放在 [TTS 探针文档](tts-probe.md)，不能替代这些整机条件。
 
 ## P2-04 共驻观测接口
 

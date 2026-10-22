@@ -4,7 +4,7 @@
 
 ## P2适配与可选读音组合（2026-10-22）
 
-固定模型、SDK、系统库及原P0 verified清单未变。正式LLM使用固定RKLLM 1.3.0/选定R，实际常驻、取消与生命周期证据见[环境 §48](environment.md#48-p2-模型适配端点与流式合成)；原 LLM/TTS 同进程局部实验只覆盖两模型；后续 P2-04 已完成四模型常驻 304.870 s / 44 轮，实际加载固定 RKNN 2.3.2、RKLLM 1.3.0、sherpa-onnx 1.12.14 与 ORT 1.17.1-patched，原始映射/哈希与结束路径复核一致，A06 通过。本次固定四模型文件负载无需 LLM 进程隔离，证据见[环境 §51](environment.md#51-p2-04-四模型共驻与五分钟验收)；模型/runtime 变化或加入 KWS 后需重验，原 P0 verified 清单范围不扩写。
+固定模型、SDK、系统库及原P0 verified清单未变。正式LLM使用固定RKLLM 1.3.0及选定R的采样配置；P3通用能力提示调整后的原A04三批各19/20，旧R提示结果保持归档，见[环境 §53](environment.md#53-p3-01-完整文件链路与-a07-验收)。实际常驻、取消与生命周期证据见[环境 §48](environment.md#48-p2-模型适配端点与流式合成)；原 LLM/TTS 同进程局部实验只覆盖两模型；后续 P2-04 已完成四模型常驻 304.870 s / 44 轮，实际加载固定 RKNN 2.3.2、RKLLM 1.3.0、sherpa-onnx 1.12.14 与 ORT 1.17.1-patched，原始映射/哈希与结束路径复核一致，A06 通过。本次固定四模型文件负载无需 LLM 进程隔离，证据见[环境 §51](environment.md#51-p2-04-四模型共驻与五分钟验收)；模型/runtime 变化或加入 KWS 后需重验，原 P0 verified 清单范围不扩写。
 
 词级“调低”补充是独立候选组合，登记在[pronunciation-candidates.json](../models/pronunciation-candidates.json)，绑定原lexicon/tokens哈希和应用规则哈希。显式CLI选择后在新run派生lexicon；原模型权重、lexicon及主manifest不变，也不扩大主manifest的verified范围。两上下文读音已确认；后续“搜索”由adapter标点上下文修正并完成正式A05复验，见[当前结果](environment.md#50-p2-03-搜索修正与-a05-复验)。诊断ORT输入捕获没有修改SDK，且不用于正式性能采样；接口与限制见[TTS文档](tts-probe.md#p2-流式队列与补充读音2026-10-22)。
 
