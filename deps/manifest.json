@@ -1,5 +1,7 @@
 {
   "schema_version": 1,
+  "privacy_note": "Experimental records and original validation run identities are retained locally and are not distributed. Required model run_id fields use an explicit withheld marker, not a public evidence reference. Asset identity, source, license, file hashes and dependency contracts are unchanged.",
+  "provenance_note": "Source URLs and revisions identify the published artifacts. Complete conversion and calibration provenance is not available for every upstream artifact; this manifest does not supply it or expand the declared licenses.",
   "dependencies": [
     {
       "id": "rknn-runtime",
@@ -9,7 +11,6 @@
       "license": "Upstream LICENSE; see rknn-2.3.2/upstream/LICENSE",
       "platform": "Linux-aarch64",
       "status": "verified",
-      "run_id": "p0-r-closeout-20261021-161053",
       "files": [
         {
           "path": "rknn-2.3.2/upstream/CHANGELOG.md",
@@ -46,32 +47,7 @@
           "size_bytes": 18598,
           "sha256": "aaadd9a7118de30a06b222996b6731db77095d00f5931a7a98c83a67f14a4d42"
         }
-      ],
-      "preparation_run_id": "npu-runtimes-20261020",
-      "verification_scope": {
-        "phase": "P0/M0 individual-model SDK minimum feasibility",
-        "includes": [
-          "Fixed published asset identity and explicit provenance gaps",
-          "Fixed SDK, headers, ABI and actual library loading",
-          "ASR official WAV 5/5; CPU VAD silence/speech and TTS WAV examples",
-          "Selected R fixed ten questions in two batches, one active cancel and same-handle recovery"
-        ],
-        "excludes": [
-          "Complete A03/A04/A05 or A08 acceptance",
-          "P2-04 coexistence and real-time adapters",
-          "M1/M2/M3 or deployment/redistribution readiness",
-          "Complete historical conversion reproduction"
-        ],
-        "scope_is_machine_enforced": false
-      },
-      "p0_verification": {
-        "verified_at": "2026-10-21T16:28:15.053858+08:00",
-        "combination_id": "p0-m0-rk3588-20261021-R",
-        "evidence": "output/runs/p0-r-closeout-20261021-161053/review/final-review.json",
-        "asset_integrity": "output/runs/p0-r-closeout-20261021-161053/sources/readiness-stat.json",
-        "hash_policy": "Reuse prior complete SHA-256 chain for unchanged files; this run checks stat/size and hashes small new provenance files. No new full-weight hash pass.",
-        "preparation_and_earlier_validation_records": "Historical subsections retain their original scope and results."
-      }
+      ]
     },
     {
       "id": "rkllm-runtime",
@@ -81,7 +57,6 @@
       "license": "Upstream LICENSE; see rkllm-1.3.0/upstream/LICENSE",
       "platform": "Linux-aarch64",
       "status": "verified",
-      "run_id": "p0-r-closeout-20261021-161053",
       "files": [
         {
           "path": "rkllm-1.3.0/upstream/CHANGELOG.md",
@@ -108,32 +83,7 @@
           "size_bytes": 22925,
           "sha256": "80596a578f7f8e70df6eda1c2cbead3bfced14623a190258f2bd009a3d1f72cf"
         }
-      ],
-      "preparation_run_id": "npu-runtimes-20261020",
-      "verification_scope": {
-        "phase": "P0/M0 individual-model SDK minimum feasibility",
-        "includes": [
-          "Fixed published asset identity and explicit provenance gaps",
-          "Fixed SDK, headers, ABI and actual library loading",
-          "ASR official WAV 5/5; CPU VAD silence/speech and TTS WAV examples",
-          "Selected R fixed ten questions in two batches, one active cancel and same-handle recovery"
-        ],
-        "excludes": [
-          "Complete A03/A04/A05 or A08 acceptance",
-          "P2-04 coexistence and real-time adapters",
-          "M1/M2/M3 or deployment/redistribution readiness",
-          "Complete historical conversion reproduction"
-        ],
-        "scope_is_machine_enforced": false
-      },
-      "p0_verification": {
-        "verified_at": "2026-10-21T16:28:15.053858+08:00",
-        "combination_id": "p0-m0-rk3588-20261021-R",
-        "evidence": "output/runs/p0-r-closeout-20261021-161053/review/final-review.json",
-        "asset_integrity": "output/runs/p0-r-closeout-20261021-161053/sources/readiness-stat.json",
-        "hash_policy": "Reuse prior complete SHA-256 chain for unchanged files; this run checks stat/size and hashes small new provenance files. No new full-weight hash pass.",
-        "preparation_and_earlier_validation_records": "Historical subsections retain their original scope and results."
-      }
+      ]
     },
     {
       "id": "sherpa-onnx-cpu",
@@ -543,33 +493,7 @@
         }
       ],
       "runtime_library_dir": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib",
-      "system_abi_dependencies": "Jammy glibc, libstdc++, libgcc; actual paths and SHA-256 in runtime-loading.json; no system files changed",
-      "run_id": "p0-r-closeout-20261021-161053",
-      "preparation_run_id": "model-prep-speech-20261020-201140",
-      "verification_scope": {
-        "phase": "P0/M0 individual-model SDK minimum feasibility",
-        "includes": [
-          "Fixed published asset identity and explicit provenance gaps",
-          "Fixed SDK, headers, ABI and actual library loading",
-          "ASR official WAV 5/5; CPU VAD silence/speech and TTS WAV examples",
-          "Selected R fixed ten questions in two batches, one active cancel and same-handle recovery"
-        ],
-        "excludes": [
-          "Complete A03/A04/A05 or A08 acceptance",
-          "P2-04 coexistence and real-time adapters",
-          "M1/M2/M3 or deployment/redistribution readiness",
-          "Complete historical conversion reproduction"
-        ],
-        "scope_is_machine_enforced": false
-      },
-      "p0_verification": {
-        "verified_at": "2026-10-21T16:28:15.053858+08:00",
-        "combination_id": "p0-m0-rk3588-20261021-R",
-        "evidence": "output/runs/p0-r-closeout-20261021-161053/review/final-review.json",
-        "asset_integrity": "output/runs/p0-r-closeout-20261021-161053/sources/readiness-stat.json",
-        "hash_policy": "Reuse prior complete SHA-256 chain for unchanged files; this run checks stat/size and hashes small new provenance files. No new full-weight hash pass.",
-        "preparation_and_earlier_validation_records": "Historical subsections retain their original scope and results."
-      }
+      "system_abi_dependencies": "Jammy glibc, libstdc++, libgcc"
     },
     {
       "id": "onnxruntime-cpu",
@@ -681,40 +605,7 @@
           "size_bytes": 13056112,
           "sha256": "89abc6da8d7ac84e5270349fe8a44ee7469d9a958797eed004f1a3f5c7df21d4"
         }
-      ],
-      "loaded_library": "model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libonnxruntime.so",
-      "run_id": "p0-r-closeout-20261021-161053",
-      "preparation_run_id": "model-prep-speech-20261020-201140",
-      "verification_scope": {
-        "phase": "P0/M0 individual-model SDK minimum feasibility",
-        "includes": [
-          "Fixed published asset identity and explicit provenance gaps",
-          "Fixed SDK, headers, ABI and actual library loading",
-          "ASR official WAV 5/5; CPU VAD silence/speech and TTS WAV examples",
-          "Selected R fixed ten questions in two batches, one active cancel and same-handle recovery"
-        ],
-        "excludes": [
-          "Complete A03/A04/A05 or A08 acceptance",
-          "P2-04 coexistence and real-time adapters",
-          "M1/M2/M3 or deployment/redistribution readiness",
-          "Complete historical conversion reproduction"
-        ],
-        "scope_is_machine_enforced": false
-      },
-      "p0_verification": {
-        "verified_at": "2026-10-21T16:28:15.053858+08:00",
-        "combination_id": "p0-m0-rk3588-20261021-R",
-        "evidence": "output/runs/p0-r-closeout-20261021-161053/review/final-review.json",
-        "asset_integrity": "output/runs/p0-r-closeout-20261021-161053/sources/readiness-stat.json",
-        "hash_policy": "Reuse prior complete SHA-256 chain for unchanged files; this run checks stat/size and hashes small new provenance files. No new full-weight hash pass.",
-        "preparation_and_earlier_validation_records": "Historical subsections retain their original scope and results."
-      }
+      ]
     }
-  ],
-  "p0_verified_combination": {
-    "id": "p0-m0-rk3588-20261021-R",
-    "run_id": "p0-r-closeout-20261021-161053",
-    "record": "output/runs/p0-r-closeout-20261021-161053/verified-combination.json",
-    "scope": "P0/M0 minimum feasibility only; see per-entry verification_scope."
-  }
+  ]
 }

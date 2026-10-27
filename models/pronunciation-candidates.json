@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Optional application pronunciation candidates, separate from frozen P0 model/dependency manifest; not consumed by validate_assets",
+  "scope": "Optional pronunciation definitions; base asset and rule hashes define compatibility. Local listening results and generated experimental artifacts are not distributed.",
   "candidates": [
     {
       "id": "melo-adjust-down-word-v1",
@@ -20,10 +20,7 @@
         "path": "../config/tts-pronunciations.json",
         "sha256": "ca1f71b57bb22481ad4eee89ad2d3d988b6f47b78199245ab60ea0eb48e8768b"
       },
-      "application": "Explicit tts_probe --pronunciations only; new derived lexicon per run; never modifies base package",
-      "coverage": "Word 调低 in original music phrase and unseen brightness phrase; user confirmed tiao2. Search issue unresolved; no A05 pass.",
-      "evidence_directory": "output/runs/p2-01-03-20261022-113554/tts",
-      "derived_lexicon_sha256": "147d7fd61eedda1188ae0a70e71abcb1a373e4a39c3c244c4e1cf8a3024eaa9d"
+      "application": "Explicit tts_probe --pronunciations only; new derived lexicon per run; never modifies base package"
     }
   ]
 }

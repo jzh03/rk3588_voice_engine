@@ -26,3 +26,42 @@ __pycache__/
 /deps/*
 !/deps/.gitkeep
 !/deps/manifest.json
+
+# Private experiment records and reviews; keep files on the board.
+# Keep these files locally; remove tracked entries with git rm --cached only.
+# Ignore rules do not remove files from existing commits or remote history.
+
+# records
+/EXECUTION_PLAN.md
+/MIGRATION_GUIDE.md
+/docs/environment.md
+/docs/ACCEPTANCE.md
+/docs/PLAN_REVIEW.md
+/docs/model-prep-*.md
+/docs/tts-parallel-experiment.md
+/docs/output-layout.md
+/docs/archive/
+/docs/evidence/*
+!/docs/evidence/sdk/
+
+# mixed
+/doc/voicenpu-reference-review.md
+/docs/file-fixtures.md
+/docs/asr-probe.md
+/docs/llm-probe.md
+/docs/tts-probe.md
+/docs/coexist-probe.md
+/docs/voice-file-demo.md
+/docs/realtime-engine.md
+/docs/wake-dialogue.md
+/docs/barge-in.md
+/docs/compatibility.md
+/docs/deployment.md
+/docs/reference/
+
+# summaries
+/tests/fixtures/*-review.json
+/tests/fixtures/*-acceptance.json
+/tests/fixtures/*-scope*.json
+/tests/fixtures/realtime-engine-implementation.json
+/tests/fixtures/natural-corpus.json

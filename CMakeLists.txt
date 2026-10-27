@@ -158,6 +158,7 @@ if(BUILD_TESTING)
             set_tests_properties(${script} PROPERTIES TIMEOUT 60)
         endforeach()
 
+        # Runtime/stability and mock service-stop deployment checks stay opt-in; see docs/deployment.md.
         add_test(NAME deployment
             COMMAND "${Python3_EXECUTABLE}"
                     "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/deployment.py"

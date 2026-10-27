@@ -11,7 +11,6 @@
     "digits": "no numeral or digit rewriting; spoken Chinese number references are explicit"
   },
   "dataset_kind": "synthetic_engineering_regression",
-  "run_id": "file-fixtures-20261020-210044",
   "natural_speech_acceptance": false,
   "tts_shared_source": true,
   "generator_lock_sha256": "37f0b5f5c94807d036b11be5387385ae5c8257466e860e156968aff23b2a26e6",
@@ -42,7 +41,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/zh_01.wav",
         "native_sha256": "62ff7704d839e96d6d6451e1f3b3f864890748eaecfcdc034a03c8044b4a337a",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -76,7 +74,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/zh_02.wav",
         "native_sha256": "b9bd948040bd49073874c7286ca19a14d59d0b7778d3d3a9c254e52d08bfb566",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -110,7 +107,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/zh_03.wav",
         "native_sha256": "388f0511d29ce86d3f70494aa0fdee814d8a6f9a0f5456be5a4ce36dc3390d58",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -145,7 +141,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/zh_04.wav",
         "native_sha256": "1329a6892cc1ddd721d0ea88d5c7eec5fb6b33eb20251b7131d903132398cc21",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -179,7 +174,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/zh_05.wav",
         "native_sha256": "e56b8bdeb560cab618e5e80371cab05a117ea03b0ddd73c9d7b1e59d8867e71d",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -213,7 +207,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/zh_06.wav",
         "native_sha256": "a51048fc91a924eed010ea9e99980d1d272f7bc5ac37cab79b832b82820bb587",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -247,7 +240,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/zh_07.wav",
         "native_sha256": "d45de16e75773b3d531109e727f493928001e57e2ac1a971a2d0b3dfa766bddc",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -281,7 +273,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/zh_08.wav",
         "native_sha256": "d4584d695d02c99f9ec5c7f8b59755977492da6647a108063b3384ff2e62d4ac",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -315,7 +306,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/num_01.wav",
         "native_sha256": "a58727e09d752d00b176f1f8b2e2fcce98350c0489a6e2f3b0de13f3816754df",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -348,7 +338,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/num_02.wav",
         "native_sha256": "16e61e09c898a536d74abad3f02caeebb5b5a1393c24685e7847389c5ae05dce",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -381,7 +370,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/num_03.wav",
         "native_sha256": "1825f01c2f3c79cbf29361ccc8426294c40c3be554756a6abbe3a89c7f7bc32d",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -415,7 +403,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/num_04.wav",
         "native_sha256": "d3d3dcbb3a6f99a701c12996e93ce61a7b88a177568e1deadcd83e7765829b15",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -449,7 +436,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/num_05.wav",
         "native_sha256": "9c8c099571dcb86c5d20c021bf3f7e6901df76ff660a799da2520689a2d92bc5",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -483,7 +469,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/q_01.wav",
         "native_sha256": "770c9b469e340ccc7b9f7ae529155003febb09c839d190976d522ea7af0535b1",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -517,7 +502,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/q_02.wav",
         "native_sha256": "d54de90b05a694718bb8c2adae6c61648f9041c6a389da85c3af5005d1f2a0f3",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -551,7 +535,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/q_03.wav",
         "native_sha256": "31916b82e06212b4e82ab981ebb3c48546eb5f78f67c4ea2e45a115be3aa146d",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -585,7 +568,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/q_04.wav",
         "native_sha256": "2b90a2264b800ed352ff50267a97becb5ce50ac9aa91cef974fe7316718e02dd",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -619,7 +601,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/mix_01.wav",
         "native_sha256": "cfd464077831d825e4a5a9ce62cd113f6df6d9145e13201acc07e042f2d0c67e",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -653,7 +634,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/mix_02.wav",
         "native_sha256": "b61d608cb4c016bef37f6619b9ea7dc15e7c722a992371f76d305943654e99db",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -687,7 +667,6 @@
       "source": {
         "type": "synthetic",
         "generator": "MeloTTS FP32 via sherpa-onnx 1.12.14",
-        "native_path": "output/runs/file-fixtures-20261020-210044/native/mix_03.wav",
         "native_sha256": "e75d9213d892a3082d59e4250e5e5f13547750944082e19cf090b464c73d08ff",
         "generation_conditions_ref": "generator-lock.json"
       },
@@ -867,5 +846,6 @@
     "Reference is intended text, not human-audited audio transcription.",
     "No listening review, natural-speech accuracy or device acceptance claimed.",
     "New synthesis can differ; frozen WAV SHA256 defines the dataset."
-  ]
+  ],
+  "privacy_note": "Local generation run identities, native recording locations and experiment reports are not distributed. Fixed synthetic input definitions, PCM paths/hashes and source limitations are retained; human_audio_review describes the frozen input contract, not a current experiment report."
 }

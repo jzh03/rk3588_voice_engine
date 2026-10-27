@@ -16,7 +16,4 @@ Restart=on-failure
 RestartPreventExitStatus=2
 RestartSec=5
 TimeoutStopSec=15
-KillMode=control-group
-
-[Install]
-WantedBy=default.target
+KillMode=mixed
