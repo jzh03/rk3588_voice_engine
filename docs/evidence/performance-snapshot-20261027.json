@@ -1,0 +1,556 @@
+{
+  "schema_version": 1,
+  "snapshot_id": "p7-final-20261027",
+  "measurement_date": "2026-10-27",
+  "timezone": "Asia/Shanghai",
+  "export_date": "2026-10-28",
+  "release": {
+    "id": "p7-m2-20261027-r2",
+    "engine_binary_sha256": "433b9891725c4708be057ae7e0c2d37900b960ae6514d823206451dcb27254c4",
+    "engine_config_sha256": "fe36a464b44a1a3db825622d22377f487bd73ebae91c67ad26c9ffbec4a67692",
+    "repository_revision_at_export": "8fb513690cccd48e6cccd308f72f552ecfbc2041"
+  },
+  "environment": {
+    "board": "Orange Pi 5",
+    "soc": "RK3588S",
+    "os": "Ubuntu 22.04.5",
+    "kernel": "6.1.99-rockchip-rk3588",
+    "architecture": "aarch64",
+    "headset": "vivo TWS 4",
+    "runtimes": {
+      "rknpu": "0.9.8",
+      "rknn": "2.3.2",
+      "rkllm": "1.3.0",
+      "sherpa_onnx": "1.12.14",
+      "onnxruntime": "1.17.1-patched"
+    }
+  },
+  "parameters": {
+    "audio": {
+      "profile": "headset-head-unit-msbc",
+      "sample_rate": 16000,
+      "channels": 1,
+      "frame_ms": 20,
+      "playback_keepalive": true,
+      "playback_lead_in_ms": 0
+    },
+    "models": {
+      "vad": {
+        "enabled": true,
+        "id": "silero-vad-v5.0"
+      },
+      "asr": {
+        "enabled": true,
+        "id": "zipformer-bilingual-zh-en-rk3588-fp16"
+      },
+      "llm": {
+        "enabled": true,
+        "id": "qwen3.5-2b-rk3588-w8a8"
+      },
+      "tts": {
+        "enabled": true,
+        "id": "vits-melo-tts-zh-en-fp32"
+      },
+      "kws": {
+        "enabled": true,
+        "id": "sherpa-kws-wenetspeech-3.3m-20240101-fp32"
+      }
+    },
+    "threads": {
+      "vad": 1,
+      "asr": 1,
+      "llm": 1,
+      "tts": 4
+    },
+    "tts": {
+      "first_segment": null,
+      "sentence_mode": false,
+      "join_short_sentences": true,
+      "speed": 0.85,
+      "boundary_lookahead_chars": 2,
+      "prebuffer_ms": 1500,
+      "min_chars": 12,
+      "target_chars": 12,
+      "max_chars": 40,
+      "flush_ms": 300
+    },
+    "llm": {
+      "max_output_tokens": 128
+    },
+    "dialogue": {
+      "wake_enabled": true,
+      "wake_word": "你好小派",
+      "window_ms": 15000,
+      "barge_in": true
+    }
+  },
+  "metric": {
+    "id": "asr_final_to_first_playback_submit",
+    "unit": "ms",
+    "method": "software_observation",
+    "start": "asr_final.data.asr_final_ns",
+    "end": "first_playback_submit.data.playback_submit_ns",
+    "formula": "(end - start) / 1000000",
+    "meaning": "识别结束到音频后端接受首帧回答的时间"
+  },
+  "continuous": {
+    "method": "automated_audio_replay",
+    "audio_endpoints": "virtual",
+    "expected_turns": 10,
+    "completed_turns": 10,
+    "observed_start_ns": 41291343506857,
+    "observed_end_ns": 41531915437853,
+    "rounds": [
+      {
+        "round": 1,
+        "completion": {
+          "event": "turn_completed",
+          "seq": 565,
+          "session_id": 2,
+          "generation_id": 1,
+          "monotonic_ns": 41316066884963,
+          "timestamp_utc": "2026-10-27T14:01:30.550Z",
+          "state": "RESPONDING",
+          "data": {
+            "empty_input": false,
+            "history_committed": true,
+            "playback_drained_ns": 41316066347719
+          }
+        }
+      },
+      {
+        "round": 2,
+        "completion": {
+          "event": "turn_completed",
+          "seq": 1117,
+          "session_id": 2,
+          "generation_id": 2,
+          "monotonic_ns": 41337867285994,
+          "timestamp_utc": "2026-10-27T14:01:52.350Z",
+          "state": "RESPONDING",
+          "data": {
+            "empty_input": false,
+            "history_committed": true,
+            "playback_drained_ns": 41337866669125
+          }
+        }
+      },
+      {
+        "round": 3,
+        "completion": {
+          "event": "turn_completed",
+          "seq": 1669,
+          "session_id": 2,
+          "generation_id": 3,
+          "monotonic_ns": 41359940170497,
+          "timestamp_utc": "2026-10-27T14:02:14.423Z",
+          "state": "RESPONDING",
+          "data": {
+            "empty_input": false,
+            "history_committed": true,
+            "playback_drained_ns": 41359940024082
+          }
+        }
+      },
+      {
+        "round": 4,
+        "completion": {
+          "event": "turn_completed",
+          "seq": 2221,
+          "session_id": 2,
+          "generation_id": 4,
+          "monotonic_ns": 41382373005702,
+          "timestamp_utc": "2026-10-27T14:02:36.856Z",
+          "state": "RESPONDING",
+          "data": {
+            "empty_input": false,
+            "history_committed": true,
+            "playback_drained_ns": 41382372444541
+          }
+        }
+      },
+      {
+        "round": 5,
+        "completion": {
+          "event": "turn_completed",
+          "seq": 2774,
+          "session_id": 2,
+          "generation_id": 5,
+          "monotonic_ns": 41405482320397,
+          "timestamp_utc": "2026-10-27T14:02:59.965Z",
+          "state": "RESPONDING",
+          "data": {
+            "empty_input": false,
+            "history_committed": true,
+            "playback_drained_ns": 41405481980901
+          }
+        }
+      },
+      {
+        "round": 6,
+        "completion": {
+          "event": "turn_completed",
+          "seq": 3415,
+          "session_id": 3,
+          "generation_id": 8,
+          "monotonic_ns": 41442527067707,
+          "timestamp_utc": "2026-10-27T14:03:37.010Z",
+          "state": "RESPONDING",
+          "data": {
+            "empty_input": false,
+            "history_committed": true,
+            "playback_drained_ns": 41442526739002
+          }
+        }
+      },
+      {
+        "round": 7,
+        "completion": {
+          "event": "turn_completed",
+          "seq": 3967,
+          "session_id": 3,
+          "generation_id": 9,
+          "monotonic_ns": 41464298878634,
+          "timestamp_utc": "2026-10-27T14:03:58.782Z",
+          "state": "RESPONDING",
+          "data": {
+            "empty_input": false,
+            "history_committed": true,
+            "playback_drained_ns": 41464298534471
+          }
+        }
+      },
+      {
+        "round": 8,
+        "completion": {
+          "event": "turn_completed",
+          "seq": 4519,
+          "session_id": 3,
+          "generation_id": 10,
+          "monotonic_ns": 41486479488707,
+          "timestamp_utc": "2026-10-27T14:04:20.962Z",
+          "state": "RESPONDING",
+          "data": {
+            "empty_input": false,
+            "history_committed": true,
+            "playback_drained_ns": 41486479313418
+          }
+        }
+      },
+      {
+        "round": 9,
+        "completion": {
+          "event": "turn_completed",
+          "seq": 5072,
+          "session_id": 3,
+          "generation_id": 11,
+          "monotonic_ns": 41508945999474,
+          "timestamp_utc": "2026-10-27T14:04:43.429Z",
+          "state": "RESPONDING",
+          "data": {
+            "empty_input": false,
+            "history_committed": true,
+            "playback_drained_ns": 41508945830018
+          }
+        }
+      },
+      {
+        "round": 10,
+        "completion": {
+          "event": "turn_completed",
+          "seq": 5624,
+          "session_id": 3,
+          "generation_id": 12,
+          "monotonic_ns": 41531866745200,
+          "timestamp_utc": "2026-10-27T14:05:06.349Z",
+          "state": "RESPONDING",
+          "data": {
+            "empty_input": false,
+            "history_committed": true,
+            "playback_drained_ns": 41531866391704
+          }
+        }
+      }
+    ]
+  },
+  "headset": {
+    "method": "live_speech_and_listener_confirmation",
+    "input": {
+      "wake_word": "你好小派",
+      "prompt": "请说一句欢迎回来",
+      "mode": "live_speech"
+    },
+    "expected_cases": 3,
+    "passed_cases": 3,
+    "cases": [
+      {
+        "id": "reconnect-idle",
+        "disconnect_state": "idle",
+        "status": "passed",
+        "response_latency_ms": 2276.004663,
+        "complete_answer_heard": true,
+        "events": {
+          "device_wait": {
+            "event": "audio_event",
+            "seq": 32,
+            "session_id": 3,
+            "generation_id": 3,
+            "monotonic_ns": 41881936125298,
+            "timestamp_utc": "2026-10-27T14:10:56.419Z",
+            "state": "IDLE",
+            "data": {
+              "type": "device_wait"
+            }
+          },
+          "device_ready": {
+            "event": "audio_event",
+            "seq": 53,
+            "session_id": 3,
+            "generation_id": 4,
+            "monotonic_ns": 41890420287196,
+            "timestamp_utc": "2026-10-27T14:11:04.903Z",
+            "state": "DEVICE_WAIT",
+            "data": {
+              "type": "device_ready"
+            }
+          },
+          "wake_listening": {
+            "event": "wake_listening",
+            "seq": 58,
+            "session_id": 4,
+            "generation_id": 5,
+            "monotonic_ns": 41890420795565,
+            "timestamp_utc": "2026-10-27T14:11:04.903Z",
+            "state": "IDLE",
+            "data": {
+              "cpu_only": true
+            }
+          },
+          "asr_final": {
+            "event": "asr_final",
+            "seq": 128,
+            "session_id": 4,
+            "generation_id": 5,
+            "monotonic_ns": 41950778592756,
+            "timestamp_utc": "2026-10-27T14:12:05.261Z",
+            "state": "RESPONDING",
+            "data": {
+              "asr_final_ns": 41950773107438
+            }
+          },
+          "first_playback_submit": {
+            "event": "playback_submit",
+            "seq": 132,
+            "session_id": 4,
+            "generation_id": 5,
+            "monotonic_ns": 41953049342516,
+            "timestamp_utc": "2026-10-27T14:12:07.532Z",
+            "state": "RESPONDING",
+            "data": {
+              "playback_submit_ns": 41953049112101,
+              "seq": 0,
+              "valid_samples": 320
+            }
+          },
+          "turn_completed": {
+            "event": "turn_completed",
+            "seq": 204,
+            "session_id": 4,
+            "generation_id": 5,
+            "monotonic_ns": 41954361817299,
+            "timestamp_utc": "2026-10-27T14:12:08.844Z",
+            "state": "RESPONDING",
+            "data": {
+              "empty_input": false,
+              "history_committed": true,
+              "playback_drained_ns": 41954361660675
+            }
+          }
+        }
+      },
+      {
+        "id": "reconnect-recording",
+        "disconnect_state": "recording",
+        "status": "passed",
+        "response_latency_ms": 2717.233134,
+        "complete_answer_heard": true,
+        "events": {
+          "device_wait": {
+            "event": "audio_event",
+            "seq": 261,
+            "session_id": 5,
+            "generation_id": 9,
+            "monotonic_ns": 41976469675640,
+            "timestamp_utc": "2026-10-27T14:12:30.952Z",
+            "state": "LISTENING",
+            "data": {
+              "type": "device_wait"
+            }
+          },
+          "device_ready": {
+            "event": "audio_event",
+            "seq": 281,
+            "session_id": 5,
+            "generation_id": 10,
+            "monotonic_ns": 41985194644247,
+            "timestamp_utc": "2026-10-27T14:12:39.677Z",
+            "state": "DEVICE_WAIT",
+            "data": {
+              "type": "device_ready"
+            }
+          },
+          "wake_listening": {
+            "event": "wake_listening",
+            "seq": 286,
+            "session_id": 6,
+            "generation_id": 11,
+            "monotonic_ns": 41985195384198,
+            "timestamp_utc": "2026-10-27T14:12:39.678Z",
+            "state": "IDLE",
+            "data": {
+              "cpu_only": true
+            }
+          },
+          "asr_final": {
+            "event": "asr_final",
+            "seq": 350,
+            "session_id": 6,
+            "generation_id": 11,
+            "monotonic_ns": 42038778756709,
+            "timestamp_utc": "2026-10-27T14:13:33.261Z",
+            "state": "RESPONDING",
+            "data": {
+              "asr_final_ns": 42038777940051
+            }
+          },
+          "first_playback_submit": {
+            "event": "playback_submit",
+            "seq": 354,
+            "session_id": 6,
+            "generation_id": 11,
+            "monotonic_ns": 42041495233268,
+            "timestamp_utc": "2026-10-27T14:13:35.978Z",
+            "state": "RESPONDING",
+            "data": {
+              "playback_submit_ns": 42041495173185,
+              "seq": 0,
+              "valid_samples": 320
+            }
+          },
+          "turn_completed": {
+            "event": "turn_completed",
+            "seq": 440,
+            "session_id": 6,
+            "generation_id": 11,
+            "monotonic_ns": 42043098901480,
+            "timestamp_utc": "2026-10-27T14:13:37.582Z",
+            "state": "RESPONDING",
+            "data": {
+              "empty_input": false,
+              "history_committed": true,
+              "playback_drained_ns": 42043098854522
+            }
+          }
+        }
+      },
+      {
+        "id": "reconnect-playback",
+        "disconnect_state": "playback",
+        "status": "passed",
+        "response_latency_ms": 2208.565375,
+        "complete_answer_heard": true,
+        "events": {
+          "device_wait": {
+            "event": "audio_event",
+            "seq": 632,
+            "session_id": 7,
+            "generation_id": 13,
+            "monotonic_ns": 42096530838297,
+            "timestamp_utc": "2026-10-27T14:14:31.014Z",
+            "state": "RESPONDING",
+            "data": {
+              "type": "device_wait"
+            }
+          },
+          "device_ready": {
+            "event": "audio_event",
+            "seq": 653,
+            "session_id": 7,
+            "generation_id": 14,
+            "monotonic_ns": 42105233265434,
+            "timestamp_utc": "2026-10-27T14:14:39.716Z",
+            "state": "DEVICE_WAIT",
+            "data": {
+              "type": "device_ready"
+            }
+          },
+          "wake_listening": {
+            "event": "wake_listening",
+            "seq": 658,
+            "session_id": 8,
+            "generation_id": 15,
+            "monotonic_ns": 42105233803262,
+            "timestamp_utc": "2026-10-27T14:14:39.716Z",
+            "state": "IDLE",
+            "data": {
+              "cpu_only": true
+            }
+          },
+          "asr_final": {
+            "event": "asr_final",
+            "seq": 681,
+            "session_id": 8,
+            "generation_id": 15,
+            "monotonic_ns": 42118553449037,
+            "timestamp_utc": "2026-10-27T14:14:53.036Z",
+            "state": "RESPONDING",
+            "data": {
+              "asr_final_ns": 42118550759023
+            }
+          },
+          "first_playback_submit": {
+            "event": "playback_submit",
+            "seq": 686,
+            "session_id": 8,
+            "generation_id": 15,
+            "monotonic_ns": 42120759357356,
+            "timestamp_utc": "2026-10-27T14:14:55.242Z",
+            "state": "RESPONDING",
+            "data": {
+              "playback_submit_ns": 42120759324398,
+              "seq": 0,
+              "valid_samples": 320
+            }
+          },
+          "turn_completed": {
+            "event": "turn_completed",
+            "seq": 757,
+            "session_id": 8,
+            "generation_id": 15,
+            "monotonic_ns": 42122072552839,
+            "timestamp_utc": "2026-10-27T14:14:56.555Z",
+            "state": "RESPONDING",
+            "data": {
+              "empty_input": false,
+              "history_committed": true,
+              "playback_drained_ns": 42122072365008
+            }
+          }
+        },
+        "old_answer_resumed": false,
+        "old_generation_commits_after_disconnect": 0
+      }
+    ]
+  },
+  "provenance": {
+    "continuous": {
+      "source_events_sha256": "267a9abf6fe7be7e69ff44d239e460a673936cac85de842f4e7cc4269fa4091b",
+      "source_review_sha256": "c533674836ccef869f5af00c5119b7cdfda7cf70c4cdb64142f8f3a269a348fa"
+    },
+    "headset": {
+      "source_events_sha256": "5a578d83becfa3f207301056493d70b0bc2ee7d59c982144bef0057e52827bd5",
+      "source_review_sha256": "7d13b459c3e6e3b1db9e805d0e51534820ad946e022fc59676a7a1c5ff62fcac"
+    },
+    "release_manifest_sha256": "cf61aed6c8d2a55fe177036df1b41ce0a854ed96f7706d04e17d6244f82f31c5"
+  }
+}

@@ -43,6 +43,8 @@ __pycache__/
 /docs/archive/
 /docs/evidence/*
 !/docs/evidence/sdk/
+# Approved compact snapshot; keep all other experiment records private.
+!/docs/evidence/performance-snapshot-20261027.json
 
 # mixed
 /doc/voicenpu-reference-review.md
