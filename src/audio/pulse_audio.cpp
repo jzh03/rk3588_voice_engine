@@ -109,6 +109,22 @@ public:
         wake_worker();
         return true;
     }
+    bool interrupt_playback(AudioContext next) override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (status_.state == LiveAudioState::device_wait || fault_pending_ ||
+            !status_.session_active || !status_.capturing || status_.capture_stopping ||
+            !desired_capture_ || status_.reset_pending ||
+            next.session_id != status_.context.session_id ||
+            next.generation_id <= status_.context.generation_id) return false;
+        last_context_ = status_.context = next; last_context_valid_ = true;
+        for (auto& frame : capture_) frame.context = next;
+        playback_.clear(); native_playback_.clear(); native_offset_ = 0;
+        drain_requested_ = tail_finished_ = playback_started_ = playback_transport_started_ = false;
+        lead_in_remaining_frames_ = 0; status_.drained = true;
+        capture_preserved_reset_ = true; status_.reset_pending = true; ++epoch_;
+        emit("playback_interrupt_requested", "old output invalidated; continuous capture preserved");
+        wake_worker(); return true;
+    }
     void stop_capture() override {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!desired_capture_ && !status_.capturing) return;
@@ -250,6 +266,7 @@ private:
         }
     }
     void invalidate_queues() {
+        capture_preserved_reset_ = false;
         status_.capturing = false;
         status_.capture_stopping = false;
         stop_capture_pending_ = false; stop_cork_done_ = false;
@@ -499,18 +516,21 @@ private:
     }
     void apply_reset() {
         if (!streams_ready_ || applied_epoch_ == epoch_) return;
-        clear_operation(capture_flush_); clear_operation(playback_flush_); clear_operation(drain_operation_);
-        clear_operation(stop_cork_); stop_cork_done_ = false;
-        clear_operation(capture_cork_); clear_operation(playback_cork_);
-        capture_flush_done_ = !record_; playback_flush_done_ = !play_;
-        if (capture_dsp_) capture_dsp_->reset();
+        clear_operation(playback_flush_); clear_operation(drain_operation_);
+        clear_operation(playback_cork_);
+        capture_flush_done_ = capture_preserved_reset_ || !record_;
+        playback_flush_done_ = !play_;
         if (playback_dsp_) playback_dsp_->reset();
-        assembler_.reset();
-        capture_seq_ = 0;
-        if (record_) {
-            request_cork(record_, true);
-            capture_flush_ = pa_stream_flush(record_, flush_done, this);
-            if (!capture_flush_) fault("capture flush request failed");
+        if (!capture_preserved_reset_) {
+            clear_operation(capture_flush_); clear_operation(stop_cork_); stop_cork_done_ = false;
+            clear_operation(capture_cork_);
+            if (capture_dsp_) capture_dsp_->reset();
+            assembler_.reset(); capture_seq_ = 0;
+            if (record_) {
+                request_cork(record_, true);
+                capture_flush_ = pa_stream_flush(record_, flush_done, this);
+                if (!capture_flush_) fault("capture flush request failed");
+            }
         }
         if (play_) {
             request_cork(play_, true);
@@ -527,12 +547,15 @@ private:
         status_.reset_pending = false;
         status_.capturing = status_.session_active && desired_capture_;
         status_.state = status_.capturing ? LiveAudioState::capturing : LiveAudioState::ready;
-        if (status_.capturing && record_) {
+        if (status_.capturing && record_ && !capture_preserved_reset_) {
             capture_started_at_ = Clock::now();
             request_cork(record_, false);
         }
-        emit(status_.session_active ? "session_started" : "cancel_flushed",
+        if (capture_preserved_reset_)
+            emit("playback_interrupt_flushed", "playback flush acknowledged; capture and DSP uninterrupted");
+        else emit(status_.session_active ? "session_started" : "cancel_flushed",
              "server capture/playback flush acknowledged; old DSP state cleared");
+        capture_preserved_reset_ = false;
     }
     bool enqueue_capture(const MonoFrame& samples, std::size_t valid_samples = 320) {
         if (capture_.size() == options_.capture_capacity_frames) {
@@ -548,7 +571,8 @@ private:
         return true;
     }
     void process_capture() {
-        if ((!status_.capturing && !status_.capture_stopping) || status_.reset_pending ||
+        if ((!status_.capturing && !status_.capture_stopping) ||
+            (status_.reset_pending && !capture_preserved_reset_) ||
             fault_pending_ || raw_.empty()) return;
         const auto begin = now_ns();
         // One 20 ms native slice per service pass. Retain the rest in the same
@@ -914,7 +938,7 @@ private:
                     self.fault("capture hole; affected generation cancelled");
             }
             if ((self.status_.capturing || self.status_.capture_stopping) &&
-                !self.status_.reset_pending && !self.fault_pending_) {
+                (!self.status_.reset_pending || self.capture_preserved_reset_) && !self.fault_pending_) {
                 const auto channels = self.bound_source_.spec.channels;
                 const std::size_t stride = channels * sizeof(float);
                 const std::size_t samples = bytes / sizeof(float);
@@ -1009,6 +1033,7 @@ private:
     bool discovering_ = false, source_done_ = false, sink_done_ = false;
     bool streams_ready_ = false, identity_bound_ = false;
     bool ready_once_ = false;
+    bool capture_preserved_reset_ = false;
     bool desired_capture_ = false, stop_capture_pending_ = false;
     bool stop_cork_done_ = false;
     bool capture_flush_done_ = false, playback_flush_done_ = false;

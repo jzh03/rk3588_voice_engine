@@ -113,6 +113,36 @@ int main(){try {
     wait.begin();wait.finish();
     require(wait.result().endpoint_sample==0&&wait.result().hypothesis.empty(),"empty stop");
 
+    // Missing or slow transport must not extend a wake-mode opening window.
+    Fake stalled;stalled.speech_at=0;stalled.end_at=0;stalled.timeout=240000;
+    ListeningAsr bounded(stalled.bindings(),config);
+    const std::int64_t deadline=16000000000LL;
+    bounded.begin(nullptr,0,deadline);
+    require(!bounded.poll_start_timeout(deadline-1), "opening window closed early");
+    require(bounded.poll_start_timeout(deadline), "no-input wall deadline ignored");
+    require(bounded.result().reason==ListeningEnd::start_timeout&&
+            bounded.result().input_samples==0&&stalled.finish_count==0&&
+            bounded.result().backends_reset, "no-input deadline generated text or retained state");
+    bounded.begin(nullptr,0,deadline);
+    bounded.accept(audio.data(),731);
+    require(bounded.poll_start_timeout(deadline), "slow capture extended opening deadline");
+    require(bounded.result().input_samples==731&&bounded.result().asr.input_samples==731&&
+            stalled.last_pcm==std::vector<float>(audio.begin(),audio.begin()+731),
+            "deadline padded or lost valid capture tail");
+    bounded.begin();
+    bounded.accept(audio.data(),80);
+    require(!bounded.poll_start_timeout(deadline*2)&&bounded.state()==ListeningState::listening,
+            "sample-only mode inherited a wake deadline");
+    bounded.cancel();
+    bounded.begin(nullptr,0,deadline);
+    stalled.speech_at=512;
+    bounded.accept(audio.data(),512);
+    require(!bounded.poll_start_timeout(deadline*2)&&bounded.state()==ListeningState::listening,
+            "opening deadline cut confirmed speech");
+    bounded.accept(audio.data()+512,219);
+    require(bounded.finish().hypothesis=="fresh:731", "speech after deadline lost tail");
+    rejects<std::invalid_argument>([&]{bounded.begin(nullptr,0,-1);},"negative deadline accepted");
+
     // Speech confirmation in the short EOF window must still be finalized.
     Fake short_speech;short_speech.speech_at=100;short_speech.end_at=0;
     ListeningAsr short_turn(short_speech.bindings(),config);

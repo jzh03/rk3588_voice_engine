@@ -218,3 +218,8 @@ LLM SDK 回调仅写有界 token 队列；主消费者在 LLM generation 提交�
 包装仅在Melo generate线程的显式取消作用域中注册该generation的RunOptions；其他线程/非TTS调用直接转发原Run。保留Sherpa传入的所有选项，空选项才创建本次默认对象；取消通过官方`RunOptionsSetTerminate`，Run返回后解除注册、复位本次终止位，选项析构前与并发取消串行化。旧令牌不会复用到新轮。若请求可取消生成但未观察到包装Run，明确失败，不能宣称接通。详见[ORT RunOptions](https://onnxruntime.ai/docs/api/c/struct_ort_1_1_run_options.html)。
 
 这是算子边界上的协作式停止，不能承诺中断任意一个长算子；不响应时保留原2 s安全退出。原生调用错误在取消轮中仅结束旧任务，不污染下一轮。资源诊断新增`tts_native_run_started_ns`（非零表示当前同步Run尚在执行）、`tts_native_runs`；首次注册前取消、正在执行和已返回须区分。当前实时适配器接入双参数回调；旧文件探针使用单参数回调时仍只有结果失效语义，不能外推为全部调用方均有原生取消。
+
+
+### 双进程实验历史
+
+两组局部对照完成后，用户于2026-10-27选择保留生产单实例4线程。双进程工具及相关构建/测试入口已删除，Melo适配器撤回实验专用3线程支持，恢复原2/4线程契约；本页`tts_probe`的CLI契约始终未改。结果与历史证据见[TTS双进程实验记录](tts-parallel-experiment.md)，清理和回归见[环境§59.2](environment.md#592-保留单实例4线程并移除实验实现2026-10-27)。

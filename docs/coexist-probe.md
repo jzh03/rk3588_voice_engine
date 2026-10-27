@@ -2,7 +2,7 @@
 
 `coexist_probe` 对应 P2-04 / A06：在一个进程内保持 CPU Silero VAD、RKNN Zipformer ASR、RKLLM Qwen3.5-2B 和 CPU Melo TTS 常驻，重复执行模型轮次。ASR 完成后才启动 LLM；确认 LLM 返回、清 KV 并空闲后，才允许下一轮 ASR。CPU TTS 接收本轮 LLM 文本流，可以与 LLM 重叠。
 
-输入复用固定语音 WAV，LLM 采用工具记录的独立固定短问题。它验证模块共驻和调度，不能代替实际识别文本驱动的 P3/A07；完整文件链路现由 [voice_file_demo](voice-file-demo.md) 单独验收。实时录放与耳机尾音仍按 P4 继续。工具不打开音频设备。
+输入复用固定语音 WAV，LLM 采用工具记录的独立固定短问题。它验证模块共驻和调度，不能代替实际识别文本驱动的 P3/A07；完整文件链路现由 [voice_file_demo](voice-file-demo.md) 单独验收。实时录放与软件取消由P4证据覆盖；P4已按确认范围结项，外部耳机尾音计时已从后续验收移除。工具不打开音频设备。
 
 ## 构建与配置
 

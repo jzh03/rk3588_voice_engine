@@ -79,7 +79,11 @@ class ListeningAsr {
 public:
     ListeningAsr(ZipformerAsr&, SileroVad&, const VadConfig&);
     ListeningAsr(ListeningBackends, const VadConfig&);
-    void begin(const float* pre_roll=nullptr, std::size_t count=0);
+    // Optional monotonic deadline applies only until VAD confirms speech.
+    // Zero preserves sample-only timing for file probes and the button mode.
+    void begin(const float* pre_roll=nullptr, std::size_t count=0,
+               std::int64_t start_deadline_ns=0);
+    bool poll_start_timeout(std::int64_t now_ns);
     std::size_t accept(const float*, std::size_t);
     const ListeningResult& finish();
     void cancel();
@@ -99,6 +103,7 @@ private:
     ListeningResult result_;
     std::array<float,512> pending_{};
     std::size_t used_=0;
+    std::int64_t start_deadline_ns_=0;
     std::chrono::steady_clock::time_point endpoint_time_;
 };
 } // namespace voice_engine

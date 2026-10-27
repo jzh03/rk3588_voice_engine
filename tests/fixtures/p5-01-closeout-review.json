@@ -1,0 +1,294 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-27",
+  "timezone": "Asia/Shanghai",
+  "task": "P5-01",
+  "task_status": "completed",
+  "run_directory": "output/runs/p5-01-closeout-20261027-01",
+  "implementation": "wake-only monotonic opening deadline; confirmed speech retains existing endpoints; no tuning",
+  "parameters_changed": false,
+  "build": "passed",
+  "ctest": {
+    "passed": 3,
+    "failed": 0,
+    "names": [
+      "listening_asr",
+      "realtime_engine",
+      "realtime_preflight"
+    ]
+  },
+  "runtime": {
+    "status": "passed",
+    "measured_seconds": 300.087163769,
+    "warmup_rounds": 1,
+    "measured_rounds": 5,
+    "exit_code": 0,
+    "silent_windows": [
+      {
+        "generation_id": 6,
+        "opened_ns": 24394605654145,
+        "closed_ns": 24409619538020,
+        "endpoint_samples": 239680,
+        "wall_seconds": 15.013143924
+      },
+      {
+        "generation_id": 10,
+        "opened_ns": 24479336842738,
+        "closed_ns": 24494350622738,
+        "endpoint_samples": 239680,
+        "wall_seconds": 15.012040519
+      }
+    ],
+    "capture_gap": {
+      "requested_seconds": 1.75,
+      "endpoint_samples": 239680,
+      "effective_audio_seconds": 14.98,
+      "less_than_14_seconds_PCM": false,
+      "interpretation": "FIFO pause did not withhold capture frames at the engine: private server supplied continuous audio/silence. No-frame deadline is covered by deterministic unit cases, not claimed as real transport fault reproduction.",
+      "real_transport_gap_verified": false
+    },
+    "resources": {
+      "samples": 301,
+      "max_supervisor_sample_gap_seconds": 1.005215527,
+      "mem_available_min_kib": 3838024,
+      "rss_peak_kib": 2999572,
+      "engine_VmSwap_min_kib": 0,
+      "engine_VmSwap_max_kib": 0,
+      "audio": {
+        "capture_overflows": 0,
+        "capture_holes": 0,
+        "playback_overflows": 0,
+        "playback_underruns": 0,
+        "playback_keepalive_underruns": 0,
+        "capture_peak_frames": 14,
+        "playback_peak_frames": 50,
+        "dropped_events": 0
+      },
+      "sensors": {
+        "thermal:thermal_zone0:soc-thermal:millidegC": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 52692,
+          "max": 85000
+        },
+        "thermal:thermal_zone1:bigcore0-thermal:millidegC": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 52692,
+          "max": 90333
+        },
+        "thermal:thermal_zone2:bigcore1-thermal:millidegC": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 53615,
+          "max": 90333
+        },
+        "thermal:thermal_zone3:littlecore-thermal:millidegC": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 52692,
+          "max": 85888
+        },
+        "thermal:thermal_zone4:center-thermal:millidegC": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 52692,
+          "max": 81307
+        },
+        "thermal:thermal_zone5:gpu-thermal:millidegC": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 52692,
+          "max": 78538
+        },
+        "thermal:thermal_zone6:npu-thermal:millidegC": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 52692,
+          "max": 81307
+        },
+        "cpu:policy0:kHz": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 408000,
+          "max": 1800000
+        },
+        "cpu:policy4:kHz": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 408000,
+          "max": 2352000
+        },
+        "cpu:policy6:kHz": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 408000,
+          "max": 2352000
+        },
+        "devfreq:dmc:Hz": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 528000000,
+          "max": 2112000000
+        },
+        "devfreq:fb000000.gpu:Hz": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 300000000,
+          "max": 300000000
+        },
+        "devfreq:fdab0000.npu:Hz": {
+          "readable": 301,
+          "unreadable": 0,
+          "min": 1000000000,
+          "max": 1000000000
+        }
+      },
+      "engine_major_fault_counter_range": {
+        "minimum": 44,
+        "maximum": 44
+      }
+    },
+    "swap": {
+      "decision": "sustained_detected",
+      "source_decisions": {
+        "engine_observer": "sustained_detected",
+        "independent_supervisor": "sustained_detected"
+      },
+      "engine_observer_pages": {
+        "in": 837,
+        "out": 945
+      },
+      "independent_supervisor_pages": {
+        "in": 837,
+        "out": 945
+      },
+      "baseline_pages": {
+        "in": 6,
+        "out": 0
+      }
+    },
+    "A06_checks": {
+      "runtime_exit_zero": true,
+      "minimum_measured_duration": true,
+      "five_measured_nonempty_turns": true,
+      "one_complete_warmup_excluded": true,
+      "five_models_declared": true,
+      "single_model_initialization": true,
+      "libraries_match_fixed_paths": true,
+      "memory_floor_whole_supervised_run": true,
+      "no_runtime_error": true,
+      "capture_queue_bounded": true,
+      "playback_queue_bounded": true,
+      "no_capture_or_playback_loss": true,
+      "supervisor_brackets_measurement": true,
+      "supervisor_gap_within_1_5s": true,
+      "thermal_frequency_fields_readable": true,
+      "two_independent_swap_traces_pass": false,
+      "tested_identity_unchanged": true
+    },
+    "five_model_A06_pass": false,
+    "errors": [],
+    "libraries": {
+      "/home/orangepi/projects/rk3588_voice_engine/deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libonnxruntime.so": true,
+      "/home/orangepi/projects/rk3588_voice_engine/deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libsherpa-onnx-c-api.so": true,
+      "/home/orangepi/projects/rk3588_voice_engine/deps/rkllm-1.3.0/lib/librkllmrt.so": true,
+      "/home/orangepi/projects/rk3588_voice_engine/deps/rknn-2.3.2/lib/librknnrt.so": true
+    }
+  },
+  "A11": {
+    "human_baseline": "tests/fixtures/p5-01-a11-review.json",
+    "positive_hits": "5/5",
+    "negative_false_wakes": 0,
+    "background_seconds": 60,
+    "background_false_wakes": 0,
+    "no_human_repeat": true,
+    "exact_acoustic_trigger_latency": "not_measured",
+    "full_A11_pass": false,
+    "current_functional_scope_completed": true
+  },
+  "limits": [
+    "Original 16.754s physical run lacks frame counters; sample-clock extension mechanism fixed, exact physical transport pause not reconstructable.",
+    "No new physical headset run; private-source timing is software evidence.",
+    "Per-process counters do not exactly attribute historical system-wide swap.",
+    "Optional /proc/pressure/memory is unavailable on this kernel and recorded as such.",
+    "Private pipe-source capture-gap injection was masked by server silence; only software/no-frame unit coverage is claimed."
+  ],
+  "evidence": {
+    "swap": "swap-audit.json",
+    "attribution": "process-swap-review.json",
+    "runtime": "runtime-formal/result.json",
+    "supervisor": "runtime-formal/supervisor-resources.jsonl",
+    "identity": "formal-identity.json",
+    "plan": "test-plan.json"
+  },
+  "identity": {
+    "config/wake-local.yaml": "1b5579a79524c79e16dca7ac0c39a7813d656e2fa99de03e23d42957459e63a9",
+    "config/wake.yaml": "ff4b7b5f09c005294310f9eddd0f823a0a7ee700d84bed9374bc7abc473463d2",
+    "config/wake-keywords.txt": "a310ae9472a5611879df81bf0428947a11c5a70aeccb96a1b5984b8d889a6b38",
+    "config/realtime.yaml": "d4543e2ed059bbe78089667b1b61c8480c19a2bfc3ad09a199f241f8c47b64e6",
+    "config/realtime-local.yaml": "0e1d0d86e505a4a387a079e8d1766a4d2e22f634df7801646acc37d1c9ca4003",
+    "config/local.yaml": "3e5247d91d71caf50ff139170a6f126ffafd86d4a6df40e0a43dd773c05b1d4d",
+    "models/manifest.json": "4d9d92742368b16a9c26d3c5657082ea2686984fefccb2a99c66718d6b0e95b6",
+    "deps/manifest.json": "324ef5761b79690d389bc83c37d16f3af52ea22ec22d6d0fb5f8c96fa76d31cb",
+    "build/model-probes/bin/voice_engine": "48b3367a409804986b10e018a6e32d0eac43dc1ee99dc3bbae5571feef59c741",
+    "include/voice_engine/asr.hpp": "51e6cf2593b1871b621717b6cefd8e2dc93acc0c85a155e3e5ca7efb99a99a2e",
+    "src/asr/listening_asr.cpp": "a6fefc9c9eecc34a95feb11759840576bd4f0b3164c8233977e59e0c6ebecc42",
+    "src/engine/realtime_models.cpp": "77e7395b5824a5bb63d96929000019599e2b382fefd89961995746ce8b69e365",
+    "src/engine/realtime_main.cpp": "44e5dd7b6372f3b2c2578f64c9628dc1e9b475e32ce379a3d94650ba830392ea",
+    "tests/unit/listening_asr_test.cpp": "6685c230ece39e36c16629565c593a2b44d864639f99bfc0c83956bf5b8fd72d",
+    "tests/integration/wake_runtime.py": "7f318638c656903b8f7e89131b41c867e821fd5e0730e5cf581c48d1ec5272b2"
+  },
+  "identity_unchanged": {
+    "config/wake-local.yaml": true,
+    "config/wake.yaml": true,
+    "config/wake-keywords.txt": true,
+    "config/realtime.yaml": true,
+    "config/realtime-local.yaml": true,
+    "config/local.yaml": true,
+    "models/manifest.json": true,
+    "deps/manifest.json": true,
+    "build/model-probes/bin/voice_engine": true,
+    "include/voice_engine/asr.hpp": true,
+    "src/asr/listening_asr.cpp": true,
+    "src/engine/realtime_models.cpp": true,
+    "src/engine/realtime_main.cpp": true,
+    "tests/unit/listening_asr_test.cpp": true,
+    "tests/integration/wake_runtime.py": true
+  },
+  "git_activity": "No commit, push or reset.",
+  "user_scope_decisions": [
+    {
+      "date": "2026-10-27",
+      "request": "有换页也没问题，同步文档，不要再纠结这个问题了",
+      "effect": "System swap is accepted as a recorded limitation and no longer blocks P5-01; no further swap investigation or testing.",
+      "original_A06_result_preserved": true
+    },
+    {
+      "date": "2026-10-27",
+      "request": "按功能范围结项，不追加测试",
+      "effect": "P5-01 closed under functional scope; current/future external acoustic timing removed; no extra tests."
+    },
+    {
+      "date": "2026-10-27",
+      "request": "后面还有类似的声学测试都删了",
+      "effect": "P5-01 closed under functional scope; current/future external acoustic timing removed; no extra tests."
+    }
+  ],
+  "acceptance": {
+    "five_model_A06_original_criteria": "not_passed",
+    "swap_blocks_P5_01": false,
+    "A11_exact_acoustic_trigger_latency": "not_measured_removed_from_current_and_future_scope",
+    "remaining_blockers": [],
+    "P5_01": "completed",
+    "P5_02": "not_started",
+    "M2": "not_complete",
+    "current_scope_completed": true
+  },
+  "acoustic_scope_record": "tests/fixtures/acceptance-scope-20261027.json",
+  "completed_tasks": 15,
+  "total_tasks": 19,
+  "task_status_before_final_scope": "in_progress_pending_final_scope",
+  "completion_basis": "user_confirmed_functional_scope; swap accepted and acoustic timing removed",
+  "current_scope_completed": true
+}

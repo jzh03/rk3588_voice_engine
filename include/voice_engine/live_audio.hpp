@@ -110,6 +110,11 @@ public:
     // resampler/assembler tail. Poll until capture_stopping is false, consuming
     // queued frames in the meantime. cancel() instead discards all input.
     virtual void stop_capture() = 0;
+    // Barge-in: advance generation in the same session and flush ONLY playback.
+    // Keep the live capture stream, DSP, raw input and queued frames; retag
+    // queued input to the new context. reset_pending covers playback flush.
+    // Reject if capture is stopped, a reset is pending, or the context is stale.
+    virtual bool interrupt_playback(AudioContext) { return false; }
     virtual void cancel() = 0;
     virtual bool try_capture_frame(AudioFrame& frame) = 0;
     // Invalid frames throw AudioError; a full queue or inactive session returns

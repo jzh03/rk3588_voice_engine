@@ -24,6 +24,7 @@ struct Audio final : LiveAudioBackend {
     std::vector<AudioContext> starts;
     bool full = false, hold_stop = false, hold_reset = false, reject_start = false;
     bool drain_requested = false, disconnect_at_drain_commit = false;
+    int interrupts = 0;
     int stops = 0, cancels = 0, drains = 0, attempts = 0, reads = 0;
     Audio() { value.state = LiveAudioState::ready; }
     bool start_session(AudioContext c, bool recording) override {
@@ -32,6 +33,15 @@ struct Audio final : LiveAudioBackend {
         value.session_active = true; value.capturing = recording;
         value.capture_stopping = false; value.state = LiveAudioState::capturing;
         value.drained = true; drain_requested = false; return true;
+    }
+    bool interrupt_playback(AudioContext next) override {
+        if (reject_start || !value.capturing || value.reset_pending ||
+            !same({next.session_id, value.context.generation_id}, value.context) ||
+            next.generation_id <= value.context.generation_id) return false;
+        ++interrupts; value.context = next;
+        for (auto& f : capture) f.context = next;
+        value.reset_pending = hold_reset; value.drained = true; drain_requested = false;
+        return true;
     }
     void stop_capture() override {
         ++stops; value.capturing = false; value.capture_stopping = hold_stop;
@@ -72,6 +82,21 @@ struct Pipeline final : RealtimePipeline {
     bool busy = false, valid = false, reject_submit = false, acknowledge_cancel = false;
     bool invalidate_at_commit = false, reject_history = false;
     bool capture_admission = true, close_admission_after_submit = false;
+    int wake_begins = 0, barge_begins = 0;
+    bool barge_active = false;
+    std::deque<BargeInSignal> barge_events;
+    std::vector<AudioFrame> barge_frames;
+    void begin_barge_in(AudioContext c) override {
+        require(same(c, current), "foreign barge-in context"); barge_active = true; ++barge_begins;
+    }
+    void end_barge_in() override { barge_active = false; }
+    bool can_accept_barge_in() const override { return barge_active; }
+    bool submit_barge_in(const AudioFrame& f) override { barge_frames.push_back(f); return barge_active; }
+    std::optional<BargeInSignal> poll_barge_in() override {
+        if (barge_events.empty()) return {};
+        auto e = barge_events.front(); barge_events.pop_front(); return e;
+    }
+    void hit(AudioContext c) { barge_events.push_back({c, 10, barge_frames.empty() ? 0 : barge_frames.back().seq, 640, ""}); }
     int begins = 0, overlapping_begins = 0, finishes = 0, cancels = 0, sessions = 0;
     int history = 0, history_attempts = 0, polls = 0, atomic_commits = 0;
     std::vector<AudioFrame> accepted;
@@ -79,6 +104,10 @@ struct Pipeline final : RealtimePipeline {
     void begin(AudioContext c) override {
         if (busy) ++overlapping_begins;
         current = c; busy = valid = true; ++begins;
+    }
+    void begin_wake(AudioContext c) override {
+        require(!busy, "KWS overlapped active model work");
+        current = c; busy = valid = true; ++wake_begins;
     }
     bool can_accept_capture() const override { return capture_admission; }
     bool submit(const AudioFrame& f) override {
@@ -89,7 +118,7 @@ struct Pipeline final : RealtimePipeline {
         return true;
     }
     void finish_input() override { ++finishes; }
-    void cancel() override { ++cancels; valid = false; if (acknowledge_cancel) busy = false; }
+    void cancel() override { ++cancels; valid = false; barge_active = false; if (acknowledge_cancel) busy = false; }
     void new_session() override { ++sessions; history = 0; }
     bool idle() const override { return !busy; }
     std::optional<RealtimeEvent> poll() override {
@@ -120,7 +149,8 @@ struct Rig {
     std::vector<Log> logs;
     RealtimeController controller;
     std::int64_t now = 1000000000, memory = 4 * 1024 * 1024;
-    Rig() : controller(config, audio, pipeline, [this](std::string_view name, AudioContext, RealtimeState, const nlohmann::json& data) {
+    static Config settings(bool wake, bool barge) { Config c; c.dialogue.wake_enabled = wake; c.dialogue.barge_in = barge; return c; }
+    explicit Rig(bool wake = false, bool barge = false) : config(settings(wake, barge)), controller(config, audio, pipeline, [this](std::string_view name, AudioContext, RealtimeState, const nlohmann::json& data) {
         logs.push_back({std::string(name), data});
     }) { tick(); }
     void tick(std::int64_t milliseconds = 1) { now += milliseconds * 1000000; controller.tick(now, memory); }
@@ -142,6 +172,183 @@ struct Rig {
         pipeline.emit(RealtimeEvent::Kind::complete, c); pipeline.busy = false; tick();
     }
 };
+void barge_interrupt_under_backpressure() {
+    Rig r(false, true); const auto old = r.start();
+    r.pipeline.emit(RealtimeEvent::Kind::endpoint, old);
+    r.pipeline.emit(RealtimeEvent::Kind::asr_final, old, "recognized");
+    r.pipeline.emit(RealtimeEvent::Kind::pcm, old); r.tick();
+    require(r.audio.value.capturing && r.pipeline.barge_begins == 1, "response stopped insertion capture");
+    r.audio.playback.clear(); r.audio.full = true;
+    r.pipeline.emit(RealtimeEvent::Kind::pcm, old); r.tick();
+    r.audio.capture.push_back(frame(old, 101)); r.audio.capture.push_back(frame(old, 102, 111)); r.tick();
+    r.audio.capture.push_back(frame(old, 103));
+    r.audio.hold_reset = true; r.pipeline.hit(old); r.tick();
+    const auto next = r.controller.snapshot().context;
+    require(r.reason("barge_in") && r.audio.interrupts == 1 && r.audio.cancels == 0,
+            "blocked PCM hid insertion or insertion flushed capture");
+    require(next.session_id == old.session_id && next.generation_id > old.generation_id, "wrong insertion context");
+    require(r.pipeline.begins == 1 && r.pipeline.history == 0, "new ASR overlapped old NPU or committed cancelled history");
+    r.pipeline.busy = false; r.tick();
+    require(r.pipeline.begins == 1, "ASR skipped playback flush barrier");
+    r.pipeline.emit(RealtimeEvent::Kind::pcm, old);
+    r.pipeline.emit(RealtimeEvent::Kind::complete, old);
+    r.audio.value.reset_pending = false; r.tick();
+    require(r.pipeline.begins == 2 && r.pipeline.overlapping_begins == 0, "barge did not recover");
+    require(r.pipeline.accepted.size() == 3, "insertion prefix or pending continuation lost");
+    for (std::size_t n = 0; n < 3; ++n) {
+        const auto& f = r.pipeline.accepted[n];
+        require(f.seq == 101 + n && same(f.context, next), "prefix reordered or not retagged");
+    }
+    require(r.pipeline.accepted[1].valid_samples == 111 && r.audio.playback.empty(),
+            "valid prefix tail changed or stale PCM was played");
+}
+void barge_prefix_bound_and_overflow() {
+    Rig r(false, true); const auto c = r.start();
+    r.pipeline.emit(RealtimeEvent::Kind::endpoint, c);
+    r.pipeline.emit(RealtimeEvent::Kind::asr_final, c, "recognized");
+    r.pipeline.emit(RealtimeEvent::Kind::pcm, c); r.tick();
+    for (int batch = 0; batch < 3; ++batch) {
+        for (int n = 0; n < 20; ++n) r.audio.capture.push_back(frame(c, batch * 20 + n + 1));
+        r.tick();
+    }
+    const auto b = realtime_queue_budget(r.config);
+    require(b.capture_preroll_frames == 44 && b.capture_audio_frames == 55 &&
+        b.capture_preroll_frames + b.capture_audio_frames + b.capture_model_frames == 100,
+        "barge increased total capture budget");
+    r.pipeline.hit(c); r.tick();
+    ++r.audio.value.capture_overflows; r.tick();
+    require(r.reason("pending_capture_overflow") && !r.controller.snapshot().pending_start &&
+        r.pipeline.begins == 1, "overflow silently admitted a truncated insertion");
+    bool rejected = false;
+    auto small = r.config; small.queues.capture_ms = 880;
+    try { realtime_queue_budget(small); } catch (const ConfigError&) { rejected = true; }
+    require(rejected, "pre-roll consumed all transport capacity");
+}
+void barge_stale_failure_and_deadline() {
+    Rig r(false, true); const auto c = r.start();
+    r.pipeline.emit(RealtimeEvent::Kind::endpoint, c);
+    r.pipeline.emit(RealtimeEvent::Kind::asr_final, c, "recognized");
+    r.pipeline.emit(RealtimeEvent::Kind::pcm, c); r.tick();
+    r.pipeline.hit({c.session_id, c.generation_id - 1}); r.tick();
+    require(r.audio.interrupts == 0, "stale detector cancelled new response");
+    r.audio.capture.push_back(frame(c)); r.tick();
+    r.pipeline.hit(c); r.tick(); r.tick(2000);
+    require(r.controller.snapshot().exit_code == 5 && r.pipeline.begins == 1,
+        "barge cancellation timeout admitted new NPU");
+    Rig failed(false, true); const auto f = failed.start();
+    failed.pipeline.emit(RealtimeEvent::Kind::endpoint, f);
+    failed.pipeline.emit(RealtimeEvent::Kind::asr_final, f, "recognized");
+    failed.pipeline.emit(RealtimeEvent::Kind::pcm, f); failed.tick();
+    failed.pipeline.barge_events.push_back({f, 0, 0, 0, "barge_vad_call_timeout"}); failed.tick();
+    require(failed.reason("barge_vad_call_timeout"), "detector error ignored");
+}
+void barge_waits_for_accepted_playback() {
+    Rig r(false, true); const auto c = r.start();
+    r.pipeline.emit(RealtimeEvent::Kind::endpoint, c);
+    r.pipeline.emit(RealtimeEvent::Kind::asr_final, c, "recognized"); r.tick();
+    for (int batch = 0; batch < 3; ++batch) {
+        for (int n = 0; n < 20; ++n) r.audio.capture.push_back(frame(c, batch * 20 + n));
+        r.tick();
+    }
+    require(r.pipeline.barge_begins == 0 && r.pipeline.barge_frames.empty() &&
+        r.audio.capture.empty() && r.pipeline.cancels == 0, "pre-playback noise reached detector or accumulated");
+    r.audio.full = true; r.pipeline.emit(RealtimeEvent::Kind::pcm, c); r.tick();
+    require(r.pipeline.barge_begins == 0, "unaccepted PCM enabled interruption");
+    r.audio.full = false; r.tick();
+    require(r.pipeline.barge_begins == 1, "accepted output did not arm interruption");
+    r.audio.capture.push_back(frame(c, 80)); r.tick();
+    require(r.pipeline.barge_frames.size() == 1 && r.pipeline.barge_frames.back().seq == 80,
+        "pre-output capture leaked into new detector");
+    r.pipeline.hit(c); r.tick();
+    require(r.reason("barge_in"), "playback insertion disabled by pre-output guard");
+}
+void barge_normal_drain_and_manual_stop() {
+    Rig r(true, true);
+    const auto c = r.controller.snapshot().context;
+    r.pipeline.emit(RealtimeEvent::Kind::wake, c); r.pipeline.busy = false; r.tick();
+    r.response(c);
+    r.audio.capture.push_back(frame(c, 61)); r.tick();
+    r.audio.value.drained = true; r.tick(); r.tick();
+    require(r.pipeline.history == 1 && r.pipeline.begins == 2 && r.audio.interrupts == 1,
+        "normal drain failed to commit/reopen with preserved input");
+    require(r.pipeline.accepted.back().seq == 61 &&
+        r.controller.snapshot().context.session_id == c.session_id,
+        "response-boundary input or history lost");
+    const auto next = r.controller.snapshot().context;
+    r.audio.capture.push_back(frame(next, 62));
+    r.pipeline.capture_admission = false;
+    r.command("stop"); r.tick();
+    require(r.pipeline.finishes == 0, "manual endpoint discarded queued input");
+    r.pipeline.capture_admission = true; r.tick();
+    require(r.pipeline.accepted.back().seq == 62, "manual endpoint lost capture tail");
+    require(r.audio.value.capturing && r.pipeline.finishes > 0, "manual endpoint disabled future insertion capture");
+}
+void wake_handoff_window_and_session() {
+    Rig r(true);
+    require(r.controller.snapshot().wake_listening && r.pipeline.begins == 0, "idle must run only KWS");
+    const auto c = r.controller.snapshot().context;
+    const auto starts = r.audio.starts.size();
+    r.pipeline.capture_admission = false; // recognizer closed admission after hit
+    r.audio.capture.push_back(frame(c, 77));
+    r.pipeline.emit(RealtimeEvent::Kind::wake, c);
+    r.tick();
+    require(r.pipeline.begins == 0, "wake must wait for KWS idle");
+    r.pipeline.busy = false; r.tick();
+    require(r.controller.snapshot().state == RealtimeState::listening, "wake did not begin question");
+    require(r.audio.starts.size() == starts && r.audio.capture.size() == 1, "wake handoff flushed capture");
+    r.pipeline.capture_admission = true; r.tick();
+    require(r.pipeline.accepted.back().seq == 77, "post-trigger first frame lost");
+    r.response(c); r.audio.value.drained = true; r.tick();
+    require(r.pipeline.history == 1 && r.pipeline.begins == 2, "drain did not reopen dialogue");
+    require(r.controller.snapshot().context.session_id == c.session_id, "continuation lost session");
+    const auto next = r.controller.snapshot().context;
+    require(next.generation_id > c.generation_id, "continuation reused old generation");
+    require(r.pipeline.wake_begins == 1, "KWS ran during dialogue/response");
+    r.response(next, true); r.audio.value.drained = true; r.tick(); r.tick();
+    require(r.controller.snapshot().wake_listening && r.pipeline.history == 0, "silence did not return to fresh wake session");
+    require(r.controller.snapshot().context.session_id > c.session_id, "new wake reused previous session");
+}
+void wake_cancel_device_memory_and_stale() {
+    Rig r(true); const auto old = r.controller.snapshot().context;
+    r.command("cancel"); r.pipeline.emit(RealtimeEvent::Kind::wake, old); r.settle_cancel();
+    require(r.controller.snapshot().wake_listening && r.pipeline.begins == 0, "late wake started ASR");
+    r.tick(); require(r.pipeline.begins == 0, "stale wake crossed generation");
+    r.audio.value.state = LiveAudioState::device_wait; r.tick(); r.settle_cancel();
+    require(!r.controller.snapshot().wake_listening &&
+        r.controller.snapshot().state == RealtimeState::device_wait, "disconnected KWS kept running");
+    r.audio.value.state = LiveAudioState::ready; r.tick();
+    require(r.controller.snapshot().wake_listening, "reconnected KWS did not reset");
+    r.memory = -1; r.tick(); r.settle_cancel();
+    require(!r.controller.snapshot().wake_listening && r.controller.snapshot().state == RealtimeState::error,
+        "KWS ignored unavailable memory");
+    r.memory = 4 * 1024 * 1024; r.tick();
+    require(r.controller.snapshot().wake_listening, "KWS memory recovery");
+    r.command("quit"); r.settle_cancel();
+    require(r.controller.snapshot().stopping && !r.controller.snapshot().wake_listening, "quit rearmed KWS");
+}
+void wake_fault_requires_explicit_recovery() {
+    Rig r(true); const auto id = r.controller.snapshot().context;
+    r.pipeline.emit(RealtimeEvent::Kind::error, id, "kws_call_timeout");
+    r.tick(); r.settle_cancel();
+    const auto attempts = r.pipeline.wake_begins;
+    for (int n=0; n<5; ++n) r.tick(1000);
+    require(r.controller.snapshot().state == RealtimeState::error &&
+            r.pipeline.wake_begins == attempts, "failed detector automatically restarted");
+    r.command("new-session"); r.settle_cancel();
+    require(r.controller.snapshot().wake_listening &&
+            r.pipeline.wake_begins == attempts + 1, "explicit detector recovery failed");
+}
+void manual_start_and_overflow_during_wake() {
+    Rig r(true);
+    require(r.command("start"), "manual start rejected while monitoring");
+    require(r.controller.snapshot().state == RealtimeState::cancelling && r.pipeline.begins == 0,
+        "manual start skipped KWS cancellation");
+    r.settle_cancel();
+    require(r.controller.snapshot().state == RealtimeState::listening && r.pipeline.overlapping_begins == 0,
+        "manual start overlapped KWS");
+    Rig overflow(true); ++overflow.audio.value.capture_overflows; overflow.tick();
+    require(overflow.reason("wake_capture_discontinuity"), "KWS silently lost capture");
+}
 void shared_queue_budget_boundaries() {
     for (const int capture_ms : {40, 60, 80, 2000, 10000}) {
         for (const int playback_ms : {60, 80, 100, 2000, 10000}) {
@@ -501,6 +708,15 @@ void failures_and_memory_recovery() {
 int main() {
     int failed = 0;
     const std::vector<std::pair<const char*, void(*)()>> cases = {
+        {"barge_pre_output_guard", barge_waits_for_accepted_playback},
+        {"barge_backpressure_prefix_barriers", barge_interrupt_under_backpressure},
+        {"barge_prefix_bound_overflow", barge_prefix_bound_and_overflow},
+        {"barge_stale_failure_deadline", barge_stale_failure_and_deadline},
+        {"barge_normal_drain_manual_stop", barge_normal_drain_and_manual_stop},
+        {"wake_window_session_handoff", wake_handoff_window_and_session},
+        {"wake_cancel_device_memory_stale", wake_cancel_device_memory_and_stale},
+        {"wake_manual_start_overflow", manual_start_and_overflow_during_wake},
+        {"wake_fault_latch_recovery", wake_fault_requires_explicit_recovery},
         {"shared_queue_budgets", shared_queue_budget_boundaries},
         {"capture_admission_backpressure", capture_admission_preserves_audio_queue}, {"normal_stop_tail", normal_and_stop_tail}, {"endpoints_empty_15s_transport", endpoint_reasons_and_empty_input},
         {"replacement_barriers", replacement_waits_for_both_barriers},

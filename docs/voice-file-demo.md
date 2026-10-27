@@ -118,6 +118,6 @@ flock -x /tmp/rk3588_voice_engine_model_validation.lock \
 
 `asr.processing_s`/`rtf` 是文件处理时间及其与输入时长之比；`first_pcm_s` 从轮次开始计到首次消费 PCM，`llm_to_first_pcm_s` 从 LLM submit 起算，均不是耳机实际起声延迟；缺失首 PCM 时记录 null。模型初始化、预热、正式测量分开报告，资源队列统计不包含 SDK/NPU 内部全部内存。NPU 专用内存不可读时明确标记，RSS 不能代表其总量。
 
-同条件流式/整段比较应复用 `packets.jsonl` 的同一 token 时间线，交给 [llm_tts_probe 的 replay](tts-probe.md#p2-流式队列与补充读音2026-10-22) 分别执行 stream/batch；性能对照与结论仍归环境 §53。本工具没有联网查询、设备控制或音乐播放能力，文件链路成功不等于 P4 实时引擎、完整 A08、声学 A10 或长稳通过。
+同条件流式/整段比较应复用 `packets.jsonl` 的同一 token 时间线，交给 [llm_tts_probe 的 replay](tts-probe.md#p2-流式队列与补充读音2026-10-22) 分别执行 stream/batch；性能对照与结论仍归环境 §53。本工具没有联网查询、设备控制或音乐播放能力，文件链路成功不等于 P4 实时引擎、设备取消功能、软件延迟或长稳通过；外部声学计时已从当前及后续验收移除。
 
 自然录音仍是板端私有固定集，版本化 catalog 不是可直接运行的 manifest。诊断产物含转写、完整回答及生成音频，只保存于被忽略的私有 `output/runs/`；对外文档引用证据身份和汇总，不提交私有录音、完整对话或凭据。

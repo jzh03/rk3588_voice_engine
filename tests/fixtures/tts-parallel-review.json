@@ -1,0 +1,298 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-27",
+  "timezone": "Asia/Shanghai",
+  "scope": "isolated offline TTS 1x4 versus resident 2x2; not P4/P5 regression",
+  "status": "completed",
+  "decision": "retain production single-instance four-thread default",
+  "decision_reason": "In this fixed pair, parallel increases first PCM and all-native latency, nearly doubles PSS, and does not reduce software supply gaps (both zero).",
+  "project_completed_tasks": "16/19; P4/P5 closeout unchanged",
+  "input": {
+    "path": "tests/fixtures/tts_parallel_timeline.json",
+    "public_source": "tests/fixtures/tts_cases.json",
+    "packets": 6,
+    "offsets_ms": [
+      0,
+      100,
+      200,
+      300,
+      400,
+      500
+    ],
+    "selected_segments": 9,
+    "formal_runs_per_mode": 1,
+    "warmups_per_resident_model": 1,
+    "path_role": "historical path at measurement; active experiment input removed",
+    "archived_path": "output/runs/tts-parallel-experiment-20261027-01/ab/measured-source/tests/fixtures/tts_parallel_timeline.json",
+    "packets_at_measurement": [
+      {
+        "offset_ms": 0,
+        "case_id": "tts_01",
+        "text": "你好，我是小派，很高兴为你服务。"
+      },
+      {
+        "offset_ms": 100,
+        "case_id": "tts_02",
+        "text": "请把窗户关上，然后坐下来休息。"
+      },
+      {
+        "offset_ms": 200,
+        "case_id": "tts_03",
+        "text": "这是一段离线合成的中文测试语音。"
+      },
+      {
+        "offset_ms": 300,
+        "case_id": "tts_07",
+        "text": "请确认：文件已经保存，任务可以结束！"
+      },
+      {
+        "offset_ms": 400,
+        "case_id": "tts_08",
+        "text": "你好！准备好了吗？我们现在开始。"
+      },
+      {
+        "offset_ms": 500,
+        "case_id": "tts_09",
+        "text": "请打开浏览器，搜索 hello world。"
+      }
+    ]
+  },
+  "metrics": {
+    "baseline": {
+      "segment_count": 9,
+      "audio_seconds": 18.982312925170067,
+      "peak_overlapping_generate_calls": 1,
+      "segmentation_during_inference": false,
+      "first_native_ms": 1652.945484,
+      "first_pcm_ms": 1738.614364,
+      "first_consume_ms": 1739.54652,
+      "native_all_done_ms": 17402.291594,
+      "consumer_done_ms": 21155.619008,
+      "audio_seconds_per_native_wall_second": 1.090793866005258,
+      "segment_1_to_2_first_pcm_interval_ms": 1883.426197,
+      "segment_2_native_margin_estimate_ms": 481.68638723046877,
+      "margin_note": "estimated segment-1 PCM start plus native duration minus segment-2 native ready; not acoustic timing",
+      "head_order_wait_ms": 0.0,
+      "ready_to_publish_ms": 4716.404534,
+      "pcm_backpressure_ms": 14599.819384,
+      "supply_gap_count": 0,
+      "supply_gap_total_ms": 0.0,
+      "resources": {
+        "peak_rss_kb": 548964,
+        "peak_pss_kb": 547640,
+        "peak_threads": 6,
+        "cpu_core_percent_estimate": 258.7559045952578,
+        "cpu_sample_start_ns": 32797009448259,
+        "cpu_sample_end_ns": 32818118145309,
+        "cpu_sample_span_s": 21.10869705,
+        "cpu_sample_pids": [
+          155741
+        ],
+        "sample_period_ms": 100,
+        "scope": "probe process plus all resident children; excludes Python supervisor and flock",
+        "min_mem_available_kb": 6259840
+      },
+      "queues": {
+        "discarded_results": 0,
+        "native_runs": 9,
+        "peak_input_bytes": 237,
+        "peak_native_samples": 223744,
+        "peak_native_slots": 2,
+        "peak_pcm_frames": 100,
+        "peak_pending_segments": 2
+      }
+    },
+    "parallel": {
+      "segment_count": 9,
+      "audio_seconds": 18.982312925170067,
+      "peak_overlapping_generate_calls": 2,
+      "segmentation_during_inference": true,
+      "first_native_ms": 2997.179714,
+      "first_pcm_ms": 3058.797933,
+      "first_consume_ms": 3059.863089,
+      "native_all_done_ms": 18810.219313,
+      "consumer_done_ms": 22451.481378,
+      "audio_seconds_per_native_wall_second": 1.0091489423544961,
+      "segment_1_to_2_first_pcm_interval_ms": 621.687298,
+      "segment_2_native_margin_estimate_ms": 1712.1977442304687,
+      "margin_note": "estimated segment-1 PCM start plus native duration minus segment-2 native ready; not acoustic timing",
+      "head_order_wait_ms": 0.0,
+      "ready_to_publish_ms": 1863.344578,
+      "pcm_backpressure_ms": 12894.315672,
+      "supply_gap_count": 0,
+      "supply_gap_total_ms": 0.0,
+      "resources": {
+        "peak_rss_kb": 1093376,
+        "peak_pss_kb": 1068020,
+        "peak_threads": 11,
+        "cpu_core_percent_estimate": 225.67055095528852,
+        "cpu_sample_start_ns": 32833349083355,
+        "cpu_sample_end_ns": 32855642643497,
+        "cpu_sample_span_s": 22.293560142,
+        "cpu_sample_pids": [
+          156040,
+          156042,
+          156041
+        ],
+        "sample_period_ms": 100,
+        "scope": "probe process plus all resident children; excludes Python supervisor and flock",
+        "min_mem_available_kb": 5736272
+      },
+      "queues": {
+        "peak_converter_batch_frames": 139,
+        "peak_input_bytes": 63,
+        "peak_native_slots": 2,
+        "peak_pcm_frames": 100,
+        "peak_pending_segments": 4,
+        "peak_result_samples": 121856,
+        "peak_result_segments": 1,
+        "peak_segmenter_bytes": 39,
+        "scheduler_backpressure_ns": 18136688825
+      }
+    },
+    "cancellation": {
+      "idle_ms": 14.345472,
+      "discarded_results": 2,
+      "acks": [
+        {
+          "at_ns": 32870732240507,
+          "generation": 1,
+          "kind": "cancel_ack",
+          "native_run_started_ns": 32870151368899,
+          "native_runs": 1,
+          "session": 1
+        },
+        {
+          "at_ns": 32870732239923,
+          "generation": 1,
+          "kind": "cancel_ack",
+          "native_run_started_ns": 32870260873108,
+          "native_runs": 1,
+          "session": 1
+        }
+      ],
+      "recovery_frames": 161,
+      "resident_pids_unchanged": true
+    },
+    "selected_text_equal": true,
+    "input_actual_offsets_ms": {
+      "baseline": [
+        0.029458,
+        100.175058,
+        200.645572,
+        300.910754,
+        401.086396,
+        500.818126
+      ],
+      "parallel": [
+        0.080499,
+        100.069185,
+        200.325034,
+        300.308469,
+        400.853941,
+        500.268341
+      ]
+    },
+    "remaining_pids": [],
+    "post_measurement_changes": [
+      "PDEATHSIG for top-level probe",
+      "exception-safe baseline callback lifetime",
+      "stable full-PID formal-window CPU accounting",
+      "supervisor SIGTERM cleanup; no new model measurements"
+    ]
+  },
+  "independent_checks": {
+    "same_parameters_except_process_structure_and_threads": true,
+    "same_nine_segments_and_per_segment_native_sample_counts": true,
+    "same_pcm_valid_sample_count_and_frame_count": true,
+    "valid_pcm_samples": 303717,
+    "consumed_frames": 950,
+    "parallel_publication_complete_and_ordered": true,
+    "queue_peaks_within_shared_bounds": true,
+    "both_native_runs_active_at_cancel": true,
+    "cancelled_results_discarded": 2,
+    "recovery_reused_resident_pids": true,
+    "no_model_processes_remaining": true,
+    "input_schedule_max_lateness_ms": {
+      "baseline": 1.0863959999999793,
+      "parallel": 0.8539410000000203
+    },
+    "reports_sha256": {
+      "summary.json": "b8f4c443e0ff1b54f8c9ae29cd10fa2d25a3e216ae3da3d2a9b5ec92b6a6140a",
+      "baseline/report.json": "c9f7a7e0c4196c37396fa5ec57b382d52d56f9223ecd9f29e9f36e8512ff6ee7",
+      "parallel/report.json": "0233b70874aa7c7c3a7adbdd54ef83898e466e3c817c94d169403d7890610bb8",
+      "parallel-cancel/report.json": "979191cd3863e539f69a15ffa49f6e8920149b8164359b7766e2fa157e6fedfe"
+    },
+    "review_scope": "Independent arithmetic, config, sequence, sample count and PID audit; no additional model runs."
+  },
+  "validation": {
+    "related_ctest": [
+      "probe_lock",
+      "tts_stream",
+      "tts_text",
+      "tts_parallel_probe"
+    ],
+    "final_result": "4/4 passed",
+    "final_build": "passed without warnings",
+    "native_cancel_runs": 1,
+    "additional_native_performance_runs_after_cleanup_fixes": 0,
+    "git_diff_check": 0
+  },
+  "evidence": {
+    "board_root": "/home/orangepi/projects/rk3588_voice_engine/output/runs/tts-parallel-experiment-20261027-01",
+    "summary": "ab/summary.json",
+    "per_segment": [
+      "ab/baseline/analyzed-report.json",
+      "ab/parallel/analyzed-report.json"
+    ],
+    "resource_samples": "ab/*.resources.jsonl",
+    "cancellation": "ab/parallel-cancel/report.json",
+    "measured_identity": "ab/run.json",
+    "measured_snapshot": "ab/measured-source/",
+    "independent_review": "ab/independent-review.json",
+    "final_identity": "final-state.json",
+    "final_build": "final-build.log",
+    "final_ctest": "final-ctest.log",
+    "original_failures": [
+      "initial-ctest-failure.log",
+      "ab/initial-summary-with-exit-cpu-artifact.json"
+    ],
+    "files_are_board_local_ignored_artifacts": true
+  },
+  "binary_identity": {
+    "measured_sha256": "730de2b8b9eb96534691c1b6334bbc4a1c5b14da345a4c9aaac37d47af12e8c1",
+    "delivered_sha256": "57e2ac5ddda8aa0588963612ffee72330ab738b8edf1ec464bda5b0ae6605977",
+    "post_measurement_fixes": [
+      "probe parent-death signal",
+      "exception-safe baseline callback lifetime",
+      "supervisor SIGTERM cleanup and stable PID CPU accounting",
+      "mock parent-death and oversized-input checks"
+    ]
+  },
+  "limitations": [
+    "One fixed pair, no statistical generalization or full throughput sweep.",
+    "Whole native completion is subject to the same bounded real-time software consumer and backpressure.",
+    "Real output sample counts match; PCM content hashes differ, and no listening assessment was performed.",
+    "No LLM/ASR coexistence, physical audio device, acoustic timing or long-run assessment.",
+    "Final cleanup/supervision changes have targeted mock coverage; true-model measurements use the archived measured binary."
+  ],
+  "sources": [
+    "https://github.com/moeru-ai/airi/blob/b039c917c1be0eb27eb4f2562075c6f1c2a9baed/packages/pipelines-audio/src/speech-pipeline.ts",
+    "https://github.com/casehubio/agency/issues/227",
+    "https://onnxruntime.ai/docs/performance/tune-performance/threading.html"
+  ],
+  "lifecycle": {
+    "active_implementation": "removed per user request",
+    "retired_date": "2026-10-27",
+    "production_selection": "single-instance four-thread TTS with existing two native slots",
+    "historical_results_unchanged": true,
+    "archived_source_snapshot": "output/runs/tts-parallel-experiment-20261027-01/ab/measured-source/",
+    "removed_active_files": [
+      "tools/tts_parallel_probe.cpp",
+      "scripts/run_tts_parallel_experiment.py",
+      "tests/integration/tts_parallel_probe.py",
+      "tests/fixtures/tts_parallel_timeline.json"
+    ],
+    "retirement_evidence": "output/runs/tts-parallel-retirement-20261027-01"
+  }
+}

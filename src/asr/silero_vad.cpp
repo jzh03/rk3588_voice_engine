@@ -123,4 +123,47 @@ void SileroVad::reset(std::size_t pre_roll_samples){
 VadStats SileroVad::stats()const{return impl_->stat;}
 std::string SileroVad::runtime_info_json()const{return nlohmann::json({{"backend","CPU"},{"sherpa",SherpaOnnxGetVersionStr()},{"onnxruntime",OrtGetApiBase()->GetVersionString()}}).dump();}
 const std::vector<VadSegment>& SileroVad::segments()const{return impl_->spans;}
+struct BargeInDetector::Impl {
+    VadWindowAssembler windows;
+    const SherpaOnnxVoiceActivityDetector* detector = nullptr;
+    bool hit = false;
+    Impl(const std::filesystem::path& model, int minimum_ms, int threads) {
+        probe::require_model_validation_lock();
+        if (minimum_ms < 20 || minimum_ms > 5000 || threads < 1)
+            throw std::invalid_argument("invalid barge-in VAD configuration");
+        if (std::string(SherpaOnnxGetVersionStr()) != "1.12.14" ||
+            std::string(OrtGetApiBase()->GetVersionString()) != "1.17.1")
+            throw std::runtime_error("unexpected sherpa/ORT runtime version");
+        SherpaOnnxVadModelConfig v{};
+        const auto name = model.string();
+        v.silero_vad.model = name.c_str();
+        v.silero_vad.threshold = 0.5f;
+        v.silero_vad.min_speech_duration = minimum_ms / 1000.0f;
+        v.silero_vad.min_silence_duration = 0.6f;
+        v.silero_vad.max_speech_duration = 15.0f;
+        v.silero_vad.window_size = 512;
+        v.sample_rate = 16000; v.num_threads = threads; v.provider = "cpu";
+        detector = SherpaOnnxCreateVoiceActivityDetector(&v, minimum_ms / 1000.0f + 2.0f);
+        if (!detector) throw std::runtime_error("barge-in VAD creation failed");
+    }
+    ~Impl() { if (detector) SherpaOnnxDestroyVoiceActivityDetector(detector); }
+};
+BargeInDetector::BargeInDetector(const std::filesystem::path& p, int m, int t)
+    : impl_(std::make_unique<Impl>(p, m, t)) {}
+BargeInDetector::~BargeInDetector() = default;
+void BargeInDetector::reset() {
+    SherpaOnnxVoiceActivityDetectorReset(impl_->detector);
+    SherpaOnnxVoiceActivityDetectorClear(impl_->detector);
+    impl_->windows.reset(); impl_->hit = false;
+}
+bool BargeInDetector::accept(const float* pcm, std::size_t count) {
+    impl_->windows.accept(pcm, count, [this](const float* p, std::size_t) {
+        if (impl_->hit) return;
+        SherpaOnnxVoiceActivityDetectorAcceptWaveform(impl_->detector, p, 512);
+        impl_->hit = SherpaOnnxVoiceActivityDetectorDetected(impl_->detector);
+        // Never retain completed segments or a full playback-length recording.
+        SherpaOnnxVoiceActivityDetectorClear(impl_->detector);
+    });
+    return impl_->hit;
+}
 } // namespace voice_engine

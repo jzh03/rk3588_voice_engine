@@ -18,9 +18,17 @@
 
 **P3-01 / A07 已完成**：原自然语料 20/20 文件流程，ASR 18/20、中文 CER 1.41%，内容审核 18/20；通用能力提示调整后的原 A04 三批各19/20。首段 PCM 软件耗时 P95 4.470 s，实机耳机延迟尚待 P4。首轮内容失败、残留能力表述及识别问题均保留；本轮全量 CTest 27/28，模拟音频最终原版复测1/1通过但偶发超时根因未定。见[使用说明](docs/voice-file-demo.md)、[独立验收](tests/fixtures/file-chain-acceptance.json)和[环境记录](docs/environment.md#53-p3-01-完整文件链路与-a07-验收)。P4-01 的后续实时接入见下。
 
-**P4已按用户确认范围结项，M1按键MVP完成。** 实时主引擎、20轮实机交互、限定自动化/故障注入、取消修复与耳机重连验证已完成；当前范围内无待办。继续保持统一12/12/2分段、max40、0.85语速、1500 ms储备、sentence_mode=false及段内标点连接。原正式20轮仍为20/20流程、19/20听感；外部声学指标未测，供音/发音跟进已删除，模型上下文偏差已定位并按要求不修。限制和原始失败均保留，生产程序/配置未变，不追加测试。见[P4结项记录](docs/environment.md#5633-p4按确认范围结项)和[结项摘要](tests/fixtures/p4-closeout-review.json)。下一阶段为P5-01语音唤醒与对话窗口，待执行。
+**P4已按用户确认范围结项，M1按键MVP完成。** 实时主引擎、20轮实机交互、限定自动化/故障注入、取消修复与耳机重连验证已完成；当前范围内无待办。继续保持统一12/12/2分段、max40、0.85语速、1500 ms储备、sentence_mode=false及段内标点连接。原正式20轮仍为20/20流程、19/20听感；外部声学指标未测，供音/发音跟进已删除，模型上下文偏差已定位并按要求不修。限制和原始失败均保留，生产程序/配置未变，不追加测试。见[P4结项记录](docs/environment.md#5633-p4按确认范围结项)和[结项摘要](tests/fixtures/p4-closeout-review.json)。P5-01可选CPU KWS与15秒连续对话窗口已按确认范围完成，见下方进度。
+
+**P5-01已按用户确认的功能范围完成**：真人唤醒5/5、负例0/5误触发、1分钟背景0误触发，正常回答已确认；窗口已补单调时钟保护，3项相关CTest及预热后300.087秒/5轮功能验证通过。参数保持不变，允许换页且不再跟进，原A06未通过保留为范围限制。精确声学延迟未测；用户已删除当前及后续同类声学计时验收，不再列待办。见[结项与范围](docs/environment.md#578-p5-01结项与后续声学计时移除2026-10-27)。P5-02结项见下，M2已按确认的功能范围完成。
+
+**P5-02已按用户确认的功能范围结项，M2完成**：约定的5次插话＋5段安静播报均已执行；新回答送音前重复检测已修正，定向回归及一次真模型复核通过。修正后3/3有效打断成功，5段目标回答完整播完、误打断0次。前两次正常续答/修复前失败及单数字偶发模糊等限制保留，原5/5打断门槛不记为通过。用户确认不追加测试；模型和已有参数不变，测试程序正常退出。见[功能结项记录](docs/environment.md#581-a12耳机五次插话与五段安静播报2026-10-27)、[真人记录](tests/fixtures/p5-02-a12-review.json)和[语音打断说明](docs/barge-in.md)。
+
+**TTS保留生产单实例4线程，两组双进程实验已结束。** 按用户要求移除了实验源码、监督脚本、专用测试、构建入口及3线程专用支持，仅保留结果与历史证据。原2个原生音频槽及其他参数不变；该次实验不改变P4/P5结项和当时16/19进度。见[实验历史记录](docs/tts-parallel-experiment.md)及[清理与回归记录](docs/environment.md#592-保留单实例4线程并移除实验实现2026-10-27)。
 
 参考项目源码审阅已归档，短首分句、常驻 LLM adapter、原子输出提交及 ASR/VAD 端点接入建议已纳入执行计划，模型模块与局部文件验证已推进，主引擎已在P4-01接入，实机验收按P4-02继续；见[参考项目总结](doc/voicenpu-reference-review.md)。参考建议仍按执行计划分阶段验证。
+
+**P7-01本地部署已完成，当前17/19项任务完成。** 版本目录、共享固定资产、完整性预检、用户服务、本机控制、离线限制、日志额度及回退已实现。修正启动锁交接后，A13的3次进程冷启动各5轮和回退后5轮全部完成，坏配置/缺资产拦截通过；首次失败保留。模型、运行参数和引擎二进制均未变。正式服务已安装，当前停止且未启用开机运行；整板重启、退出登录和长稳留在P7-02，M3未完成。见[部署操作](docs/deployment.md)、[结果记录](docs/environment.md#60-p7-01-版本化部署与离线回退2026-10-27)和[自动化摘要](tests/fixtures/p7-01-automation-review.json)。
 
 ## 文档入口
 
@@ -32,7 +40,11 @@
 - [SDK 兼容性](docs/compatibility.md)：驱动、SDK 与模型配套。
 - 模型准备：[Qwen3.5-2B](docs/model-prep-llm.md)、[Zipformer](docs/model-prep-asr.md)、[Silero VAD 与 MeloTTS](docs/model-prep-speech.md)。
 - 文件测试：[固定测试集](docs/file-fixtures.md)、[VAD/ASR 探针](docs/asr-probe.md)、[TTS/流式联合探针](docs/tts-probe.md)、[LLM 探针](docs/llm-probe.md)、[四模型共驻探针](docs/coexist-probe.md)、[完整文件链路](docs/voice-file-demo.md)。
-- [实时主引擎](docs/realtime-engine.md)：P4-01 构建、设备配置、控制命令、取消与日志。
+- [实时主引擎](docs/realtime-engine.md)：构建、设备配置、控制命令、取消与日志。
+- [语音唤醒与对话窗口](docs/wake-dialogue.md)：P5-01配置、KWS编码、窗口和结项范围。
+- [语音打断](docs/barge-in.md)：P5-02实现、候选入口、自动验证和耳机功能结果。
+- [TTS 双进程实验历史记录](docs/tts-parallel-experiment.md)：两组结果、保留单实例的决定与历史证据索引。
+- [部署与回退](docs/deployment.md)：版本目录、离线预检、用户服务、本机控制及A13记录。
 - [验收用例](docs/ACCEPTANCE.md)：功能、延迟、资源和恢复验证。
 - [规划审阅记录](docs/PLAN_REVIEW.md)：问题和修订依据。
 
@@ -52,6 +64,7 @@ rk3588_voice_engine/
 │   ├── main.cpp                  # 配置/资产检查、mock 与实时控制 CLI 入口
 │   ├── audio/                    # 音频 mock、流式 DSP 与 PulseAudio 异步录放
 │   ├── asr/                      # VAD、语音识别适配
+│   ├── kws/                      # 关键词校验、CPU唤醒适配
 │   ├── llm/                      # 本地语言模型适配
 │   ├── tts/                      # 语音合成与文本前处理
 │   └── engine/                   # 配置、资产、JSONL 日志、mock 与实时状态机
@@ -60,16 +73,19 @@ rk3588_voice_engine/
 │   ├── env_check.cpp             # 基础依赖检查
 │   ├── audio_probe.cpp           # 真实录放、格式转换与设备恢复诊断
 │   ├── asr_probe.cpp             # VAD/RKNN 固定 WAV 与增量分块诊断
+│   ├── kws_probe.cpp             # CPU关键词固定WAV诊断
 │   ├── tts_probe.cpp             # CPU 合成、分句、读音候选与 WAV 诊断
 │   ├── llm_probe.cpp             # 常驻 LLM、上下文、预算与取消诊断
 │   ├── llm_tts_probe.cpp         # 真实文本流/固定时间线重放到 TTS 文件
 │   ├── coexist_probe.cpp         # 四模型同进程常驻、顺序 NPU 与资源采样
 │   └── voice_file_demo.cpp       # 实际 WAV → ASR → LLM → TTS 文件链路
 ├── scripts/                      # 构建、检查、启动、回退脚本与适配补丁
+│   ├── deploy.py                  # 应用打包、离线预检、启动、用户服务与回退
 │   ├── install_npu_runtimes.py    # 本机固定版本 runtime 安装、检查与回退
 │   ├── prepare_fixtures.py       # 固定工程语料生成与原生 WAV 重建
 │   ├── review_voice_file.py      # A07 证据、内容评分及 PCM/WAV 独立核验
 │   └── patches/                  # 固定源码版本的候选驱动补丁
+├── packaging/                    # systemd用户服务模板
 ├── config/                       # 通用配置；local.yaml 为本机配置
 ├── tests/
 │   ├── fixtures/                 # 固定合成输入、自然录音目录清单及材料/模型审核
@@ -86,10 +102,14 @@ rk3588_voice_engine/
 │   ├── file-fixtures.md          # 合成与自然材料、人工审核、来源和限制
 │   ├── asr-probe.md              # 增量文件 ASR、测量和未达标样本
 │   ├── tts-probe.md              # 分句/读音/流式队列与局部联合诊断
+│   ├── tts-parallel-experiment.md # 双进程实验历史结果、决定与证据索引
 │   ├── llm-probe.md              # 常驻 LLM、监督运行与模型侧验收
 │   ├── coexist-probe.md          # 四模型共驻、预热、监督采样与 A06
 │   ├── voice-file-demo.md        # 文件链路、监督执行、独立审核与 A07
 │   ├── realtime-engine.md        # 实时主引擎、取消、队列与控制命令
+│   ├── wake-dialogue.md          # 唤醒配置、关键词、窗口与验证
+│   ├── barge-in.md               # 语音打断、缓存交接与验证
+│   ├── deployment.md             # 发布、离线启动、用户服务及回退
 │   ├── ACCEPTANCE.md             # 验收用例
 │   ├── PLAN_REVIEW.md            # 规划审阅记录
 │   ├── archive/                  # 历史计划，保留原始内容
@@ -129,7 +149,7 @@ CMake 基础开关默认 `ON`；三个模型文件探针开关默认 `OFF`：
 | `VOICE_ENGINE_BUILD_AUDIO` | `voice_engine_audio` 内存 mock，仅依赖 C++17 标准库；与下一开关共同决定是否构建真实后端 |
 | `VOICE_ENGINE_BUILD_PULSE_AUDIO` | 音频模块开启时构建 `voice_engine_audio_dsp` 和 `voice_engine_pulse_audio`，依赖 libpulse、libsamplerate 和 pthread；引擎也开启时构建 `audio_probe`，另需 libsndfile |
 | `VOICE_ENGINE_BUILD_ENV_CHECK` | `env_check`，单独检查 libpulse、libsamplerate、libsndfile、yaml-cpp 和 nlohmann-json |
-| `VOICE_ENGINE_BUILD_ASR_PROBE`（OFF） | VAD/RKNN 文件探针；显式开启后检查固定私有 RKNN、sherpa/ORT 与官方 fbank 依赖 |
+| `VOICE_ENGINE_BUILD_ASR_PROBE`（OFF） | VAD/RKNN及CPU KWS文件探针；显式开启后检查固定私有 RKNN、sherpa/ORT 与官方 fbank 依赖 |
 | `VOICE_ENGINE_BUILD_TTS_PROBE`（OFF） | CPU TTS 文件探针；显式开启后检查固定私有 sherpa/ORT，复用音频 DSP 与 libsndfile |
 | `VOICE_ENGINE_BUILD_LLM_PROBE`（OFF） | 常驻 RKLLM 文件探针；需 ENGINE 及固定私有 RKLLM 1.3.0。与 TTS 开关同时打开时额外构建 `llm_tts_probe`；三个模型开关全开时再构建 `coexist_probe` 和 `voice_file_demo`，真实 Pulse 后端可用时同时接通 `voice_engine` 实时入口 |
 
@@ -189,15 +209,15 @@ ctest --test-dir build/native-audio-only --output-on-failure
 | `tts` | 最短/最长分段字符数、软目标、标点前瞻、冲刷和预缓冲整数；合成语速数值；首段/后段策略及段内短句合成布尔值 |
 | `queues` | 采集/播放缓冲、待处理轮数、文本字节数、TTS 段数与音频时长整数 |
 | `timeouts` | ASR、LLM 首 token/总生成、TTS、取消超时的毫秒整数 |
-| `dialogue` | 唤醒/打断布尔开关、唤醒词字符串与对话窗口/打断持续毫秒整数 |
+| `dialogue` | 唤醒/打断布尔值、唤醒词和关键词文件路径字符串、窗口及打断时长整数；编码见[唤醒说明](docs/wake-dialogue.md)，打断的实时缓存约束见[语音打断](docs/barge-in.md) |
 
-`tts.prebuffer_ms` 通用缺省0、范围0～2000 ms；正值开启两槽原生语音预取和独立送音线程，等待真实音频达到目标、两槽满或合成结束后起播。当前实时模板/本机配置按用户要求为1500；它不是追加的数字静音。每槽仍受 `queues.max_tts_audio_ms` 单段上限约束，原PCM队列额度不变；首音等待可能增加，需计入A10。完整生命周期、内存和观测字段见[TTS worker](docs/tts-probe.md#有界-tts-worker-与提交边界)。
+`tts.prebuffer_ms` 通用缺省0、范围0～2000 ms；正值开启两槽原生语音预取和独立送音线程，等待真实音频达到目标、两槽满或合成结束后起播。当前实时模板/本机配置按用户要求为1500；它不是追加的数字静音。每槽仍受 `queues.max_tts_audio_ms` 单段上限约束，原PCM队列额度不变；软件起播等待可能增加，需在软件时间线中记录。完整生命周期、内存和观测字段见[TTS worker](docs/tts-probe.md#有界-tts-worker-与提交边界)。
 
 `tts.target_chars` 通用缺省0，表示保持原先按句末、定时和硬上限切分；正值须位于 `min_chars`～`max_chars`，优先在目标附近的安全位置分段。较长数字、日期或英文单词可以超过目标，仍受原 `max_chars` 硬上限约束；输入字段范围0～1024。当前实时关闭first_segment覆盖，首块和后续统一min/target/lookahead=12/12/2，保留40字符硬上限、300 ms冲刷，起播储备改为1500 ms。调小目标可能改变语调和分段开销，候选需同时核验延迟、连续性与听感。
 
 `tts.speed` 缺省1.0，接受有限数值0.5～2.0；小于1放慢、大于1加快，带引号的数值、布尔和非有限值会被拒绝。这是传给固定Melo模型的合成语速，原生44100 Hz及设备16000 Hz采样率不变。用户此前同句耳机A/B选择0.95，后续曾改为0.9，当前按新要求在实时模板与本机配置设为0.85；调慢也会增加音频长度及合成成本，不能单独保证无顿挫。
 
-`tts.boundary_lookahead_chars` 缺省0，整数范围0～32。正值要求 `target_chars > 0` 且 `target_chars + boundary_lookahead_chars <= max_chars`；达到软目标后，在有限后续字符中优先找句末、中文逗号/顿号或非数字分组的ASCII逗号。等待从达到目标后的首次poll计时，最多再等 `flush_ms`；EOS立即冲刷，字符额度用完则回退安全软切。没有通用中文分词保证；新增文本等待必须计入实际首音延迟。历史单阶段候选6出现供音欠载，候选2曾按用户要求中止，见[历史记录](docs/environment.md#5617-同速标点前瞻分段验证)。动态首块2/后续4的实验见[环境§56.24](docs/environment.md#5624-用户指定的首块后续块动态分段)；当前已按用户要求回退为所有段统一前瞻2，见[环境§56.25](docs/environment.md#5625-回退统一分段并调整前瞻语速和储备)。
+`tts.boundary_lookahead_chars` 缺省0，整数范围0～32。正值要求 `target_chars > 0` 且 `target_chars + boundary_lookahead_chars <= max_chars`；达到软目标后，在有限后续字符中优先找句末、中文逗号/顿号或非数字分组的ASCII逗号。等待从达到目标后的首次poll计时，最多再等 `flush_ms`；EOS立即冲刷，字符额度用完则回退安全软切。没有通用中文分词保证；新增文本等待须计入软件起播时间线；不再安排外部声学首音计时。历史单阶段候选6出现供音欠载，候选2曾按用户要求中止，见[历史记录](docs/environment.md#5617-同速标点前瞻分段验证)。动态首块2/后续4的实验见[环境§56.24](docs/environment.md#5624-用户指定的首块后续块动态分段)；当前已按用户要求回退为所有段统一前瞻2，见[环境§56.25](docs/environment.md#5625-回退统一分段并调整前瞻语速和储备)。
 
 `tts.sentence_mode` 为布尔值，缺省false保持原规则；true时要求 `target_chars=0`、`boundary_lookahead_chars=0`，且不设置first_segment覆盖。首段达到min_chars后可在分句标点提前输出，后续优先等完整句末；已排队的文字在触发定时回退前先读取。flush_ms到期只在已有分句标点或词间空白处回退；没有边界时等EOS或max_chars，避免短定时器机械切中文字。40字等硬上限仍优先使用已有标点，完全无边界时沿用安全硬切/不可分词拒绝。它不是通用语义分析或中文分词。当前方案的启用与验证状态见[环境§56.19](docs/environment.md#5619-首段快出与后续完整句分段)。
 
@@ -312,7 +332,7 @@ flock -x /tmp/rk3588_voice_engine_model_validation.lock \
 
 上例ASR使用板端私有自然人声正式集；仅有仓库时不能取得该录音。旧合成 `tests/fixtures/manifest.json` 仍可显式用于非阻塞回归，其原质量失败和退出码不改。ASR 的 `--official --repeat 5` 可代替 `--manifest` 复核官方 WAV，`--chunk-ms 10/20/37` 检查分块一致性。TTS `--validate-text-only` 只验证文本和分句。两工具不播放 WAV、不录音、不执行 LLM。退出 6 表示本次质量/行为或性能指标未达标，应保留失败报告；退出 0 也不等于 A03/A05 全项通过。外层 `timeout` 返回 124 时保留部分证据并记为未完成。输入契约、其它错误码、耗时口径和已知限制见 [ASR](docs/asr-probe.md)、[TTS](docs/tts-probe.md)；固定数据、参考和哈希见[测试集说明](docs/file-fixtures.md)。
 
-完整 WAV → ASR → LLM → TTS 使用 `voice_file_demo` 及 `config/voice-file-demo.yaml`；预检、受监督运行、逐样本产物与独立 A07 内容审核统一见[文件链路说明](docs/voice-file-demo.md)。该工具写出 WAV，不打开耳机，程序退出 0 不能代替内容审核或实际声学验收。
+完整 WAV → ASR → LLM → TTS 使用 `voice_file_demo` 及 `config/voice-file-demo.yaml`；预检、受监督运行、逐样本产物与独立 A07 内容审核统一见[文件链路说明](docs/voice-file-demo.md)。该工具写出 WAV，不打开耳机，程序退出 0 不能代替内容审核或真实设备功能检查；外部声学计时已从后续验收移除。
 
 ## 真实音频诊断
 

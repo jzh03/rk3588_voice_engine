@@ -53,13 +53,15 @@ void ListeningAsr::fail() noexcept {
     pending_.fill(0);
     try { backends_.reset(0); } catch(...) {}
 }
-void ListeningAsr::begin(const float* prefix,std::size_t count) {
+void ListeningAsr::begin(const float* prefix,std::size_t count,std::int64_t start_deadline_ns) {
+    if(start_deadline_ns<0)throw std::invalid_argument("negative LISTENING start deadline");
     if(count>static_cast<std::uint64_t>(config_.pre_roll_ms)*16)
         throw std::length_error("LISTENING pre-roll exceeds configured bound");
     validate_pcm(prefix,count);
     try {
         reset_backends(count);
         result_={};
+        start_deadline_ns_=start_deadline_ns;
         result_.pre_roll_samples=count;
         state_=ListeningState::listening;
         // Prefix is before the trigger; endpoint dispatch starts with new input.
@@ -72,6 +74,24 @@ void ListeningAsr::begin(const float* prefix,std::size_t count) {
                 used_=0;
             }
         }
+    } catch(...) { fail();throw; }
+}
+bool ListeningAsr::poll_start_timeout(std::int64_t now_ns) {
+    if(state_!=ListeningState::listening||!start_deadline_ns_||now_ns<start_deadline_ns_)
+        return false;
+    // A dialogue's opening deadline must never truncate an established utterance.
+    if(backends_.vad_stats().speech_detected) { start_deadline_ns_=0;return false; }
+    try {
+        // Keep the last valid samples; do not synthesize missing capture audio.
+        if(used_) {
+            const auto valid=used_;used_=0;
+            consume(pending_.data(),valid,true);
+            if(state_==ListeningState::final)return true;
+        }
+        if(backends_.vad_stats().speech_detected) { start_deadline_ns_=0;return false; }
+        endpoint_time_=std::chrono::steady_clock::now();
+        complete(ListeningEnd::start_timeout);
+        return true;
     } catch(...) { fail();throw; }
 }
 void ListeningAsr::consume(const float* pcm,std::size_t count,bool check_endpoint) {

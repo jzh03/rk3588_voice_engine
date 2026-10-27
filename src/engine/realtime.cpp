@@ -3,6 +3,7 @@
 #include <cctype>
 #include <chrono>
 #include <utility>
+#include <deque>
 namespace voice_engine {
 namespace {
 bool same(AudioContext a, AudioContext b) {
@@ -16,7 +17,14 @@ RealtimeQueueBudget realtime_queue_budget(const Config& config) {
         config.queues.playback_ms % 20)
         throw ConfigError("realtime requires 20 ms frames, capture_ms >= 40 and playback_ms >= 60");
     RealtimeQueueBudget budget;
-    budget.capture_audio_frames = config.queues.capture_ms / 20 - 1;
+    if (config.dialogue.barge_in) {
+        // 128 ms covers the fixed detector's window/context lookback. The
+        // configured pre-roll and confirmation interval remain real PCM.
+        budget.capture_preroll_frames = (config.vad.pre_roll_ms + config.dialogue.barge_in_min_ms + 128 + 19) / 20;
+        if (std::size_t(config.queues.capture_ms / 20) < budget.capture_preroll_frames + 2)
+            throw ConfigError("barge-in capture_ms must cover pre-roll, confirmation and two transport slots");
+    }
+    budget.capture_audio_frames = config.queues.capture_ms / 20 - 1 - budget.capture_preroll_frames;
     const auto playback = static_cast<std::size_t>(config.queues.playback_ms / 20);
     budget.playback_tts_frames = (playback - 1) / 2;
     budget.playback_audio_frames = playback - 1 - budget.playback_tts_frames;
@@ -38,18 +46,21 @@ const char* realtime_state_name(RealtimeState s) noexcept {
 }
 struct RealtimeController::Impl {
     Config config;
+    RealtimeQueueBudget budget;
+    std::deque<AudioFrame> preroll;
+    bool barge_listening = false, awaiting_barge_playback = false;
     LiveAudioBackend& audio;
     RealtimePipeline& pipeline;
     Log logger;
     RealtimeSnapshot snap;
     bool shutting_down = false, low_memory = false, input_finished = false;
     bool draining = false, empty_turn = false, buffered_start = false, pending_stop = false;
-    bool wake_triggered = false, dialogue_open = false;
+    bool wake_triggered = false, dialogue_open = false, wake_fault = false;
     std::int64_t deadline = 0, listen_started = 0, memory_kib = -1, low_since = 0, playback_blocked_since = 0;
     std::uint64_t capture_overflows = 0, capture_holes = 0, dropped_events = 0;
     std::optional<RealtimeEvent> pending_pcm;
     Impl(const Config& c, LiveAudioBackend& a, RealtimePipeline& p, Log l)
-        : config(c), audio(a), pipeline(p), logger(std::move(l)) {}
+        : config(c), budget(realtime_queue_budget(c)), audio(a), pipeline(p), logger(std::move(l)) {}
     void log(std::string_view name, const nlohmann::json& data = nlohmann::json::object()) {
         if (logger) logger(name, snap.context, snap.state, data);
     }
@@ -69,6 +80,7 @@ struct RealtimeController::Impl {
         ++snap.context.generation_id;
         pending_pcm.reset(); playback_blocked_since = 0; draining = false; empty_turn = false;
         buffered_start = false; pending_stop = false;
+        barge_listening = awaiting_barge_playback = false; preroll.clear();
         snap.wake_listening = false; wake_triggered = false; dialogue_open = false;
         // The controller is single-threaded; invalidation and downstream flush
         // finish before another playback submission can be attempted.
@@ -92,6 +104,7 @@ struct RealtimeController::Impl {
         cancel(now, why);
     }
     void buffer_pending(std::int64_t now) {
+        preroll.clear();
         const auto status = audio.status();
         ++snap.context.generation_id;
         if (!audio.start_session(snap.context, true)) {
@@ -103,8 +116,64 @@ struct RealtimeController::Impl {
         log("pending_capture_started", {{"capacity_ms", config.queues.capture_ms},
                                        {"model_admission", "waiting_for_idle"}});
     }
+    bool preserve_capture(std::int64_t now) {
+        if (!audio.interrupt_playback(snap.context)) {
+            fail(now, "barge_capture_handoff_failed"); return false;
+        }
+        for (auto& frame : preroll) frame.context = snap.context;
+        buffered_start = true; listen_started = now;
+        return true;
+    }
+    void barge_in(std::int64_t now, const BargeInSignal& signal) {
+        const auto old = snap.context;
+        log("barge_in_detected", {{"detected_ns", signal.detected_ns},
+            {"detector_last_frame_seq", signal.last_frame_seq}, {"input_samples", signal.input_samples},
+            {"preroll_frames", preroll.size()}, {"minimum_speech_ms", config.dialogue.barge_in_min_ms},
+            {"first_preserved_seq", preroll.empty() ? 0 : preroll.front().seq},
+            {"measurement_method", "software_observation"}});
+        ++snap.context.generation_id;
+        pending_pcm.reset(); playback_blocked_since = 0; draining = empty_turn = false;
+        pending_stop = false; barge_listening = awaiting_barge_playback = false;
+        // Invalidate all model output first. Only playback is flushed; capture
+        // remains continuous and is admitted to ASR after both idle barriers.
+        pipeline.cancel();
+        if (!preserve_capture(now)) return;
+        snap.pending_start = true;
+        deadline = now + std::int64_t(config.timeouts.cancel_ms) * 1000000;
+        const auto stopped = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+        log("cancel_requested", {{"reason", "barge_in"}, {"cancelled_generation", old.generation_id},
+            {"cancel_requested_ns", now}, {"old_pcm_stopped_ns", stopped},
+            {"measurement_method", "software_observation"}, {"capture_preserved", true}});
+        state(RealtimeState::cancelling);
+    }
+    void service_barge_in(std::int64_t now) {
+        if (awaiting_barge_playback) {
+            // Capture stays live, but pre-output speech/noise must not cancel
+            // the answer before it can start. Drain these frames within the
+            // existing bound; do not accumulate a second utterance queue.
+            AudioFrame discarded;
+            for (int n = 0; n < config.queues.capture_ms / config.audio.frame_ms &&
+                 audio.try_capture_frame(discarded); ++n) {}
+            return;
+        }
+        if (!barge_listening) return;
+        if (auto signal = pipeline.poll_barge_in()) {
+            if (!same(signal->context, snap.context)) log("stale_barge_in_event");
+            else if (!signal->error.empty()) { fail(now, signal->error); return; }
+            else { barge_in(now, *signal); return; }
+        }
+        AudioFrame frame;
+        const auto limit = config.queues.capture_ms / config.audio.frame_ms;
+        for (int n = 0; n < limit && pipeline.can_accept_barge_in() && audio.try_capture_frame(frame); ++n) {
+            if (!same(frame.context, snap.context)) continue;
+            if (!pipeline.submit_barge_in(frame)) { fail(now, "barge_capture_queue_rejected"); return; }
+            preroll.push_back(std::move(frame));
+            if (preroll.size() > budget.capture_preroll_frames) preroll.pop_front();
+        }
+    }
     void arm_wake(std::int64_t now) {
-        if (!config.dialogue.wake_enabled || snap.wake_listening || !pipeline.idle() ||
+        if (!config.dialogue.wake_enabled || wake_fault || snap.wake_listening || !pipeline.idle() ||
             audio.status().reset_pending) return;
         ++snap.context.session_id; ++snap.context.generation_id;
         pipeline.new_session();
@@ -132,6 +201,9 @@ struct RealtimeController::Impl {
             if (!event) break;
             if (!same(event->context, snap.context)) { log("stale_pipeline_event"); continue; }
             if (event->kind == RealtimeEvent::Kind::error) {
+                // A failed detector must not spin through automatic rearming.
+                // A manual start/new-session is required after cancellation.
+                wake_fault = true;
                 log("pipeline_error", event->data); fail(now, event->reason); return;
             }
             if (event->kind != RealtimeEvent::Kind::wake) { fail(now, "invalid_wake_event"); return; }
@@ -205,7 +277,7 @@ struct RealtimeController::Impl {
                     {"completion_time_method", "poll_observation"}});
                 if (shutting_down) { state(RealtimeState::stopping); snap.stopping = true; return; }
                 state(status.state == LiveAudioState::device_wait ? RealtimeState::device_wait :
-                      low_memory ? RealtimeState::error : RealtimeState::idle);
+                      (low_memory || wake_fault) ? RealtimeState::error : RealtimeState::idle);
             } else if (now >= deadline) {
                 log("restart_required", {{"reason", "cancel_timeout"}, {"deadline_ns", deadline},
                                          {"pipeline", pipeline.diagnostics()}});
@@ -215,7 +287,7 @@ struct RealtimeController::Impl {
         if (snap.state == RealtimeState::starting || snap.state == RealtimeState::device_wait ||
             snap.state == RealtimeState::idle || snap.state == RealtimeState::error) {
             state(status.state == LiveAudioState::device_wait ? RealtimeState::device_wait :
-                  low_memory ? RealtimeState::error : RealtimeState::idle);
+                  (low_memory || wake_fault) ? RealtimeState::error : RealtimeState::idle);
             if (snap.pending_start && snap.state == RealtimeState::idle) start(now);
         }
         if (snap.wake_listening) service_wake(now);
@@ -225,17 +297,26 @@ struct RealtimeController::Impl {
         }
         if (status.capture_overflows > capture_overflows || status.capture_holes > capture_holes ||
             status.dropped_events > dropped_events) { fail(now, "audio_capture_discontinuity"); return; }
+        // Independent priority path: a full playback queue must never hide an
+        // insertion behind the retained PCM event or the normal model queue.
+        if (snap.state == RealtimeState::responding) {
+            service_barge_in(now);
+            if (snap.state != RealtimeState::responding) return;
+        }
         if (snap.state == RealtimeState::listening || (snap.state == RealtimeState::finalizing && !input_finished)) {
             AudioFrame frame;
             // At most the configured bounded queue per tick; never block capture.
             const auto limit = std::max(1, config.queues.capture_ms / config.audio.frame_ms);
-            for (int n = 0; n < limit && pipeline.can_accept_capture() && audio.try_capture_frame(frame); ++n) {
+            for (int n = 0; n < limit && pipeline.can_accept_capture(); ++n) {
+                if (!preroll.empty()) { frame = std::move(preroll.front()); preroll.pop_front(); }
+                else if (!audio.try_capture_frame(frame)) break;
                 if (same(frame.context, snap.context) && !pipeline.submit(frame)) {
                     fail(now, "capture_queue_overflow"); return;
                 }
             }
             status = audio.status();
-            if (snap.state == RealtimeState::finalizing && !status.capture_stopping && status.capture_queued_frames == 0) {
+            if (snap.state == RealtimeState::finalizing && !status.capture_stopping &&
+                status.capture_queued_frames == 0 && preroll.empty()) {
                 pipeline.finish_input(); input_finished = true;
                 deadline = now + std::int64_t(config.timeouts.asr_final_ms) * 1000000;
             }
@@ -261,17 +342,23 @@ struct RealtimeController::Impl {
                 if (snap.state != RealtimeState::listening && snap.state != RealtimeState::finalizing) {
                     fail(now, "invalid_pipeline_order"); return;
                 }
-                audio.stop_capture(); input_finished = true;
+                if (!config.dialogue.barge_in) audio.stop_capture();
+                input_finished = true;
                 state(RealtimeState::finalizing);
                 deadline = now + std::int64_t(config.timeouts.asr_final_ms) * 1000000;
                 log("endpoint", e->data); break;
             case RealtimeEvent::Kind::asr_final:
                 if (snap.state != RealtimeState::finalizing) { fail(now, "invalid_pipeline_order"); return; }
-                audio.stop_capture();
-                // Automatic endpoints intentionally discard later capture frames.
+                if (!config.dialogue.barge_in) audio.stop_capture();
+                // Discard ASR tail before arming the fresh response detector.
                 { AudioFrame discarded; while(audio.try_capture_frame(discarded)) {} }
+                preroll.clear();
                 empty_turn = e->reason == "empty";
-                state(RealtimeState::responding); log("asr_final", e->data); break;
+                state(RealtimeState::responding); log("asr_final", e->data);
+                awaiting_barge_playback = config.dialogue.barge_in && !empty_turn;
+                if (awaiting_barge_playback)
+                    log("barge_in_waiting_for_playback", {{"policy", "first_pcm_accepted"}});
+                break;
             case RealtimeEvent::Kind::pcm: {
                 if (snap.state != RealtimeState::responding || draining || empty_turn) {
                     fail(now, "invalid_pipeline_order"); return;
@@ -292,6 +379,19 @@ struct RealtimeController::Impl {
                 playback_blocked_since = 0;
                 log("playback_submit", {{"seq", e->frame.seq}, {"valid_samples", e->frame.valid_samples},
                                        {"playback_submit_ns", now}});
+                if (awaiting_barge_playback) {
+                    // The producer has released actual response PCM. Throw
+                    // away the final pre-output capture tail before reset, so
+                    // it cannot be replayed as a fresh insertion.
+                    AudioFrame discarded; while (audio.try_capture_frame(discarded)) {}
+                    preroll.clear();
+                    pipeline.begin_barge_in(snap.context);
+                    barge_listening = true; awaiting_barge_playback = false;
+                    log("barge_in_armed", {{"minimum_speech_ms", config.dialogue.barge_in_min_ms},
+                        {"preroll_capacity_frames", budget.capture_preroll_frames},
+                        {"capture_audio_capacity_frames", budget.capture_audio_frames},
+                        {"policy", "first_pcm_accepted"}});
+                }
                 break;
             }
             case RealtimeEvent::Kind::complete:
@@ -311,6 +411,9 @@ struct RealtimeController::Impl {
             status = audio.status();
             if (!status.session_active || !same(status.context, snap.context) ||
                 status.state == LiveAudioState::device_wait) { fail(now, "drain_session_lost"); return; }
+            if (!status.reset_pending && status.drained && barge_listening) {
+                pipeline.end_barge_in(); barge_listening = false;
+            }
             if (!status.reset_pending && status.drained && pipeline.idle()) {
                 bool committed = false, callback_entered = false;
                 const bool drained_current = audio.commit_if_drained(snap.context, [&] {
@@ -323,10 +426,18 @@ struct RealtimeController::Impl {
                                        {"playback_drained_ns", now}});
                 draining = false; state(RealtimeState::idle);
                 if (dialogue_open && !empty_turn) {
+                    if (config.dialogue.barge_in) {
+                        ++snap.context.generation_id;
+                        if (!preserve_capture(now)) return;
+                    }
                     snap.pending_start = true; start(now);
-                } else if (dialogue_open) {
-                    dialogue_open = false;
-                    log("dialogue_window_closed", {{"reason", "empty_input"}});
+                } else {
+                    preroll.clear();
+                    if (config.dialogue.barge_in) audio.stop_capture();
+                    if (dialogue_open) {
+                        dialogue_open = false;
+                        log("dialogue_window_closed", {{"reason", "empty_input"}});
+                    }
                 }
             } else if (now >= deadline) { fail(now, "playback_drain_timeout"); return; }
         }
@@ -352,6 +463,7 @@ bool RealtimeController::command(std::string_view command, std::int64_t now) {
         if (i.low_memory || i.audio.status().state == LiveAudioState::device_wait) {
             i.log("command_rejected", {{"reason", "start_unavailable"}}); return false;
         }
+        i.wake_fault = false;
         i.snap.pending_start = true;
         if (i.active() || i.snap.state == RealtimeState::cancelling || i.snap.wake_listening || !i.pipeline.idle()) {
             i.cancel(now, "replaced_by_start");
@@ -359,14 +471,17 @@ bool RealtimeController::command(std::string_view command, std::int64_t now) {
         } else i.start(now);
     } else if (command == "stop") {
         if (i.buffered_start && i.snap.pending_start) {
-            i.audio.stop_capture(); i.pending_stop = true; return true;
+            if (!i.config.dialogue.barge_in) i.audio.stop_capture();
+            i.pending_stop = true; return true;
         }
         if (i.snap.state != RealtimeState::listening) return false;
-        i.audio.stop_capture(); i.state(RealtimeState::finalizing);
+        if (!i.config.dialogue.barge_in) i.audio.stop_capture();
+        i.state(RealtimeState::finalizing);
         i.deadline = now + std::int64_t(i.config.timeouts.asr_final_ms) * 1000000;
     } else if (command == "cancel") {
         i.snap.pending_start = false; i.cancel(now, "command");
     } else if (command == "new-session") {
+        i.wake_fault = false;
         i.snap.pending_start = false; i.cancel(now, "new_session");
         ++i.snap.context.session_id; i.pipeline.new_session(); i.log("session_started");
     } else if (command == "quit") shutdown(now);

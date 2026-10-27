@@ -26,6 +26,8 @@ class ModelPipeline final : public RealtimePipeline {
     std::unique_ptr<KeywordSpotter> kws_;
     bool wake_mode_ = false;
     std::atomic<std::int64_t> kws_call_ns_{0};
+    std::unique_ptr<BargeInDetector> barge_detector_;
+    std::unique_ptr<BargeInMonitor> barge_;
     std::unique_ptr<ZipformerAsr> asr_;
     std::unique_ptr<SileroVad> vad_;
     std::unique_ptr<MeloTts> model_;
@@ -39,6 +41,7 @@ class ModelPipeline final : public RealtimePipeline {
     bool input_end_ = false, accepting_ = false, responding_ = false, have_llm_ = false;
     bool completed_ = false, watchdog_reported_ = false;
     AudioContext context_;
+    std::int64_t listening_deadline_ns_ = 0;
     LlmTurn turn_;
     std::deque<AudioFrame> capture_;
     std::deque<RealtimeEvent> events_;
@@ -66,6 +69,7 @@ class ModelPipeline final : public RealtimePipeline {
         events_.push_back(std::move(e));
     }
     void cancel_locked() {
+        if (barge_) barge_->stop();
         valid_ = false; accepting_ = false; responding_ = false;
         capture_.clear(); events_.clear(); input_end_ = true;
         llm_->cancel(); tts_->cancel(tts_id()); cv_.notify_all();
@@ -102,7 +106,8 @@ class ModelPipeline final : public RealtimePipeline {
     }
     void turn(AudioContext id) {
         if (!llm_->idle() || !tts_->wait_idle(0)) throw std::logic_error("NPU/producer not idle before ASR");
-        asr_call([&] { listening_->begin(); });
+        auto opening_deadline = listening_deadline_ns_;
+        asr_call([&] { listening_->begin(nullptr, 0, opening_deadline); });
         while (alive(id)) {
             AudioFrame frame;
             bool have = false, end = false;
@@ -120,6 +125,10 @@ class ModelPipeline final : public RealtimePipeline {
             if (end) {
                 event(id, RealtimeEvent::Kind::endpoint, "manual_stop", {{"endpoint_ns", now_ns()}, {"end_reason", "manual_stop"}});
                 asr_call([&] { listening_->finish(); });
+            }
+            if (opening_deadline && now_ns() >= opening_deadline) {
+                asr_call([&] { listening_->poll_start_timeout(now_ns()); });
+                opening_deadline = 0;
             }
             if (listening_->state() == ListeningState::final) break;
         }
@@ -323,6 +332,14 @@ public:
         if (c.dialogue.wake_enabled) listening_config.start_timeout_ms = c.dialogue.window_ms;
         vad_ = std::make_unique<SileroVad>(path(vad, vad.at("model_path").get<std::string>()), listening_config, c.threads.vad);
         if (c.dialogue.wake_enabled) kws_ = std::make_unique<KeywordSpotter>(c);
+        if (c.dialogue.barge_in) {
+            barge_detector_ = std::make_unique<BargeInDetector>(
+                path(vad, vad.at("model_path").get<std::string>()), c.dialogue.barge_in_min_ms, c.threads.vad);
+            barge_ = std::make_unique<BargeInMonitor>(
+                [this] { barge_detector_->reset(); },
+                [this](const float* p, std::size_t n) { return barge_detector_->accept(p, n); },
+                c.timeouts.asr_final_ms);
+        }
         model_ = std::make_unique<MeloTts>(c, c.threads.tts);
         auto options = llm_options_from_config(c);
         llm_ = std::make_unique<LlmAdapter>(make_rkllm_backend(resolve_rkllm_assets(c), options), options);
@@ -349,15 +366,26 @@ public:
     }
     void begin_mode(AudioContext id, bool wake) {
         std::lock_guard<std::mutex> lock(gate_);
-        if (busy_ || !llm_->idle() || !tts_->wait_idle(0))
+        if (busy_ || (barge_ && !barge_->idle()) || !llm_->idle() || !tts_->wait_idle(0))
             throw std::logic_error("begin requires all model workers idle");
         const bool handoff = wake_mode_ && !wake && current(id);
         if (!handoff) { capture_.clear(); capture_peak_ = 0; }
         context_ = id; wake_mode_ = wake; events_.clear();
+        listening_deadline_ns_ = !wake && config_.dialogue.wake_enabled ?
+            now_ns() + std::int64_t(config_.dialogue.window_ms) * 1000000 : 0;
         valid_ = busy_ = pending_ = accepting_ = true;
         input_end_ = responding_ = have_llm_ = completed_ = watchdog_reported_ = false;
         cv_.notify_all();
     }
+    void begin_barge_in(AudioContext id) override {
+        std::lock_guard<std::mutex> lock(gate_);
+        if (!barge_ || !current(id)) throw std::logic_error("invalid barge-in begin");
+        barge_->begin(id);
+    }
+    void end_barge_in() override { if (barge_) barge_->stop(); }
+    bool can_accept_barge_in() const override { return barge_ && barge_->can_accept(); }
+    bool submit_barge_in(const AudioFrame& f) override { return barge_ && barge_->submit(f); }
+    std::optional<BargeInSignal> poll_barge_in() override { return barge_ ? barge_->poll() : std::nullopt; }
     bool can_accept_capture() const override {
         std::lock_guard<std::mutex> lock(gate_);
         return valid_ && (accepting_ ? capture_.size() < budget_.capture_model_frames : !wake_mode_);
@@ -377,13 +405,13 @@ public:
     void new_session() override { std::lock_guard<std::mutex> lock(gate_); llm_->new_session(); }
     bool idle() const override {
         std::lock_guard<std::mutex> lock(gate_);
-        return !busy_ && llm_->idle() && tts_->wait_idle(0) && !llm_->restart_required();
+        return !busy_ && (!barge_ || barge_->idle()) && llm_->idle() && tts_->wait_idle(0) && !llm_->restart_required();
     }
     nlohmann::json diagnostics() const override {
         std::lock_guard<std::mutex> lock(gate_);
         const auto now = now_ns(), asr_started = asr_call_ns_.load(), tts_started = tts_call_ns_.load();
         const auto tts = tts_->stats();
-        nlohmann::json result = {{"wake_mode", wake_mode_}, {"kws_call_started_ns", kws_call_ns_.load()}, {"worker_busy", busy_}, {"generation_valid", valid_},
+        nlohmann::json result = {{"barge_in_enabled", config_.dialogue.barge_in}, {"barge_in_idle", !barge_ || barge_->idle()}, {"wake_mode", wake_mode_}, {"listening_deadline_ns", listening_deadline_ns_}, {"kws_call_started_ns", kws_call_ns_.load()}, {"worker_busy", busy_}, {"generation_valid", valid_},
             {"accepting_audio", accepting_}, {"responding", responding_},
             {"capture_queued_frames", capture_.size()}, {"capture_peak_frames", capture_peak_},
             {"llm_idle", llm_->idle()}, {"llm_restart_required", llm_->restart_required()},
@@ -432,7 +460,7 @@ public:
             (tts_started && now - tts_started > std::int64_t(config_.timeouts.tts_segment_ms) * 1000000))) {
             watchdog_reported_ = true;
             RealtimeEvent e; e.context = context_; e.kind = RealtimeEvent::Kind::error;
-            e.reason = asr_started ? "asr_call_timeout" : "tts_segment_timeout"; return e;
+            e.reason = kws_started ? "kws_call_timeout" : asr_started ? "asr_call_timeout" : "tts_segment_timeout"; return e;
         }
         if (!events_.empty()) { auto e = std::move(events_.front()); events_.pop_front(); return e; }
         if (responding_) if (auto pcm = tts_->poll(tts_id(), 0)) {
@@ -463,7 +491,6 @@ void validate_realtime_config(const Config& c) {
     realtime_queue_budget(c);
     if (!c.models.vad.enabled || !c.models.asr.enabled || !c.models.llm.enabled || !c.models.tts.enabled)
         throw ConfigError("realtime requires VAD/ASR/LLM/TTS enabled");
-    if (c.dialogue.barge_in) throw ConfigError("realtime barge-in requires P5-02; keep disabled");
     if (c.models.kws.enabled != c.dialogue.wake_enabled)
         throw ConfigError("realtime KWS and wake_enabled must be enabled together");
     if (c.dialogue.wake_enabled && c.dialogue.keywords_file.empty())

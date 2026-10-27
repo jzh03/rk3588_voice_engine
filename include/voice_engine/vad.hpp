@@ -81,6 +81,20 @@ struct VadStats {
     bool start_timed_out = false;
 };
 
+// CPU-only, continuous speech-onset detection for RESPONDING. No listening
+// timeout, utterance PCM archive or segment accumulation. Owns a separate
+// handle and is called only by the barge-in worker.
+class BargeInDetector {
+public:
+    BargeInDetector(const std::filesystem::path& model, int min_speech_ms, int threads);
+    ~BargeInDetector();
+    void reset();
+    bool accept(const float*, std::size_t);
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+};
+
 class SileroVad {
 public:
     SileroVad(const std::filesystem::path& model, const VadConfig&, int threads);

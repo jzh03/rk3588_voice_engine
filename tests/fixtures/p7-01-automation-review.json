@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-27",
+  "timezone": "Asia/Shanghai",
+  "task": "P7-01",
+  "status": "completed",
+  "A13_status": "passed",
+  "M3_status": "not_complete",
+  "completed_tasks": "17/19",
+  "scope": "local versioned deployment; process cold starts and rollback using private audio with real models",
+  "parameters_unchanged": true,
+  "engine_binary_unchanged": true,
+  "baseline_identity": {
+    "config/barge-in-local.yaml": "1a2828953d81ad3a650ae7a9b8b79523464bc03929eaa1966f5c4801eefc60c4",
+    "config/realtime-local.yaml": "0e1d0d86e505a4a387a079e8d1766a4d2e22f634df7801646acc37d1c9ca4003",
+    "config/wake-local.yaml": "1b5579a79524c79e16dca7ac0c39a7813d656e2fa99de03e23d42957459e63a9",
+    "config/default.yaml": "ab564b35878324fbe17c6a806e14b1a9f6c784143fb6ac20c6c5ca863154ee4c",
+    "models/manifest.json": "4d9d92742368b16a9c26d3c5657082ea2686984fefccb2a99c66718d6b0e95b6",
+    "deps/manifest.json": "324ef5761b79690d389bc83c37d16f3af52ea22ec22d6d0fb5f8c96fa76d31cb",
+    "build/model-probes/bin/voice_engine": "433b9891725c4708be057ae7e0c2d37900b960ae6514d823206451dcb27254c4"
+  },
+  "deployment_manager_sha256": "187fff7cc517cc667b70bf1ea2762ef66720f5e26c92e6deea4fe4d59486fbd0",
+  "implementation": [
+    "scripts/deploy.py",
+    "packaging/rk3588-voice-engine.service.in",
+    "tests/integration/deployment.py",
+    "tests/integration/deployment_runtime.py"
+  ],
+  "software_regression": {
+    "ctest": "deployment",
+    "cases": 7,
+    "initial": "passed",
+    "after_lock_handoff_fix": "passed",
+    "no_unrelated_suite_rerun": true
+  },
+  "initial_real_service_attempt": {
+    "status": "failed",
+    "exit_code": 2,
+    "completed_turns": 0,
+    "reason": "native engine requires the model lock to be owned by itself or a flock ancestor; initial Python-supervisor ownership was rejected before model loading",
+    "fix": "exec child acquires and inherits the fixed model lock; kernel owner PID remains the engine PID",
+    "evidence": "output/runs/p7-01-automation-20261027-01/a13/review.json"
+  },
+  "A13": {
+    "cold_starts": 3,
+    "turns_per_cold_start": 5,
+    "rollback_turns": 5,
+    "total_completed_turns": 20,
+    "cold_start_definition": "new process; OS and page cache not reset",
+    "missing_assets_rejected": true,
+    "bad_configuration_rejected": true,
+    "failed_activation_preserved_current": true,
+    "rollback_target": "p7-a13-base-20261027-r2",
+    "cycles": [
+      {
+        "run_id": "p7-a13-20261027-r2-cold-1",
+        "release": "p7-a13-base-20261027-r2",
+        "completed_turns": 5,
+        "exit_code": 0,
+        "offline_guard": {
+          "2": "blocked",
+          "10": "blocked",
+          "AF_UNIX": "allowed"
+        },
+        "loaded_private_libraries": {
+          "librknnrt.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/rknn-2.3.2/lib/librknnrt.so",
+          "librkllmrt.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/rkllm-1.3.0/lib/librkllmrt.so",
+          "libsherpa-onnx-c-api.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libsherpa-onnx-c-api.so",
+          "libonnxruntime.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libonnxruntime.so"
+        },
+        "queue_observations": {
+          "capture_overflows": 0,
+          "playback_overflows": 0,
+          "playback_underruns": 0,
+          "capture_holes": 0,
+          "dropped_events": 0
+        }
+      },
+      {
+        "run_id": "p7-a13-20261027-r2-cold-2",
+        "release": "p7-a13-next-20261027-r2",
+        "completed_turns": 5,
+        "exit_code": 0,
+        "offline_guard": {
+          "2": "blocked",
+          "10": "blocked",
+          "AF_UNIX": "allowed"
+        },
+        "loaded_private_libraries": {
+          "librknnrt.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/rknn-2.3.2/lib/librknnrt.so",
+          "librkllmrt.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/rkllm-1.3.0/lib/librkllmrt.so",
+          "libsherpa-onnx-c-api.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libsherpa-onnx-c-api.so",
+          "libonnxruntime.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libonnxruntime.so"
+        },
+        "queue_observations": {
+          "capture_overflows": 0,
+          "playback_overflows": 0,
+          "playback_underruns": 0,
+          "capture_holes": 0,
+          "dropped_events": 0
+        }
+      },
+      {
+        "run_id": "p7-a13-20261027-r2-cold-3",
+        "release": "p7-a13-next-20261027-r2",
+        "completed_turns": 5,
+        "exit_code": 0,
+        "offline_guard": {
+          "2": "blocked",
+          "10": "blocked",
+          "AF_UNIX": "allowed"
+        },
+        "loaded_private_libraries": {
+          "librknnrt.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/rknn-2.3.2/lib/librknnrt.so",
+          "librkllmrt.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/rkllm-1.3.0/lib/librkllmrt.so",
+          "libsherpa-onnx-c-api.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libsherpa-onnx-c-api.so",
+          "libonnxruntime.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libonnxruntime.so"
+        },
+        "queue_observations": {
+          "capture_overflows": 0,
+          "playback_overflows": 0,
+          "playback_underruns": 0,
+          "capture_holes": 0,
+          "dropped_events": 0
+        }
+      },
+      {
+        "run_id": "p7-a13-20261027-r2-rollback",
+        "release": "p7-a13-base-20261027-r2",
+        "completed_turns": 5,
+        "exit_code": 0,
+        "offline_guard": {
+          "2": "blocked",
+          "10": "blocked",
+          "AF_UNIX": "allowed"
+        },
+        "loaded_private_libraries": {
+          "librknnrt.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/rknn-2.3.2/lib/librknnrt.so",
+          "librkllmrt.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/rkllm-1.3.0/lib/librkllmrt.so",
+          "libsherpa-onnx-c-api.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libsherpa-onnx-c-api.so",
+          "libonnxruntime.so": "/home/orangepi/.local/share/rk3588-voice-engine/assets/884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68/deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libonnxruntime.so"
+        },
+        "queue_observations": {
+          "capture_overflows": 0,
+          "playback_overflows": 0,
+          "playback_underruns": 0,
+          "capture_holes": 0,
+          "dropped_events": 0
+        }
+      }
+    ]
+  },
+  "installation": {
+    "root": "/home/orangepi/.local/share/rk3588-voice-engine",
+    "current": "p7-m2-20261027-r2",
+    "previous": "p7-m2-baseline-20261027-r2",
+    "initial_previous_is_identical_stable_baseline": true,
+    "asset_pool": "884222c1c5da8252bab178907c9606577b80dce47eb71095e52906c9b93bba68",
+    "unit": "/home/orangepi/.config/systemd/user/rk3588-voice-engine.service",
+    "unit_installed": true,
+    "service_active": false,
+    "boot_enabled": false,
+    "managed_log_limit_mib": 500
+  },
+  "not_run": [
+    "physical headset test for deployment",
+    "system reboot/logout/no-desktop-login validation",
+    "A14 long soak"
+  ],
+  "scope_not_reopened": [
+    "P6 tuning",
+    "external acoustic timing",
+    "swap follow-up",
+    "P4/P5 closed issues"
+  ],
+  "human_cooperation_required_for_this_scope": false,
+  "evidence_directory": "output/runs/p7-01-automation-20261027-01",
+  "source_record": "docs/environment.md#60-p7-01-版本化部署与离线回退2026-10-27",
+  "git_committed_or_pushed": false
+}

@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-27",
+  "timezone": "Asia/Shanghai",
+  "authority": [
+    "有换页也没问题，同步文档，不要再纠结这个问题了",
+    "按功能范围结项，不追加测试",
+    "后面还有类似的声学测试都删了"
+  ],
+  "P5_01_status": "completed_under_user_confirmed_functional_scope",
+  "P5_02_status": "completed_under_user_confirmed_functional_scope",
+  "M2_status": "completed_under_user_confirmed_functional_scope",
+  "swap": {
+    "accepted_as_known_limitation": true,
+    "blocking": false,
+    "further_followup": false,
+    "original_A06_numeric_result": "not_passed_and_preserved"
+  },
+  "acoustic_measurement_scope": {
+    "current_and_future": "removed_from_acceptance_and_todos",
+    "removed": [
+      "calibrated acoustic wake-word end to trigger timing",
+      "actual headset answer-onset latency",
+      "actual headset cancel-tail duration",
+      "user acoustic speech onset to headset old-audio-stop latency during interruption",
+      "external simultaneous voice/headset recording or calibrated acoustic P95 measurement"
+    ],
+    "original_targets_for_history_only": {
+      "A08_tail_P95_seconds": 1,
+      "A10_onset_P95_seconds": 5,
+      "A11_max_trigger_seconds": 1,
+      "A12_interruption_stop_P95_seconds": 1.5
+    },
+    "original_rows": {
+      "A08": "| A08 / P2、P4 | P4本轮按用户指示共取消5次：LLM首token前1、生成中1、TTS合成中2、播报中1（原各5次扩展暂停）；注入旧回调、连续两次 start、cancel 后立即新会话 | 取消请求到停止软件提交 PCM 的 P95 ≤100 ms；该停止点后旧 generation 提交数为 0；模型取消 2 s 内确认结束，超时走明确错误恢复；耳机尾音 P95 初始目标 ≤1 s；下一轮不含旧文本/音频/历史 | 取消时间、停止提交/模型结束/flush 确认时间、过期回调数、外部录音尾音；保留竞态回归用例 |",
+      "A10": "| A10 / P4 | 20 轮正常实机交互；本轮按用户指示先执行20个固定短题各1次软件延迟测量、3次进程冷启动，原60次扩展暂不执行 | 20 轮均完成；真实耳机预热测量中，最后语音采样点到实际首音频的 P95 ≤5 s；无串音、溢出或无限队列；冷启动单列不混入预热统计 | 分段延迟、实际声学测量或明确的估算标签、全部失败与超时数量、P50/P95/max |",
+      "A11": "| A11 / P5 | 按2026-10-27用户调整：固定唤醒词真人正例5次、相似词/普通讲话负例5次、1 min代表性背景快速检查；窗口检查穿插其中 | 正例5/5触发（原≥90%要求在5次样本下向上取整）；负例和背景合计误唤醒≤1次；5次逐项记录词尾到触发时间，最大值≤1 s（nearest-rank P95在N=5时即最大值）；15 s无声退出，重新唤醒不混用历史 | token文件、阈值、模型版本、逐次结果和误触发时间；仅本次小样本/短背景检查，不推断长期误唤醒率 |",
+      "A12": "| A12 / P5/P6 | 播报期间真实用户插话 20 次；另播报 30 段而用户不说话；包含取消后马上续说 | 有效打断 ≥18/20；30 段自身播报造成的误打断为 0；用户有效语音开始到耳机停止旧回答 P95 ≤1.5 s；新发言无首词截断、无旧 generation 提交 | 用户起声/打断/耳机静音时间、缓存覆盖、NPU 任务交接；若引入 AEC，保存有无 AEC 的同条件结果 |"
+    },
+    "unmeasured_results_remain_unmeasured": true,
+    "reopen_automatically": false
+  },
+  "retained": [
+    "wake and false-wake functional checks",
+    "normal answers and listening-window/session behavior",
+    "interruption and self-playback false-trigger functional checks",
+    "software monotonic timing, model timeouts, cancellation barriers",
+    "bounded queues, memory headroom, no crash/OOM and device recovery"
+  ],
+  "source_record": "docs/environment.md#578-p5-01结项与后续声学计时移除2026-10-27",
+  "P5_02_status_at_scope_confirmation": "not_started",
+  "P5_02_current_record": "tests/fixtures/p5-02-a12-review.json",
+  "A12_followup_scope": {
+    "date": "2026-10-27",
+    "authority": "改为5次＋5段，稍后再测",
+    "interruptions": 5,
+    "self_playback_segments": 5,
+    "required_successes": 5,
+    "allowed_self_playback_false_interruptions": 0,
+    "execution_status": "completed_under_user_confirmed_functional_scope",
+    "external_acoustic_timing": false,
+    "human_record": "tests/fixtures/p5-02-a12-review.json",
+    "result": {
+      "attempted_interruptions": 5,
+      "post_fix_effective_interruptions": 3,
+      "post_fix_functional_successes": 3,
+      "quiet_targets_completed": 5,
+      "quiet_false_interruptions": 0,
+      "original_five_of_five_met": false,
+      "original_results_preserved": true,
+      "proposed_functional_closeout": "accepted_by_user",
+      "extra_tests_started": false
+    }
+  },
+  "A12_functional_closeout": {
+    "date": "2026-10-27",
+    "timezone": "Asia/Shanghai",
+    "authority": "按功能范围结项，不追加测试（推荐）",
+    "P5_02_status": "completed_under_user_confirmed_functional_scope",
+    "M2_status": "completed_under_user_confirmed_functional_scope",
+    "completed_tasks": "16/19",
+    "basis": "post-fix 3/3 functional active interruptions and five quiet target answers with zero interruptions; automated and cancellation-isolation evidence",
+    "original_five_of_five_met": false,
+    "original_failures_and_limitations_preserved": true,
+    "additional_tests": false,
+    "parameters_changed_for_closeout": false
+  }
+}

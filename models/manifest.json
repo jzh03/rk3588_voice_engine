@@ -1341,6 +1341,71 @@
         "evidence": "output/runs/p0-r-closeout-20261021-161053/sources/source-identity.json",
         "limits": "Not the original checkpoint or exporter revision; four larger companion files matched size only, not newly proved blob identity."
       }
+    },
+    {
+      "id": "sherpa-kws-wenetspeech-3.3m-20240101-fp32",
+      "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01.tar.bz2",
+      "revision": "2024-01-01 epoch-12 avg-2 chunk-16 left-64; archive sha256:b2f7c89690dc8ce4c6ed6afeab7cd800c36ad1421fb6b6302b4a4b194cf7f35f",
+      "license": "Apache-2.0 per bundled README.md model card",
+      "platform": "CPU linux-aarch64",
+      "quantization": "FP32",
+      "toolkit_version": "upstream icefall exporter version unknown; no local conversion",
+      "runtime_version": "sherpa-onnx 1.12.14 / ONNX Runtime 1.17.1-patched",
+      "status": "candidate",
+      "roles": {
+        "encoder": "kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/encoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+        "decoder": "kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/decoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+        "joiner": "kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/joiner-epoch-12-avg-2-chunk-16-left-64.onnx",
+        "tokens": "kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/tokens.txt"
+      },
+      "files": [
+        {
+          "path": "kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/encoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+          "size_bytes": 12152560,
+          "sha256": "859cd6decc23f35e6ddb3a6ddb7172a57f6de7b54288728c2433ab94b7635c59"
+        },
+        {
+          "path": "kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/decoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+          "size_bytes": 675349,
+          "sha256": "fb581d6734511676e246e0dff2fea01b31b0913176cb3ca64576dbab0a177774"
+        },
+        {
+          "path": "kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/joiner-epoch-12-avg-2-chunk-16-left-64.onnx",
+          "size_bytes": 253410,
+          "sha256": "fcf43a2edf687e2e1bc8a2b2cf53129d3b0d693d90dcc4202e2d53b43db6c43c"
+        },
+        {
+          "path": "kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/tokens.txt",
+          "size_bytes": 1627,
+          "sha256": "72316508d9119696145abc6f1f8cdc46287535c34e5ce7e595f845cb1499cf2e"
+        },
+        {
+          "path": "kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/README.md",
+          "size_bytes": 767,
+          "sha256": "dd0ec68b5d9ee736f016fc982078bd3cdbccc69057e9910bdd45580992d13367"
+        }
+      ],
+      "dependencies": [
+        {
+          "id": "sherpa-onnx-cpu",
+          "version": "1.12.14"
+        },
+        {
+          "id": "onnxruntime-cpu",
+          "version": "1.17.1-patched"
+        }
+      ],
+      "verification_scope": {
+        "phase": "P5-01 candidate; A11 physical acceptance pending",
+        "p0_combination_unchanged": true
+      },
+      "generation_provenance": {
+        "training_data": "WenetSpeech L 10000 hours per bundled model card",
+        "original_weight_revision": "unknown",
+        "exact_export_command": "unknown",
+        "conversion_performed_locally": false
+      },
+      "preparation_run_id": "p5-01-automation-20261027-01"
     }
   ],
   "p0_verified_combination": {

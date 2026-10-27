@@ -100,10 +100,10 @@ if(VOICE_ENGINE_BUILD_ENGINE)
     add_library(voice_engine_keyword STATIC src/kws/keyword.cpp)
     voice_engine_cpp_target(voice_engine_keyword)
     target_link_libraries(voice_engine_keyword PUBLIC voice_engine_config)
-    add_library(voice_engine_realtime STATIC src/engine/realtime.cpp)
+    add_library(voice_engine_realtime STATIC src/engine/realtime.cpp src/engine/barge_in.cpp)
     voice_engine_cpp_target(voice_engine_realtime)
     target_link_libraries(voice_engine_realtime PUBLIC voice_engine_config
-        voice_engine_logging voice_engine_audio_interface)
+        voice_engine_logging voice_engine_audio_interface Threads::Threads)
 
     add_executable(voice_engine src/main.cpp)
     voice_engine_cpp_target(voice_engine)
@@ -158,6 +158,12 @@ if(BUILD_TESTING)
             set_tests_properties(${script} PROPERTIES TIMEOUT 60)
         endforeach()
 
+        add_test(NAME deployment
+            COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/deployment.py"
+                    "$<TARGET_FILE:voice_engine>")
+        set_tests_properties(deployment PROPERTIES TIMEOUT 60)
+
         # Offline, fixed fixture integrity/format regression; no model execution.
         add_test(NAME fixed_fixtures
             COMMAND "${Python3_EXECUTABLE}"
@@ -179,6 +185,11 @@ if(BUILD_TESTING)
         target_link_libraries(realtime_engine_test PRIVATE voice_engine_realtime)
         add_test(NAME realtime_engine COMMAND realtime_engine_test)
         set_tests_properties(realtime_engine PROPERTIES TIMEOUT 30)
+        add_executable(barge_in_test tests/unit/barge_in_test.cpp)
+        voice_engine_cpp_target(barge_in_test)
+        target_link_libraries(barge_in_test PRIVATE voice_engine_realtime)
+        add_test(NAME barge_in_monitor COMMAND barge_in_test)
+        set_tests_properties(barge_in_monitor PROPERTIES TIMEOUT 15)
 
         add_executable(logger_test tests/unit/logger_test.cpp)
         voice_engine_cpp_target(logger_test)

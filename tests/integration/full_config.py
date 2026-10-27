@@ -42,7 +42,7 @@ DEFAULTS = {
     },
     "dialogue": {
         "wake_enabled": "false", "barge_in": "false", "wake_word": '"你好小派"',
-        "window_ms": "15000", "barge_in_min_ms": "250",
+        "window_ms": "15000", "barge_in_min_ms": "250", "keywords_file": '""',
     },
 }
 
@@ -193,6 +193,7 @@ def cases():
         ("assets.models_manifest", "123"),
         ("assets.deps_manifest", "false"),
         ("dialogue.wake_word", "[]"),
+        ("dialogue.keywords_file", "[]"),
         ("assets.models_manifest", "null"),
         ("dialogue.wake_word", "!!int 42"),
         ("assets.models_manifest", '"bad\\0path"'),

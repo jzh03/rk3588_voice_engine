@@ -1,0 +1,22 @@
+[Unit]
+Description=RK3588 local voice engine
+Wants=pipewire-pulse.service wireplumber.service
+After=pipewire-pulse.service wireplumber.service
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+ExecStart="@PYTHON@" "@ROOT@/current/deploy.py" --root "@ROOT@" serve
+Environment=PULSE_SERVER=unix:%t/pulse/native
+UMask=0077
+NoNewPrivileges=yes
+RestrictAddressFamilies=AF_UNIX
+Restart=on-failure
+RestartPreventExitStatus=2
+RestartSec=5
+TimeoutStopSec=15
+KillMode=control-group
+
+[Install]
+WantedBy=default.target

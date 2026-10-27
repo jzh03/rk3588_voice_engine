@@ -246,3 +246,9 @@ SDK 警告 `rkllm_set_chat_template` 会禁用包括 `enable_thinking` 在内的
 ### TTS取消的应用ABI桥接（2026-10-27）
 
 SDK、模型和驱动组合未变。当前实时TTS在应用层对固定ORT1.17.1-patched/API17的`Run`加入generation取消绑定，Sherpa1.12.14仍使用原文件；编译期API17断言、现有运行版本/加载路径检查及真实Run观察共同限定支持范围。其他ONNX调用转发原接口；未来SDK升级必须重新审阅表布局、动态符号绑定和取消语义。实现契约见[TTS原生取消](tts-probe.md#原生取消与固定abi边界)，此次定向证据见[环境§56.30](environment.md#5630-tts取消与故障恢复送音定向修复)，不扩写原P0 verified资产清单。
+
+## P5-01 CPU KWS 增量组合（2026-10-27）
+
+新增计划首候选WenetSpeech 3.3M KWS epoch-12/avg-2/chunk-16/left-64 FP32三模型，仅使用CPU。复用Sherpa 1.12.14 C API头文件/库和ORT 1.17.1-patched；驱动、RKNN、RKLLM、旧四模型及运行库未替换。清单新增独立candidate，归档与逐文件哈希、依赖版本、模型卡许可已登记；原权重revision和精确导出命令未知，原P0 verified组合不变。
+
+固定C API提供KeywordSpotter/KeywordStream/AcceptWaveform/Ready/Decode/GetResult。重新等待唤醒时重建stream，避免只清解码器而沿用编码器/特征状态。来源和编码集中见[唤醒说明](wake-dialogue.md#模型与关键词编码)，第五模型板端自动化/共驻结果见[环境§57](environment.md#57-p5-01-唤醒与对话窗口自动化验证)。

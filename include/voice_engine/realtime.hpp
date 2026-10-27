@@ -1,5 +1,6 @@
 #pragma once
 #include "voice_engine/config.hpp"
+#include "voice_engine/barge_in.hpp"
 #include "voice_engine/live_audio.hpp"
 #include <functional>
 #include <memory>
@@ -26,6 +27,11 @@ public:
     virtual ~RealtimePipeline() = default;
     virtual void begin(AudioContext) = 0;
     virtual void begin_wake(AudioContext) { throw ConfigError("KWS unavailable in this pipeline"); }
+    virtual void begin_barge_in(AudioContext) { throw ConfigError("barge-in unavailable"); }
+    virtual void end_barge_in() {}
+    virtual bool can_accept_barge_in() const { return false; }
+    virtual bool submit_barge_in(const AudioFrame&) { return false; }
+    virtual std::optional<BargeInSignal> poll_barge_in() { return {}; }
     virtual bool can_accept_capture() const = 0;
     virtual bool submit(const AudioFrame&) = 0;
     virtual void finish_input() = 0;
@@ -39,7 +45,7 @@ public:
     virtual bool commit_history(AudioContext) = 0;
 };
 struct RealtimeQueueBudget {
-    std::size_t capture_audio_frames = 0, capture_model_frames = 1;
+    std::size_t capture_audio_frames = 0, capture_model_frames = 1, capture_preroll_frames = 0;
     std::size_t playback_audio_frames = 0, playback_tts_frames = 0, playback_retained_frames = 1;
 };
 // Shared application queue limits, not per-stage limits. PCM temporarily owned

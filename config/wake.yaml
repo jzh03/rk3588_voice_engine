@@ -1,5 +1,5 @@
 # P5-01 opt-in wake configuration; P4 tuning preserved.
-# P4-01 realtime engine. Fill the three device fields in realtime-local.yaml.
+# Fill the three device fields in the private wake-local.yaml.
 audio:
   source: ""
   sink: ""
