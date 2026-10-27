@@ -16,9 +16,13 @@ target_link_libraries(voice_engine_tts_text PUBLIC voice_engine_audio_dsp PRIVAT
 add_library(voice_engine_tts_stream STATIC src/tts/stream.cpp)
 voice_engine_cpp_target(voice_engine_tts_stream)
 target_link_libraries(voice_engine_tts_stream PUBLIC voice_engine_tts_text PRIVATE Threads::Threads)
-add_library(voice_engine_tts STATIC src/tts/melo.cpp)
+add_library(voice_engine_tts STATIC src/tts/melo.cpp src/tts/ort_cancel.cpp)
 voice_engine_cpp_target(voice_engine_tts)
 target_include_directories(voice_engine_tts PRIVATE "${_tts_base}/include" "${_tts_ort}")
+# The pinned Sherpa calls through OrtGetApiBase. Export the application-owned
+# Run bridge; the frozen shared libraries and non-TTS calls remain unchanged.
+target_link_options(voice_engine_tts INTERFACE "-Wl,--export-dynamic-symbol=OrtGetApiBase")
+target_link_libraries(voice_engine_tts PRIVATE ${CMAKE_DL_LIBS} Threads::Threads)
 target_link_libraries(voice_engine_tts PUBLIC voice_engine_tts_text voice_engine_assets PRIVATE voice_engine_probe_support nlohmann_json::nlohmann_json "${_tts_lib}/libsherpa-onnx-c-api.so" "${_tts_lib}/libonnxruntime.so")
 pkg_check_modules(TTS_SNDFILE REQUIRED IMPORTED_TARGET sndfile)
 add_executable(tts_probe tools/tts_probe.cpp)

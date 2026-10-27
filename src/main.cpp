@@ -3,6 +3,7 @@
 #include "voice_engine/audio.hpp"
 #include "voice_engine/control.hpp"
 #include "voice_engine/logger.hpp"
+#include "voice_engine/realtime.hpp"
 
 #include <chrono>
 #include <ctime>
@@ -20,18 +21,22 @@ namespace {
 
 void print_usage(std::ostream& output) {
     output << "Usage: voice_engine --config <path.yaml> --check-config\n"
-              "       voice_engine --config <path.yaml> --mock --control stdin\n"
+              "       voice_engine --config <path.yaml> [--mock] --control stdin\n"
               "                    [--run-id <id>] [--output-dir <root>]\n"
               "       voice_engine --help\n\n"
-              "Checks configuration and enabled model/dependency assets, or runs mock controls.\n"
+              "Checks configuration/assets, or runs terminal controls.\n"
               "Reads one complete file; default/local files are not merged.\n"
               "Relative manifest paths are based on the configuration file directory.\n"
               "Commands: start stop cancel new-session status help quit.\n"
               "Mock mode skips model assets and does not open devices or run models.\n"
+              "Realtime requires all three model build options, enabled VAD/ASR/LLM/TTS,\n"
+              "and flock -x /tmp/rk3588_voice_engine_model_validation.lock.\n"
+              "Busy start buffers new capture while old models cancel; overflow requires repetition.\n"
               "Logs: <root>/<run-id>/events.jsonl; root defaults to output/runs.\n"
               "The run directory must be new; an ID is generated if omitted.\n"
               "Run IDs: 1-64 ASCII letters/digits/_.-, starting with letter/digit.\n"
-              "Exit codes: 0 = normal/help, 1 = runtime I/O error, 2 = config/CLI error.\n"
+              "Exit codes: 0 = normal/help, 1 = runtime I/O error, 2 = config/CLI error,\n"
+              "4 = startup/model failure, 5 = cancellation timeout; restart required.\n"
               "Signal exits: 130 = SIGINT, 143 = SIGTERM, after flushing shutdown.\n";
 }
 
@@ -125,9 +130,13 @@ int main(int argc, char* argv[]) {
             options.count("--output-dir") != 0) {
             return usage_error("--check-config cannot be combined with control/log output options");
         }
-    } else if (!mock || control != "stdin") {
-        return usage_error("terminal control requires --mock --control stdin; real engine is pending");
+    } else if (control != "stdin") {
+        return usage_error("terminal control requires --control stdin");
     }
+#if !VOICE_ENGINE_HAS_REALTIME
+    if (!check_config && !mock)
+        return usage_error("realtime engine requires all three model build options; use --mock or an enabled build");
+#endif
     if (!run_id.empty() && !valid_run_id(run_id)) {
         return usage_error("invalid --run-id; use 1-64 ASCII letters/digits/_.- starting with letter/digit");
     }
@@ -135,6 +144,10 @@ int main(int argc, char* argv[]) {
     try {
         const auto config = voice_engine::load_config(config_path);
         if (!check_config) {
+#if VOICE_ENGINE_HAS_REALTIME
+            if (!mock) return voice_engine::run_realtime_control(
+                config, run_id.empty() ? generate_run_id() : run_id, output_root);
+#endif
 #if VOICE_ENGINE_HAS_AUDIO
             auto audio = voice_engine::make_mock_audio(
                 static_cast<std::size_t>(config.queues.playback_ms / config.audio.frame_ms));
@@ -156,8 +169,22 @@ int main(int argc, char* argv[]) {
                   << "audio.sample_rate: " << config.audio.sample_rate << " Hz\n"
                   << "audio.channels: " << config.audio.channels << '\n'
                   << "audio.frame_ms: " << config.audio.frame_ms << " ms\n"
+                  << "audio.playback_keepalive: " << (config.audio.playback_keepalive ? "true" : "false") << "\n"
+                  << "audio.playback_lead_in_ms: " << config.audio.playback_lead_in_ms << " ms\n"
+                  << "tts.prebuffer_ms: " << config.tts.prebuffer_ms << " ms\n"
+                  << "tts.target_chars: " << config.tts.target_chars << "\n"
+                  << "tts.speed: " << config.tts.speed << "\n"
+                  << "tts.sentence_mode: " << (config.tts.sentence_mode ? "true" : "false") << "\n"
+                  << "tts.join_short_sentences: " << (config.tts.join_short_sentences ? "true" : "false") << "\n"
+                  << "tts.boundary_lookahead_chars: " << config.tts.boundary_lookahead_chars << "\n"
                   << "logging.max_file_bytes: " << config.logging.max_file_bytes << '\n'
                   << "logging.max_files: " << config.logging.max_files << '\n';
+        if (config.tts.first_segment) {
+            const auto& first=*config.tts.first_segment;
+            std::cout << "tts.first_segment.min_chars: " << first.min_chars << "\n"
+                      << "tts.first_segment.target_chars: " << first.target_chars << "\n"
+                      << "tts.first_segment.boundary_lookahead_chars: " << first.boundary_lookahead_chars << "\n";
+        } else std::cout << "tts.first_segment: null\n";
         return 0;
     } catch (const voice_engine::ConfigError& error) {
         std::cerr << "CONFIG_ERROR: " << error.what() << '\n';
@@ -171,5 +198,8 @@ int main(int argc, char* argv[]) {
     } catch (const voice_engine::AudioError& error) {
         std::cerr << "AUDIO_ERROR: " << error.what() << '\n';
         return 1;
+    } catch (const std::exception& error) {
+        std::cerr << "MODEL_ERROR: " << error.what() << '\n';
+        return 4;
     }
 }

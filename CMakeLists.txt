@@ -97,6 +97,14 @@ if(VOICE_ENGINE_BUILD_ENGINE)
     target_link_libraries(voice_engine_engine PUBLIC voice_engine_config
         voice_engine_logging voice_engine_assets voice_engine_audio_interface)
 
+    add_library(voice_engine_keyword STATIC src/kws/keyword.cpp)
+    voice_engine_cpp_target(voice_engine_keyword)
+    target_link_libraries(voice_engine_keyword PUBLIC voice_engine_config)
+    add_library(voice_engine_realtime STATIC src/engine/realtime.cpp)
+    voice_engine_cpp_target(voice_engine_realtime)
+    target_link_libraries(voice_engine_realtime PUBLIC voice_engine_config
+        voice_engine_logging voice_engine_audio_interface)
+
     add_executable(voice_engine src/main.cpp)
     voice_engine_cpp_target(voice_engine)
     target_link_libraries(voice_engine PRIVATE voice_engine_engine)
@@ -161,6 +169,17 @@ if(BUILD_TESTING)
                     "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/check_fixtures_negative.py")
         set_tests_properties(fixed_fixtures_negative PROPERTIES TIMEOUT 60)
 
+        add_executable(keyword_test tests/unit/keyword_test.cpp)
+        voice_engine_cpp_target(keyword_test)
+        target_link_libraries(keyword_test PRIVATE voice_engine_keyword)
+        add_test(NAME keyword_config COMMAND keyword_test)
+
+        add_executable(realtime_engine_test tests/unit/realtime_engine_test.cpp)
+        voice_engine_cpp_target(realtime_engine_test)
+        target_link_libraries(realtime_engine_test PRIVATE voice_engine_realtime)
+        add_test(NAME realtime_engine COMMAND realtime_engine_test)
+        set_tests_properties(realtime_engine PROPERTIES TIMEOUT 30)
+
         add_executable(logger_test tests/unit/logger_test.cpp)
         voice_engine_cpp_target(logger_test)
         target_link_libraries(logger_test PRIVATE voice_engine_logging)
@@ -173,6 +192,16 @@ if(BUILD_TESTING)
                         "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/audio_probe.py"
                         "$<TARGET_FILE:audio_probe>")
             set_tests_properties(audio_probe PROPERTIES TIMEOUT 120)
+            add_test(NAME audio_lead_in
+                COMMAND "${Python3_EXECUTABLE}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/audio_lead_in.py"
+                        "$<TARGET_FILE:audio_probe>")
+            set_tests_properties(audio_lead_in PROPERTIES TIMEOUT 60)
+            add_test(NAME audio_keepalive
+                COMMAND "${Python3_EXECUTABLE}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/audio_keepalive.py"
+                        "$<TARGET_FILE:audio_probe>")
+            set_tests_properties(audio_keepalive PROPERTIES TIMEOUT 90)
         endif()
 
         add_test(NAME build_boundaries
@@ -208,6 +237,7 @@ endif()
 
 if(VOICE_ENGINE_BUILD_ASR_PROBE)
     include(cmake/asr_probe.cmake)
+    include(cmake/kws_probe.cmake)
 endif()
 if(VOICE_ENGINE_BUILD_TTS_PROBE)
     include(cmake/tts_probe.cmake)
@@ -223,4 +253,30 @@ endif()
 if(VOICE_ENGINE_BUILD_ASR_PROBE AND VOICE_ENGINE_BUILD_LLM_PROBE AND VOICE_ENGINE_BUILD_TTS_PROBE)
     include(cmake/coexist_probe.cmake)
     include(cmake/voice_file_demo.cmake)
+endif()
+
+
+# The real application reuses the exact opt-in model adapters used by P2/P3.
+# Default and engine-only builds continue to have no SDK dependency.
+if(VOICE_ENGINE_BUILD_ENGINE)
+    if(VOICE_ENGINE_BUILD_ASR_PROBE AND VOICE_ENGINE_BUILD_LLM_PROBE AND VOICE_ENGINE_BUILD_TTS_PROBE)
+        if(NOT TARGET voice_engine_pulse_audio)
+            message(FATAL_ERROR "Realtime engine requires native PulseAudio")
+        endif()
+        add_library(voice_engine_realtime_models STATIC src/engine/realtime_models.cpp src/engine/realtime_main.cpp)
+        voice_engine_cpp_target(voice_engine_realtime_models)
+        target_link_libraries(voice_engine_realtime_models PUBLIC voice_engine_realtime
+            voice_engine_asr voice_engine_kws voice_engine_llm voice_engine_tts voice_engine_tts_stream
+            voice_engine_pulse_audio voice_engine_probe_support voice_engine_assets)
+        target_link_libraries(voice_engine PRIVATE voice_engine_realtime_models)
+        target_compile_definitions(voice_engine PRIVATE VOICE_ENGINE_HAS_REALTIME=1)
+        if(BUILD_TESTING)
+            add_test(NAME realtime_preflight COMMAND "${Python3_EXECUTABLE}"
+                "${PROJECT_SOURCE_DIR}/tests/integration/realtime_preflight.py" "$<TARGET_FILE:voice_engine>")
+            set_tests_properties(realtime_preflight PROPERTIES TIMEOUT 30)
+        endif()
+        set_target_properties(voice_engine PROPERTIES BUILD_RPATH "${_asr_rknn}/lib;${_llm_sdk}/lib;${_tts_lib}")
+    else()
+        target_compile_definitions(voice_engine PRIVATE VOICE_ENGINE_HAS_REALTIME=0)
+    endif()
 endif()

@@ -1,0 +1,45 @@
+# P5-01 opt-in wake configuration; P4 tuning preserved.
+# P4-01 realtime engine. Fill the three device fields in realtime-local.yaml.
+audio:
+  source: ""
+  sink: ""
+  profile: ""
+  sample_rate: 16000
+  channels: 1
+  frame_ms: 20
+  playback_keepalive: true  # silent output while this audio backend is alive
+  playback_lead_in_ms: 0  # optional per-turn prefix; keepalive candidate uses no prefix
+
+models:
+  vad: {enabled: true, id: silero-vad-v5.0}
+  asr: {enabled: true, id: zipformer-bilingual-zh-en-rk3588-fp16}
+  llm: {enabled: true, id: qwen3.5-2b-rk3588-w8a8}
+  tts: {enabled: true, id: vits-melo-tts-zh-en-fp32}
+  kws: {enabled: true, id: sherpa-kws-wenetspeech-3.3m-20240101-fp32}
+assets:
+  models_manifest: ../models/manifest.json
+  deps_manifest: ../deps/manifest.json
+threads:
+  vad: 1
+  asr: 1
+  llm: 1
+  tts: 4
+tts:
+  first_segment: null  # uniform policy for every segment
+  sentence_mode: false    # early first clause, later full sentences; requires target/lookahead 0
+  join_short_sentences: true  # merge internal Chinese sentence boundaries within each bounded segment
+  boundary_lookahead_chars: 2
+  speed: 0.85
+  prebuffer_ms: 1500
+  min_chars: 12
+  target_chars: 12
+  max_chars: 40
+  flush_ms: 300
+llm:
+  max_output_tokens: 128
+dialogue:
+  wake_enabled: true
+  wake_word: "你好小派"
+  keywords_file: wake-keywords.txt
+  window_ms: 15000
+  barge_in: false

@@ -79,6 +79,40 @@ bool safe_cut(const std::vector<Rune> &r, std::size_t n, bool final) {
     }
     return true;
 }
+// The first clause can start early. Later clauses remain together until a
+// sentence end, a timed clause boundary, EOS, or the existing hard limit.
+std::size_t sentence_cut(const std::vector<Rune> &r, const TtsConfig &config,
+                         bool first, bool final, bool timed) {
+    const auto limit = std::min(r.size(), static_cast<std::size_t>(config.max_chars));
+    const auto minimum = static_cast<std::size_t>(config.min_chars);
+    std::size_t clause = 0;
+    for (std::size_t i = 0; i < limit; ++i) {
+        const auto c = r[i].c;
+        bool end = terminal(c);
+        if (c == '.')
+            end = (i + 1 < r.size() ? !digit(r[i + 1].c) : final) &&
+                  !(i > 0 && digit(r[i - 1].c));
+        bool soft = c == 0xff0c || c == 0x3001 || c == ':' || c == 0xff1a;
+        if (c == ',')
+            soft = !(i > 0 && digit(r[i - 1].c)) ||
+                   (i + 1 < r.size() ? !digit(r[i + 1].c) : final);
+        if (safe_cut(r, i + 1, final)) {
+            if (end || soft || whitespace(c)) clause = i + 1;
+            if (i + 1 >= minimum && (end || (first && soft))) return i + 1;
+        }
+    }
+    if (r.size() >= static_cast<std::size_t>(config.max_chars)) {
+        if (clause) return clause;
+        auto cut = limit;
+        while (cut && !safe_cut(r, cut, final)) --cut;
+        if (!cut && (r.size() > limit || final))
+            throw std::invalid_argument("TTS: indivisible numeric/date/word token exceeds max_chars");
+        return cut;
+    }
+    if (final) return r.size();
+    if (timed && clause >= minimum) return clause;
+    return 0;
+}
 std::string trim(std::string s) {
     const auto r = decode(s, true);
     std::size_t first = 0, last = r.size();
@@ -92,8 +126,23 @@ std::string trim(std::string s) {
 }
 } // namespace
 TtsSegmenter::TtsSegmenter(TtsConfig c) : config_(c) {
-    if (c.min_chars < 1 || c.max_chars < c.min_chars || c.flush_ms < 1)
+    if (c.min_chars < 1 || c.max_chars < c.min_chars || c.flush_ms < 1 ||
+        c.target_chars < 0 || (c.target_chars &&
+        (c.target_chars < c.min_chars || c.target_chars > c.max_chars)) ||
+        c.boundary_lookahead_chars < 0 || c.boundary_lookahead_chars > 32 ||
+        (c.boundary_lookahead_chars && (!c.target_chars ||
+         c.boundary_lookahead_chars > c.max_chars - c.target_chars)) ||
+        (c.sentence_mode && (c.target_chars || c.boundary_lookahead_chars)))
         throw std::invalid_argument("TTS: invalid segmentation limits");
+    if (c.first_segment) {
+        if (c.sentence_mode || c.first_segment->target_chars<=0)
+            throw std::invalid_argument("TTS: first_segment requires sentence_mode=false and a positive target");
+        TtsConfig first=c;first.first_segment.reset();
+        first.min_chars=c.first_segment->min_chars;
+        first.target_chars=c.first_segment->target_chars;
+        first.boundary_lookahead_chars=c.first_segment->boundary_lookahead_chars;
+        TtsSegmenter validate_first(first);
+    }
 }
 std::vector<std::string> TtsSegmenter::push(const std::string &chunk) {
     if (finished_)
@@ -106,7 +155,13 @@ std::vector<std::string> TtsSegmenter::push(const std::string &chunk) {
 std::vector<std::string> TtsSegmenter::poll(int elapsed_ms) {
     if (finished_)
         return {};
-    return drain(false, elapsed_ms >= config_.flush_ms);
+    bool timed = elapsed_ms >= config_.flush_ms;
+    if (waiting_for_boundary_) {
+        if (boundary_wait_from_ms_ < 0 || elapsed_ms < boundary_wait_from_ms_)
+            boundary_wait_from_ms_ = elapsed_ms;
+        timed = elapsed_ms - boundary_wait_from_ms_ >= config_.flush_ms;
+    }
+    return drain(false, timed);
 }
 std::vector<std::string> TtsSegmenter::finish() {
     if (finished_)
@@ -118,44 +173,92 @@ std::vector<std::string> TtsSegmenter::finish() {
 void TtsSegmenter::reset() noexcept {
     pending_.clear();
     finished_ = false;
+    first_fragment_emitted_ = false;
+    waiting_for_boundary_ = false;
+    boundary_wait_from_ms_ = -1;
 }
 std::vector<std::string> TtsSegmenter::drain(bool final, bool timed) {
     std::vector<std::string> result;
     while (!pending_.empty()) {
+        auto policy=config_;
+        if (!first_fragment_emitted_ && config_.first_segment) {
+            policy.min_chars=config_.first_segment->min_chars;
+            policy.target_chars=config_.first_segment->target_chars;
+            policy.boundary_lookahead_chars=config_.first_segment->boundary_lookahead_chars;
+        }
         const auto r = decode(pending_, final);
         std::size_t cut = 0;
-        const auto limit = std::min(r.size(), static_cast<std::size_t>(config_.max_chars));
-        for (std::size_t i = 0; i < limit; ++i) {
-            bool end = terminal(r[i].c);
-            if (r[i].c == '.')
-                end = (i + 1 < r.size() ? !digit(r[i + 1].c) : final) &&
-                      !(i > 0 && digit(r[i - 1].c));
-            if (end && i + 1 >= static_cast<std::size_t>(config_.min_chars) &&
-                safe_cut(r, i + 1, final)) {
-                cut = i + 1;
-                break;
+        if (policy.sentence_mode) {
+            cut = sentence_cut(r, policy, !first_fragment_emitted_, final, timed);
+        } else {
+            const auto limit = std::min(r.size(), static_cast<std::size_t>(policy.max_chars));
+            const auto preferred = policy.target_chars ?
+                std::min(limit, static_cast<std::size_t>(policy.target_chars)) : limit;
+            const auto search_limit = policy.boundary_lookahead_chars ?
+                std::min(limit, static_cast<std::size_t>(
+                    policy.target_chars + policy.boundary_lookahead_chars)) : preferred;
+            for (std::size_t i = 0; i < search_limit; ++i) {
+                bool end = terminal(r[i].c);
+                if (policy.boundary_lookahead_chars) {
+                    end = end || r[i].c == 0xff0c || r[i].c == 0x3001;
+                    if (r[i].c == ',')
+                        end = !(i > 0 && digit(r[i - 1].c)) ||
+                              (i + 1 < r.size() ? !digit(r[i + 1].c) : final);
+                }
+                if (r[i].c == '.')
+                    end = (i + 1 < r.size() ? !digit(r[i + 1].c) : final) &&
+                          !(i > 0 && digit(r[i - 1].c));
+                if (end && i + 1 >= static_cast<std::size_t>(policy.min_chars) &&
+                    safe_cut(r, i + 1, final)) {
+                    cut = i + 1;
+                    break;
+                }
             }
-        }
-        if (!cut && r.size() >= static_cast<std::size_t>(config_.max_chars)) {
-            cut = limit;
-            while (cut && !safe_cut(r, cut, final))
-                --cut;
-            if (!cut && (r.size() > limit || final))
-                throw std::invalid_argument(
-                    "TTS: indivisible numeric/date/word token exceeds max_chars");
-        }
-        if (!cut && ((final && !r.empty()) ||
-                     (timed && r.size() >= static_cast<std::size_t>(config_.min_chars)))) {
-            cut = r.size();
-            while (cut && !safe_cut(r, cut, final))
-                --cut;
+            if (!cut && policy.target_chars &&
+                r.size() >= static_cast<std::size_t>(policy.target_chars)) {
+                if (policy.boundary_lookahead_chars && !final && !timed &&
+                    r.size() < static_cast<std::size_t>(
+                        policy.target_chars + policy.boundary_lookahead_chars)) {
+                    waiting_for_boundary_ = true;
+                    break;
+                }
+                // Prefer a short safe segment without turning the soft target into
+                // a rejection limit for a longer numeric/date/English token.
+                auto n = preferred;
+                while (n >= static_cast<std::size_t>(policy.min_chars) && !safe_cut(r, n, final))
+                    --n;
+                if (n >= static_cast<std::size_t>(policy.min_chars)) cut = n;
+                else {
+                    for (n = preferred + 1; n <= limit; ++n) {
+                        if (safe_cut(r, n, final)) { cut = n; break; }
+                    }
+                }
+            }
+            if (!cut && r.size() >= static_cast<std::size_t>(policy.max_chars)) {
+                cut = limit;
+                while (cut && !safe_cut(r, cut, final))
+                    --cut;
+                if (!cut && (r.size() > limit || final))
+                    throw std::invalid_argument(
+                        "TTS: indivisible numeric/date/word token exceeds max_chars");
+            }
+            if (!cut && ((final && !r.empty()) ||
+                         (timed && r.size() >= static_cast<std::size_t>(policy.min_chars)))) {
+                cut = r.size();
+                while (cut && !safe_cut(r, cut, final))
+                    --cut;
+            }
         }
         if (!cut)
             break;
         auto part = trim(pending_.substr(0, r[cut - 1].end));
         pending_.erase(0, r[cut - 1].end);
-        if (!part.empty())
+        waiting_for_boundary_ = false;
+        boundary_wait_from_ms_ = -1;
+        if (!part.empty()) {
+            first_fragment_emitted_ = true;
             result.push_back(std::move(part));
+        }
     }
     return result;
 }
@@ -170,9 +273,31 @@ std::vector<std::string> segment_tts_text(const std::string &text, TtsConfig c) 
         throw std::invalid_argument("TTS: empty/whitespace-only text");
     return out;
 }
-std::string melo_frontend_text(const std::string &plain_text) {
+void validate_tts_segment(const std::string &text, int max_chars) {
+    const auto runes = decode(text, true);
+    if (max_chars < 1 || runes.empty() ||
+        runes.size() > static_cast<std::size_t>(max_chars) || trim(text) != text)
+        throw std::invalid_argument("TTS: requires nonempty bounded plain text without edge whitespace");
+}
+std::string melo_frontend_text(const std::string &plain_text, bool join_short_sentences) {
     // Validate the complete input before normalization; never clean rejected text.
     const auto runes = decode(plain_text, true);
+    const auto sentence_mark = [](std::uint32_t c) {
+        return c == 0x3002 || c == 0xff01 || c == 0xff1f || c == 0xff1b;
+    };
+    const auto closing_mark = [](std::uint32_t c) {
+        return c == 0x201d || c == 0x2019 || c == 0x300d || c == 0x300f ||
+               c == 0xff09 || c == 0x3011 || c == ')' || c == '"' || c == 39;
+    };
+    // Preserve end-of-segment prosody, including punctuation before a closing
+    // quote/bracket and trailing whitespace. Never rewrite decimals or words.
+    std::size_t content_end = runes.size();
+    while (content_end && (sentence_mark(runes[content_end - 1].c) ||
+           closing_mark(runes[content_end - 1].c) ||
+           whitespace(runes[content_end - 1].c) ||
+           runes[content_end - 1].c == 0xff0c || runes[content_end - 1].c == 0x3001))
+        --content_end;
+    const auto content_end_byte = content_end ? runes[content_end - 1].end : 0;
     std::string result;
     result.reserve(plain_text.size());
     std::size_t begin = 0;
@@ -180,7 +305,8 @@ std::string melo_frontend_text(const std::string &plain_text) {
         // sherpa 1.12.14 maps both runes to the same comma token, but U+3001
         // keeps acoustic context across the comma and receives AddBlank once.
         // This preserves words/tones rather than overriding any pronunciation.
-        if (r.c == 0xff0c)
+        if (r.c == 0xff0c || (join_short_sentences && sentence_mark(r.c) &&
+                               r.end < content_end_byte))
             result += "\xe3\x80\x81";
         else
             result.append(plain_text, begin, r.end - begin);

@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,11 @@ struct LiveAudioOptions {
     std::size_t playback_capacity_frames = 100;
     bool capture_enabled = true;
     bool playback_enabled = true;
+    // Independent zero-PCM stream, including idle/cancel/drain; playback only.
+    bool playback_keepalive = false;
+    // Native-rate silence before each non-empty session; lazily generated
+    // without delaying control calls or adding queued speech frames.
+    int playback_lead_in_ms = 0;  // 0..2000 ms, multiple of 20
 };
 
 struct LiveAudioBuffer {
@@ -53,6 +59,11 @@ struct LiveAudioStatus {
     int playback_channels = 0;
     LiveAudioBuffer capture_buffer;
     LiveAudioBuffer playback_buffer;
+    LiveAudioBuffer playback_keepalive_buffer;
+    // Server uncork acknowledgement and non-suspended transport, not acoustic readiness.
+    bool playback_keepalive_active = false;
+    std::uint64_t playback_keepalive_native_frames = 0;
+    std::uint64_t playback_keepalive_underruns = 0;
     std::size_t capture_queued_frames = 0;
     std::size_t playback_queued_frames = 0;
     std::size_t capture_queue_peak_frames = 0;
@@ -67,6 +78,9 @@ struct LiveAudioStatus {
     std::uint64_t capture_holes = 0;
     std::uint64_t playback_overflows = 0;
     std::uint64_t playback_underruns = 0;
+    // Software worker observations; excludes DEVICE_WAIT and is not acoustic timing.
+    std::int64_t output_service_max_gap_ns = 0;
+    std::int64_t capture_service_max_work_ns = 0;
     std::uint64_t stale_rejections = 0;
     std::uint64_t reconnects = 0;
     std::uint64_t dropped_events = 0;
@@ -80,8 +94,12 @@ struct LiveAudioEvent {
 };
 
 // One background worker owns libpulse. These calls never wait for server I/O.
+// Server events and application commands wake its fd poll immediately; capture
+// DSP is bounded per pass and interleaved with speech/keepalive transport work.
 // A successful start clears the old generation and asynchronously flushes both
-// streams; reset_pending stays true until both server flushes are acknowledged.
+// speech/capture streams; reset_pending stays true until both flushes are acknowledged.
+// Optional silent keepalive is independent and survives generation changes.
+// Destruction or DEVICE_WAIT releases every stream, including keepalive.
 // DEVICE_WAIT cancels the session. Recovery returns READY and requires a new
 // explicit start_session; it never resumes old recording or PCM playback.
 class LiveAudioBackend {
@@ -101,6 +119,9 @@ public:
     // drain normally. cancel() instead flushes and invalidates pending PCM.
     virtual void request_drain() = 0;
     virtual bool playback_drained() const = 0;
+    // Atomically validate a normal drain and commit application history while
+    // device/session state is locked. Callback must not wait or reenter audio.
+    virtual bool commit_if_drained(AudioContext, const std::function<bool()>&) = 0;
     virtual LiveAudioStatus status() const = 0;
     virtual std::vector<LiveAudioEvent> poll_events() = 0;
 };

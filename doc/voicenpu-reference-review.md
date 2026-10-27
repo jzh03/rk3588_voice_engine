@@ -147,3 +147,7 @@ ASR 质量定位和 TTS 试听可按既有任务推进，不能被参考项目�
 | `src/engine/voice_engine.cpp` | `2c5e2539b142a0d79f4625a10b3a040d39ceabe3c057ec8bc1d6f8662776c1ab` |
 | `LICENSE` | `6f1e622c82a380075843bb084a7ec3b1f1d12a4a02526d75e78b0924a860aa75` |
 | `package.xml` | `d1cee301d7aecfe96225dd32875657318cec61eb72ad223e378b350fad1f7c72` |
+
+## 7. 2026-10-26 标点控制与段内合成适配
+
+补充核对本地参考 `src/tts/melo_tts.cpp:160-225`：内部句末标点软化、按音素预算聚合小片段，限于单次synthesizeStream调用。现工程按用户要求借鉴为 `tts.join_short_sentences`，采用现有有界段和冻结Melo前端不分段逗号别名，保留段尾语气，不移用RKNN音素预算。已完成同速私有音频对照和四模型自动化，语速改为0.9；详细结果与耳机听感范围见[环境§56.20](../docs/environment.md#5620-参考项目标点控制与有界段内短句合成)。本节不改写2026-10-21静态审阅时的工程状态。

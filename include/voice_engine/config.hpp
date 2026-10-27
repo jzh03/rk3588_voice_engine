@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -13,6 +14,8 @@ struct AudioConfig {
     int sample_rate = 16000;  // Hz
     int channels = 1;
     int frame_ms = 20;
+    bool playback_keepalive = false;  // silent sink stream for the backend lifetime
+    int playback_lead_in_ms = 0;  // 0..2000 ms, multiple of frame_ms
 };
 
 struct LoggingConfig {
@@ -61,10 +64,23 @@ struct LlmConfig {
     int margin_tokens = 64;
 };
 
+struct TtsSegmentPolicy {
+    int min_chars = 8, target_chars = 15, boundary_lookahead_chars = 2;
+};
 struct TtsConfig {
     int min_chars = 8;
     int max_chars = 40;
     int flush_ms = 300;
+    // 0 keeps serial delivery; >0 enables two-slot native-audio lookahead.
+    int prebuffer_ms = 0;  // startup reserve target, 0..2000 ms
+    int target_chars = 0;  // 0 disables soft splitting; otherwise min_chars..max_chars
+    double speed = 1.0;  // finite 0.5..2.0; <1 slower, >1 faster; model synthesis
+    int boundary_lookahead_chars = 0;  // 0 keeps legacy splits; seek nearby clause punctuation
+    bool sentence_mode = false;  // early first clause, then full sentences; target/lookahead must be 0
+    bool join_short_sentences = false;  // one acoustic sequence for short Chinese sentences within a bounded segment
+    // Optional first emitted nonempty fragment override. Top-level values govern
+    // subsequent fragments; shared max_chars/flush_ms remain unchanged.
+    std::optional<TtsSegmentPolicy> first_segment;
 };
 
 struct QueuesConfig {
@@ -88,6 +104,7 @@ struct DialogueConfig {
     bool wake_enabled = false;
     bool barge_in = false;
     std::string wake_word = "你好小派";
+    std::string keywords_file;  // Relative to this config; token line with matching @label.
     int window_ms = 15000;
     int barge_in_min_ms = 250;
 };

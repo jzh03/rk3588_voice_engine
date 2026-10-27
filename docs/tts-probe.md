@@ -51,6 +51,8 @@ flock -x /tmp/rk3588_voice_engine_model_validation.lock \
 
 `generate` 只接受配置上限内的一个已分段纯文本，返回原生 44100 Hz float 音频和精确底层 Generate 耗时。输出超过 `queues.max_tts_audio_ms` 会失败；该判断发生在上游已分配整段输出之后，不能解释为底层内存的硬上界。单个文件探针保留整句原生与转换音频用于证据，不声称具备实时有界播放队列。
 
+`tts.speed` 默认1.0、有限范围0.5～2.0，由adapter传入 `SherpaOnnxOfflineTtsGenerate`。固定sherpa-onnx v1.12.14的Melo分支使用倒数length_scale调整时长（[上游实现](https://github.com/k2-fsa/sherpa-onnx/blob/v1.12.14/sherpa-onnx/csrc/offline-tts-vits-model.cc)）；应用没有通过改采样率调速。此前0.95来自用户试听选择，后续曾设0.9，当前按新要求改为0.85；通用默认仍1.0，范围是本工程配置约束。probe记录speed，实时资源与drain记录tts_speed。
+
 ## 指标与产物
 
 模型在整个批次驻留。warmup 使用第一条文本，每次预热单独写记录并从正式分位数中排除；正式各轮按固定种子 20261020 打乱文本顺序，模型噪声配置保持上游默认，不宣称输出确定性。每个 WAV 保存实际 SHA-256。
@@ -131,11 +133,29 @@ P1-03 对原合成工程材料的审核已完成，`mix_02` 中“调低”被�
 
 ### 有界 TTS worker 与提交边界
 
-`include/voice_engine/tts_stream.hpp` 的 `TtsStreamWorker` 用独立常驻线程消费文本并调用同步 Generate。接口为 `begin / submit / finish / poll / cancel / wait_idle / stats`；`commit_if_current` 将轮次校验与短小的下游提交放在同一互斥边界，锁内禁止设备 I/O、推理、等待或重入。开始新轮前须等待旧生产者空闲；(session,generation) 必须严格递增，防止复用编号放行旧帧。
+`include/voice_engine/tts_stream.hpp` 的 `TtsStreamWorker` 用独立常驻线程消费文本并调用同步 Generate；配置 `tts.prebuffer_ms > 0` 时另有一个常驻PCM送音线程，模型调用仍保持串行。接口为 `begin / submit / finish / poll / cancel / wait_idle / stats`；`commit_if_current` 将轮次校验与短小的下游提交放在同一互斥边界，锁内禁止设备 I/O、推理、等待或重入。开始新轮前须等待旧生产者空闲；(session,generation) 必须严格递增，防止复用编号放行旧帧。
 
-默认输入排队最多 8192 字节、待合成分段最多 4 个、PCM deque 最多 100 个 20 ms 帧。文本/分段溢出明确失败并失效当前轮；PCM 满时仅 worker 等待，取消可立即唤醒。分句器保留自身最多 8192 字节 pending；同步 Generate 的整段原生缓冲和重采样临时帧不包含在 deque 上限中，原生输出仍有 20 s 检查。不能把 deque 峰值等同于全部内存硬上限。
+可选 `tts.target_chars` 是分段软目标，缺省0保持原行为；启用时必须位于 `min_chars`～`max_chars`。先检查目标范围内的句末，再选择目标附近的安全边界；数字、日期或英文单词可延伸到原硬上限，不能仅因超过软目标就报错或切坏词。短EOS、字节分块和定时冲刷仍有效。当前实时关闭动态覆盖，所有段统一min/target/lookahead=12/12/2，max_chars=40、flush_ms=300、prebuffer_ms=1500；配置契约见[配置说明](../README.md#配置检查)，配置回退见[环境§56.25](environment.md#5625-回退统一分段并调整前瞻语速和储备)，本组合六轮四模型自动化及逐段计时结果见[环境§56.26](environment.md#5626-当前配置重启与六轮自动化复验)，随后同参数单轮耳机试听已通过（[环境§56.27](environment.md#5627-085语速与15秒储备的单轮耳机试听通过)）；后续正式20轮有19轮听感获确认，第11题字音略模糊、该题语音欠载0，具体字词及原因尚未确定（[环境§56.28](environment.md#5628-085候选正式20轮人工交互批次)）。对应单元回归覆盖多种UTF-8输入块长、长英文词/日期/小数完整性、硬上限拒绝和短尾句。缩短文本段不等于已通过发音自然度或所有负载连续性验收。
 
-取消清空输入/PCM 并使旧 generation 提交失效；同步 Generate 仍可能继续，返回后丢弃旧结果。单段超时同样在 Generate 返回后检查，硬退出依赖进程监督。不得把“旧结果不再提交”写成 SDK 已支持中断。单元测试覆盖跨 UTF-8/日期、定时冲刷、尾帧、队列背压、溢出、同步生成中取消、立即新轮拒绝、旧帧和 ID 重用。
+可选 `tts.sentence_mode` 采用[stream2sentence首段/后段分离思路](https://github.com/KoljaB/stream2sentence#configuration)，中文边界参考[MeloTTS分句](https://github.com/myshell-ai/MeloTTS/blob/main/melo/split_utils.py)。在本工程中按中文/英文句末和分句标点实现，未引入Python tokenizer：首个合适分句可提前合成，后续按整句合成并合并未达min_chars的短句；定时回退只用已存在的分句/空白边界。flush_ms不是无标点输入的强制截词期限，EOS、max_chars和上游文本/时间边界继续生效。数字日期/英文词保护保留；中文超长无标点文本仍可能在硬上限处被切分，不能宣称通用中文词法保护。完整字段约束见[配置说明](../README.md#配置检查)。
+
+worker在sentence_mode或first_segment动态模式下，读取已经排队的文本后再检查定时回退，并在最后一个已知EOS块后及时finish，不额外等待填批。每轮新建segmenter，reset及新轮恢复首段状态；原有取消屏障、原生两槽和PCM额度不变。`MeloTts::generate`使用独立的已选分段校验，检查纯文本、完整UTF-8、非空/首尾空白和max_chars，不重新应用“首段早出”策略；否则后续带逗号的完整句会被错误拒绝。日志及probe新增tts_sentence_mode。实现与实测见[环境§56.19](environment.md#5619-首段快出与后续完整句分段)。
+
+
+`tts.boundary_lookahead_chars` 的数值和跨字段契约见[配置说明](../README.md#配置检查)。启用后搜索到target+lookahead，保留min/max约束；达到target但尚无合适标点时，从随后首次poll开始给一个flush_ms的有界宽限。获得标点立即放行，达到字符额度或宽限届满回退，finish不等待；reset清除旧宽限。调用者继续传当前pending文字的elapsed_ms，若计时重新开始，宽限随之重新建立。UTF-8分块、受保护长词/日期/小数、短EOS和硬上限继续测试。此策略减少邻近标点前的机械切断，不是词典分词，不能承诺所有中文词都完整。实时日志和两个probe记录tts_boundary_lookahead_chars；对照结果见[环境§56.17](environment.md#5617-同速标点前瞻分段验证)。
+
+
+默认输入排队最多 8192 字节、待合成分段最多 4 个、PCM deque 最多 100 个 20 ms 帧。文本/分段溢出明确失败并失效当前轮；PCM满时送音路径可取消地等待；缺省 `prebuffer_ms=0` 保持原串行行为，启用时仍可提前合成后续一段。分句器保留自身最多 8192 字节 pending；同步 Generate 的整段原生缓冲和重采样临时帧不包含在 deque 上限中，原生输出仍有 20 s 检查。不能把 deque 峰值等同于全部内存硬上限。
+
+取消清空输入、原生预取及PCM队列，使旧generation的合成/送音/提交同时失效。当前实时入口使用`CancellableGenerate`，每轮begin创建独立`TtsCancellation`，取消、失败和析构会请求原生中止；取消先于Generate或Run绑定时也不会丢失。旧单参数`Generate`回调兼容保留，只能等待其同步调用返回并丢弃迟到结果。`wait_idle`仍等待真正返回，原生未结束前拒绝新begin；单段超时与控制器2 s监督退出边界不放宽。现有边界测试继续保留，并补充绑定生命周期并发取消、先取消后绑定、旧令牌不影响新轮及同worker恢复。
+
+`tts.prebuffer_ms` 通用缺省0、整数范围0～2000，实时配置当前按用户要求为1500。启用时原生缓存使用两个固定槽，合成中、待送音和送音中都占槽；只有前一段全部交给有界PCM队列并释放原生波形后才归还该槽。每段继续校验 `max_tts_audio_ms`，两个已校验20 s原生段最多1764000个float采样，约6.73 MiB；SDK内部生成/复制和转换临时帧另计，上游整段分配之后的检查仍不是底层硬内存上限。新增线程不增加模型实例或并发Generate数量。
+
+首次送音等到真实原生音频累计达到预缓冲目标、两个槽都已生成，或输入合成结束；两个槽已满但音频短于目标时也必须放行，防止反压死锁，单短句/空EOS无须凑足时长。随后连续按序转换/提交，不插入前缀或段间静音；转换器跨段保留滤波状态，尾帧只在EOS补齐。此项有助于覆盖合成波动，但有限缓存不保证任何文本/负载下都无欠载，仍须记录服务欠载和听感。
+
+`wait_idle` 同时等待合成与送音线程退出当前轮；取消可唤醒槽位和PCM反压，同步Generate迟到结果仍丢弃，旧槽未结束前不能新begin。异常/超限会同时使两条路径失效。新增单元检查覆盖真实PCM逐样本一致、短首段等候、满载仍可合成下一段、两槽上界、预缓冲中取消与迟到结果、新轮、单短句/空EOS及生成失败。
+
+统计增加 `first_generated_audio_ns`（首段模型结果通过校验）、`playback_release_ns`（原生缓存首次放行）、`native_buffered_segments/samples` 和 `peak_native_slots/samples`。`first_pcm_ns` 仍是首帧进入PCM队列的时刻；将放行前等待计入端到端延迟，不能把首段模型返回时间当耳机起声。实时诊断前加 `tts_` 前缀，文件联合探针保存相同的时间/峰值与配置。固定[sherpa-onnx 1.12.14 VITS实现](https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/v1.12.14/sherpa-onnx/csrc/offline-tts-vits-impl.h)以句组为粒度返回结果，应用预取保持现有模型/词典/音速和采样格式。
 
 ### LLM → TTS 局部文件探针
 
@@ -164,11 +184,16 @@ LLM SDK 回调仅写有界 token 队列；主消费者在 LLM generation 提交�
 
 ### 中文逗号与固定前端契约
 
-`melo_frontend_text()`先执行完整严格UTF-8/纯文本检查，仅把中文全角`，`（U+FF0C）转为内部`、`（U+3001）。冻结的Melo前端将二者映射为同一comma音素，但后者不触发逗号处的独立推理，因此有界段内保留前后文。原文、分段、数字、日期、英文、ASCII逗号和其余码点保持；这不是把“搜索”替换成其他词。默认adapter自动应用此策略，可选“调低”词典仍需原CLI显式启用。
+开启 `tts.join_short_sentences` 后，合并发生在**同一个已选有界段内部**：应用已累计未达min_chars的小句，固定前端原本又按句末标点拆开；现在把内部中文 `。！？；` 转为不再次分段的逗号音素别名 `、`，使其共用声学上下文。段尾语气标点及闭引号前标点、ASCII标点和数字日期保留。原文用于日志/历史，不扩张字符上限或跨段追加等待。例如 `好的。没问题。现在开始。` 在一个已选有界段内送入前端为 `好的、没问题、现在开始。`。
+
+本适配不复制参考RKNN的120音素预算；保持max_num_sentences=1，避免拼接分别AddBlank的序列，并保持silence_scale=1。独立段间的供音或词内切分不能由此保证解决。当前启用状态、同速对照及听感边界见[环境§56.20](environment.md#5620-参考项目标点控制与有界段内短句合成)。
+
+
+`melo_frontend_text()`先执行完整严格UTF-8/纯文本检查；join_short_sentences=false时仅把中文全角`，`（U+FF0C）转为内部`、`（U+3001）。冻结的Melo前端将二者映射为同一comma音素，但后者不触发逗号处的独立推理，因此有界段内保留前后文。原文、分段、数字、日期、英文、ASCII逗号和其余码点保持；这不是把“搜索”替换成其他词。默认adapter自动应用此策略，可选“调低”词典仍需原CLI显式启用。
 
 `MeloTts::generate()`仍先要求单个合法且不超过`tts.max_chars`的分段，`max_num_sentences=1`、20s生成音频限制和超时检查不变。不能简单把`max_num_sentences`调大：该版本先对各子句分别插blank再连接，第二子句的音素位置会错开参考导出器的语言编码约定。诊断保留此候选但不采纳；新策略让逗号关联的原始音素一次插blank。正式句原两个Run长度27/31，新Run长度57；“搜索”起首s位于正确的奇数索引27。七条诊断及生产路径追踪均证明去除插入blank后的音素/声调与原文一致，包括显式英文空格。SDK升级时必须重验alias、FST及此输入契约。
 
-`tts_probe`的`run.json`记录`frontend_policy=melo-fullwidth-comma-context-v1`和`max_num_sentences`；逐段`segment_metrics`同时保留`text`与实际送入固定前端的`frontend_text`。无模型模式增加`frontend_segments`。联合探针同样保留原文与内部输入，并记录`tts_frontend_policy`；内部输入还会经过既有FST，不等于最终归一化字符串。
+`tts_probe`的`run.json`记录`frontend_policy`（缺省`melo-fullwidth-comma-context-v1`，启用合并为`melo-bounded-sentence-context-v2`）、`tts_join_short_sentences`和`max_num_sentences`；逐段`segment_metrics`同时保留`text`与实际送入固定前端的`frontend_text`。无模型模式增加`frontend_segments`。联合探针同样保留原文与内部输入，并记录`tts_frontend_policy`；内部输入还会经过既有FST，不等于最终归一化字符串。
 
 此次修正的验证范围是现有固定模型与中文全角逗号。ASCII逗号仍沿用原行为，以免破坏数字分组；未宣称任意上下文都达到相同发音质量。正式第七条全角冒号仍有三次`Ignore OOV`警告，用户已确认内容与停顿正常；不隐藏该警告。
 
@@ -181,3 +206,15 @@ LLM SDK 回调仅写有界 token 队列；主消费者在 LLM generation 提交�
 ## P2-04 共驻观测接口
 
 `TtsStreamStats.current_input_bytes/current_segments/current_pcm_frames` 分别记录当前输入字节、待合成分段与待消费 PCM 帧，`segmenter_pending_bytes` 记录分段器残留；均在 worker 现有互斥锁下取快照。它们与累计峰值分开，正在 Generate 的临时缓冲仍受原段长/音频上限约束。四模型资源采样与 A06 结果见[共驻文档](coexist-probe.md)。
+
+### 当前参数的自动化边界（2026-10-27）
+
+当前0.85语速、统一12/12/2和1500 ms储备保持。§56.29原两次TTS取消超过2 s且受控重启的失败记录保留；最新原生取消修复后，两次实际ONNX运行中取消和同常驻模型恢复通过，没有更改超时或储备，详见[环境§56.30](environment.md#5630-tts取消与故障恢复送音定向修复)。原20次软件延迟与3次进程冷启动没有重跑；第11题字音仍需人工确认。
+
+### 原生取消与固定ABI边界
+
+固定Sherpa 1.12.14的TTS回调在当前批次的模型生成之后执行，不能中止正在执行的ONNX推理，见[上游VITS实现](https://github.com/k2-fsa/sherpa-onnx/blob/v1.12.14/sherpa-onnx/csrc/offline-tts-vits-impl.h)。本项目不改模型、词典、SDK文件或参数，在应用链接层导出`OrtGetApiBase`并转发固定ORT API 17表，仅包装`Run`；构建导出选项在`cmake/tts_probe.cmake`，实现为`src/tts/ort_cancel.cpp`。实际库版本/加载路径仍由原1.17.1-patched和Sherpa1.12.14检查约束，编译期要求API17；升级SDK必须重新审阅此桥接，不能复制表布局到其他ABI。
+
+包装仅在Melo generate线程的显式取消作用域中注册该generation的RunOptions；其他线程/非TTS调用直接转发原Run。保留Sherpa传入的所有选项，空选项才创建本次默认对象；取消通过官方`RunOptionsSetTerminate`，Run返回后解除注册、复位本次终止位，选项析构前与并发取消串行化。旧令牌不会复用到新轮。若请求可取消生成但未观察到包装Run，明确失败，不能宣称接通。详见[ORT RunOptions](https://onnxruntime.ai/docs/api/c/struct_ort_1_1_run_options.html)。
+
+这是算子边界上的协作式停止，不能承诺中断任意一个长算子；不响应时保留原2 s安全退出。原生调用错误在取消轮中仅结束旧任务，不污染下一轮。资源诊断新增`tts_native_run_started_ns`（非零表示当前同步Run尚在执行）、`tts_native_runs`；首次注册前取消、正在执行和已返回须区分。当前实时适配器接入双参数回调；旧文件探针使用单参数回调时仍只有结果失效语义，不能外推为全部调用方均有原生取消。

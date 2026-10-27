@@ -26,6 +26,23 @@ with tempfile.TemporaryDirectory(prefix='tts-probe-cli-') as tmp:
     assert not (root/'result'/'cli-test'/'failure.json').exists()
     for extra in [['--debug-frontend'], ['--pronunciations', 'missing.json'], ['--threads', '3'], ['--repeat', '0'], ['--warmup', '-1'], ['--repeat', '1x'], ['--case-id', 'missing'], ['--run-id', '../../escape']]:
         invoke([*args, *extra], 2)
+
+    joined_cases=root/'joined-cases.json'
+    original='好的。没问题。现在开始。'
+    joined_cases.write_text(json.dumps({'schema_version':1,'cases':[
+        {'id':'joined','text':original,'category':'short_sentences'}]},ensure_ascii=False))
+    joined_config=root/'joined.yaml'
+    joined_config.write_text('audio:\n  source: test\n  sink: test\n  profile: test\n'
+        'tts:\n  min_chars: 12\n  target_chars: 12\n  join_short_sentences: true\n  speed: 0.9\n')
+    invoke(['--validate-text-only','--config',str(joined_config),'--cases',str(joined_cases),
+            '--output-dir',str(root/'joined'),'--run-id','joined'])
+    joined=json.loads((root/'joined'/'joined'/'summary.json').read_text())
+    assert joined['tts_join_short_sentences'] is True
+    assert joined['frontend_policy']=='melo-bounded-sentence-context-v2'
+    assert joined['results'][0]['text']==original
+    assert joined['results'][0]['segments']==[original]
+    assert joined['results'][0]['frontend_segments']==['好的、没问题、现在开始。']
+
     cases.write_text(json.dumps({'schema_version': 1, 'cases': [{'id': 'reject', 'text': '<think>private</think>回答', 'category': 'control'}, {'id': 'good', 'text': '你好。', 'category': 'plain'}]}, ensure_ascii=False))
     invoke(['--validate-text-only', '--cases', str(cases), '--output-dir', str(root/'rejected'), '--run-id', 'reject'], 2)
     report=json.loads((root/'rejected'/'reject'/'summary.json').read_text())

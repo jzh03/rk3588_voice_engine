@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 #include <initializer_list>
 #include <set>
@@ -137,6 +138,29 @@ int bounded_integer(const YAML::Node& node, const std::string& section,
     return value;
 }
 
+double bounded_number(const YAML::Node& node, const std::string& section,
+                      const char* key, double fallback, double minimum, double maximum) {
+    const auto value = node[key];
+    if (!value) return fallback;
+    const auto field = section + "." + key;
+    double result = 0;
+    try {
+        if (!value.IsScalar() ||
+            (value.Tag() != "?" && value.Tag() != "tag:yaml.org,2002:float" &&
+             value.Tag() != "tag:yaml.org,2002:int")) {
+            throw ConfigError(field + " must be a finite number");
+        }
+        result = value.as<double>();
+    } catch (const YAML::Exception&) {
+        throw ConfigError(field + " must be a finite number");
+    }
+    if (!std::isfinite(result) || result < minimum || result > maximum) {
+        throw ConfigError(field + " must be a finite number between " +
+                          std::to_string(minimum) + " and " + std::to_string(maximum));
+    }
+    return result;
+}
+
 int fixed_integer(const YAML::Node& audio, const char* key, int expected) {
     const auto actual = integer_or_default(audio, "audio", key, expected);
     if (actual != expected) {
@@ -157,7 +181,7 @@ Config parse_config(const std::string& path) {
                                  "threads", "llm", "tts", "queues", "timeouts", "dialogue"});
     const auto audio = root["audio"];
     check_fields(audio, "audio", {"source", "sink", "profile", "sample_rate",
-                                  "channels", "frame_ms"});
+                                  "channels", "frame_ms", "playback_lead_in_ms", "playback_keepalive"});
 
     Config config;
     config.source_path = std::filesystem::absolute(path).lexically_normal();
@@ -176,6 +200,11 @@ Config parse_config(const std::string& path) {
     config.audio.sample_rate = fixed_integer(audio, "sample_rate", 16000);
     config.audio.channels = fixed_integer(audio, "channels", 1);
     config.audio.frame_ms = fixed_integer(audio, "frame_ms", 20);
+    config.audio.playback_keepalive = boolean_or_default(audio, "audio", "playback_keepalive", false);
+    config.audio.playback_lead_in_ms = bounded_integer(
+        audio, "audio", "playback_lead_in_ms", 0, 0, 2000);
+    if (config.audio.playback_lead_in_ms % config.audio.frame_ms != 0)
+        throw ConfigError("audio.playback_lead_in_ms must be a multiple of audio.frame_ms");
 
     const auto logging = root["logging"];
     if (logging) {
@@ -262,10 +291,28 @@ Config parse_config(const std::string& path) {
 
     const auto tts = root["tts"];
     if (tts) {
-        check_fields(tts, "tts", {"min_chars", "max_chars", "flush_ms"});
+        check_fields(tts, "tts", {"min_chars", "max_chars", "flush_ms", "prebuffer_ms", "target_chars", "speed", "boundary_lookahead_chars", "sentence_mode", "join_short_sentences", "first_segment"});
         config.tts.min_chars = bounded_integer(tts, "tts", "min_chars", config.tts.min_chars, 1, 256);
         config.tts.max_chars = bounded_integer(tts, "tts", "max_chars", config.tts.max_chars, 1, 1024);
         config.tts.flush_ms = bounded_integer(tts, "tts", "flush_ms", config.tts.flush_ms, 1, 5000);
+        config.tts.prebuffer_ms = bounded_integer(tts, "tts", "prebuffer_ms", 0, 0, 2000);
+        config.tts.target_chars = bounded_integer(tts, "tts", "target_chars", 0, 0, 1024);
+        config.tts.speed = bounded_number(tts, "tts", "speed", 1.0, 0.5, 2.0);
+        config.tts.boundary_lookahead_chars = bounded_integer(
+            tts, "tts", "boundary_lookahead_chars", 0, 0, 32);
+        config.tts.sentence_mode = boolean_or_default(tts, "tts", "sentence_mode", false);
+        config.tts.join_short_sentences = boolean_or_default(tts, "tts", "join_short_sentences", false);
+        const auto first = tts["first_segment"];
+        if (first && !first.IsNull()) {
+            check_fields(first, "tts.first_segment", {"min_chars", "target_chars", "boundary_lookahead_chars"});
+            for (const char* key : {"min_chars", "target_chars", "boundary_lookahead_chars"})
+                if (!first[key]) throw ConfigError(std::string("tts.first_segment.") + key + " is required");
+            TtsSegmentPolicy policy;
+            policy.min_chars = bounded_integer(first, "tts.first_segment", "min_chars", 8, 1, 256);
+            policy.target_chars = bounded_integer(first, "tts.first_segment", "target_chars", 15, 1, 1024);
+            policy.boundary_lookahead_chars = bounded_integer(first, "tts.first_segment", "boundary_lookahead_chars", 2, 0, 32);
+            config.tts.first_segment = policy;
+        }
     }
 
     const auto queues = root["queues"];
@@ -305,13 +352,16 @@ Config parse_config(const std::string& path) {
     const auto dialogue = root["dialogue"];
     if (dialogue) {
         check_fields(dialogue, "dialogue", {"wake_enabled", "barge_in", "wake_word",
-                                            "window_ms", "barge_in_min_ms"});
+                                            "window_ms", "barge_in_min_ms", "keywords_file"});
         config.dialogue.wake_enabled = boolean_or_default(
             dialogue, "dialogue", "wake_enabled", config.dialogue.wake_enabled);
         config.dialogue.barge_in = boolean_or_default(
             dialogue, "dialogue", "barge_in", config.dialogue.barge_in);
         if (dialogue["wake_word"]) {
             config.dialogue.wake_word = string_value(dialogue, "dialogue", "wake_word", true);
+        }
+        if (dialogue["keywords_file"]) {
+            config.dialogue.keywords_file = string_value(dialogue, "dialogue", "keywords_file", true);
         }
         config.dialogue.window_ms = bounded_integer(
             dialogue, "dialogue", "window_ms", config.dialogue.window_ms, 20, 60000);
@@ -330,6 +380,26 @@ Config parse_config(const std::string& path) {
     }
     if (config.vad.min_speech_ms > config.vad.max_speech_ms) {
         throw ConfigError("vad.min_speech_ms must not exceed vad.max_speech_ms");
+    }
+    if (config.tts.first_segment) {
+        const auto& first = *config.tts.first_segment;
+        if (config.tts.sentence_mode)
+            throw ConfigError("tts.first_segment requires sentence_mode=false");
+        if (first.min_chars > config.tts.max_chars || first.target_chars < first.min_chars ||
+            first.target_chars > config.tts.max_chars ||
+            first.boundary_lookahead_chars > config.tts.max_chars - first.target_chars)
+            throw ConfigError("tts.first_segment requires min <= target and target + lookahead <= tts.max_chars");
+    }
+    if (config.tts.sentence_mode && (config.tts.target_chars || config.tts.boundary_lookahead_chars)) {
+        throw ConfigError("tts.sentence_mode requires target_chars and boundary_lookahead_chars to be 0");
+    }
+    if (config.tts.target_chars && (config.tts.target_chars < config.tts.min_chars ||
+                                    config.tts.target_chars > config.tts.max_chars)) {
+        throw ConfigError("tts.target_chars must be 0 or within tts.min_chars..tts.max_chars");
+    }
+    if (config.tts.boundary_lookahead_chars && (!config.tts.target_chars ||
+        config.tts.boundary_lookahead_chars > config.tts.max_chars - config.tts.target_chars)) {
+        throw ConfigError("tts.boundary_lookahead_chars requires a positive target_chars and target + lookahead <= max_chars");
     }
     if (config.tts.min_chars > config.tts.max_chars) {
         throw ConfigError("tts.min_chars must not exceed tts.max_chars");

@@ -8,7 +8,7 @@
 
 **P0-01～P0-04 已完成，M0 技术可行通过**：四类模型及四项私有依赖已冻结为首个 `verified` 组合，范围限于 P0 的资产、SDK 配套和各模型最小推理。选定 R 配置复用固定十问两批 10/10，本轮主动取消至空闲 97.467 ms、清 KV 后同句柄恢复成功。用户确认直接使用社区预转换 LLM，未公开的转换步骤保留未知记录，不再追查或阻塞 P0。完整应用验收仍按原标准执行；见[收尾结果](docs/environment.md#43-p0-收尾与首个已验证组合)和[冻结组合](output/runs/p0-r-closeout-20261021-161053/verified-combination.json)。
 
-**P1-01、P1-02 已完成**：完整 CTest 17/17 及构建/配置回归通过；用户将 A01 正式时长改为 1 分钟并删除原 10 分钟待办，本轮 60 s 连续录放与 A02 空闲/录音/播放三种状态重连均通过。生产音频后端、本机配置与模型组合未改，模型尚未接入实时引擎。见[实机结果](docs/environment.md#45-p1-耳机一分钟录放与三种状态重连)和[自动化回归](docs/environment.md#44-p1-自动化回归与固定集校验加固)。
+**P1-01、P1-02 已完成**：完整 CTest 17/17 及构建/配置回归通过；用户将 A01 正式时长改为 1 分钟并删除原 10 分钟待办，本轮 60 s 连续录放与 A02 空闲/录音/播放三种状态重连均通过。生产音频后端、本机配置与模型组合未改，该阶段尚未接入模型；当前入口见[实时主引擎](docs/realtime-engine.md)。见[实机结果](docs/environment.md#45-p1-耳机一分钟录放与三种状态重连)和[自动化回归](docs/environment.md#44-p1-自动化回归与固定集校验加固)。
 
 **P1-03 材料与人工审核已完成，P1 全部任务已交付**：新增 20 条耳机自然人声，逐条试听通过；原 20 条合成材料审核完成，19 条通过，`mix_02` 的“调低→吊低”发音缺陷已留档，两条有完整句子的边界样本试听通过。原工程集、参考/关键词、10 条 TTS 文本及 20 个静态 LLM 问题不变。自然 WAV 只保存在板端私有目录，版本化目录保存清单和审核；两组复用相同文本，不代表独立文本覆盖。见[固定测试集](docs/file-fixtures.md)和[本轮证据](docs/environment.md#46-p1-03-自然人声与人工材料审核)。
 
@@ -16,9 +16,11 @@
 
 **P2-04 / A06 已完成**：正式连续运行 304.870 s、完成 44 轮，四模型同进程常驻、ASR/LLM 顺序调度及队列边界通过；全程最小 MemAvailable 4.088 GiB，独立审核未见持续换页；本次固定四模型文件负载无需 LLM 进程隔离。本轮完整 CTest 25/25 通过，最后的预热/换页审核修订补测相关 2/2 通过；前三次严格零换页诊断失败原样保留。见[共驻工具](docs/coexist-probe.md)、[独立验收记录](tests/fixtures/coexist-acceptance.json)和[环境证据](docs/environment.md#51-p2-04-四模型共驻与五分钟验收)。该次共驻负载使用独立固定 LLM 问题，P3 的实际识别文本联调结果见下。
 
-**P3-01 / A07 已完成**：原自然语料 20/20 文件流程，ASR 18/20、中文 CER 1.41%，内容审核 18/20；通用能力提示调整后的原 A04 三批各19/20。首段 PCM 软件耗时 P95 4.470 s，实机耳机延迟尚待 P4。首轮内容失败、残留能力表述及识别问题均保留；本轮全量 CTest 27/28，模拟音频最终原版复测1/1通过但偶发超时根因未定。见[使用说明](docs/voice-file-demo.md)、[独立验收](tests/fixtures/file-chain-acceptance.json)和[环境记录](docs/environment.md#53-p3-01-完整文件链路与-a07-验收)。下一项为 P4-01 实时状态机与设备接入。
+**P3-01 / A07 已完成**：原自然语料 20/20 文件流程，ASR 18/20、中文 CER 1.41%，内容审核 18/20；通用能力提示调整后的原 A04 三批各19/20。首段 PCM 软件耗时 P95 4.470 s，实机耳机延迟尚待 P4。首轮内容失败、残留能力表述及识别问题均保留；本轮全量 CTest 27/28，模拟音频最终原版复测1/1通过但偶发超时根因未定。见[使用说明](docs/voice-file-demo.md)、[独立验收](tests/fixtures/file-chain-acceptance.json)和[环境记录](docs/environment.md#53-p3-01-完整文件链路与-a07-验收)。P4-01 的后续实时接入见下。
 
-参考项目源码审阅已归档，短首分句、常驻 LLM adapter、原子输出提交及 ASR/VAD 端点接入建议已纳入执行计划，模型模块与局部文件验证已推进，主引擎实时接入仍按P4实施；见[参考项目总结](doc/voicenpu-reference-review.md)。参考建议仍按执行计划分阶段验证。
+**P4已按用户确认范围结项，M1按键MVP完成。** 实时主引擎、20轮实机交互、限定自动化/故障注入、取消修复与耳机重连验证已完成；当前范围内无待办。继续保持统一12/12/2分段、max40、0.85语速、1500 ms储备、sentence_mode=false及段内标点连接。原正式20轮仍为20/20流程、19/20听感；外部声学指标未测，供音/发音跟进已删除，模型上下文偏差已定位并按要求不修。限制和原始失败均保留，生产程序/配置未变，不追加测试。见[P4结项记录](docs/environment.md#5633-p4按确认范围结项)和[结项摘要](tests/fixtures/p4-closeout-review.json)。下一阶段为P5-01语音唤醒与对话窗口，待执行。
+
+参考项目源码审阅已归档，短首分句、常驻 LLM adapter、原子输出提交及 ASR/VAD 端点接入建议已纳入执行计划，模型模块与局部文件验证已推进，主引擎已在P4-01接入，实机验收按P4-02继续；见[参考项目总结](doc/voicenpu-reference-review.md)。参考建议仍按执行计划分阶段验证。
 
 ## 文档入口
 
@@ -30,6 +32,7 @@
 - [SDK 兼容性](docs/compatibility.md)：驱动、SDK 与模型配套。
 - 模型准备：[Qwen3.5-2B](docs/model-prep-llm.md)、[Zipformer](docs/model-prep-asr.md)、[Silero VAD 与 MeloTTS](docs/model-prep-speech.md)。
 - 文件测试：[固定测试集](docs/file-fixtures.md)、[VAD/ASR 探针](docs/asr-probe.md)、[TTS/流式联合探针](docs/tts-probe.md)、[LLM 探针](docs/llm-probe.md)、[四模型共驻探针](docs/coexist-probe.md)、[完整文件链路](docs/voice-file-demo.md)。
+- [实时主引擎](docs/realtime-engine.md)：P4-01 构建、设备配置、控制命令、取消与日志。
 - [验收用例](docs/ACCEPTANCE.md)：功能、延迟、资源和恢复验证。
 - [规划审阅记录](docs/PLAN_REVIEW.md)：问题和修订依据。
 
@@ -46,12 +49,12 @@ rk3588_voice_engine/
 ├── CMakeLists.txt                # CMake/Ninja 构建入口
 ├── cmake/                        # 可选 ASR/LLM/TTS 及联合探针的依赖/测试目标
 ├── src/                          # 应用实现，按模块划分
-│   ├── main.cpp                  # 配置/资产检查与 mock 控制 CLI 入口
+│   ├── main.cpp                  # 配置/资产检查、mock 与实时控制 CLI 入口
 │   ├── audio/                    # 音频 mock、流式 DSP 与 PulseAudio 异步录放
 │   ├── asr/                      # VAD、语音识别适配
 │   ├── llm/                      # 本地语言模型适配
 │   ├── tts/                      # 语音合成与文本前处理
-│   └── engine/                   # 配置、资产、JSONL 日志、mock 状态机
+│   └── engine/                   # 配置、资产、JSONL 日志、mock 与实时状态机
 ├── include/voice_engine/         # 配置、资产、音频、日志和控制接口
 ├── tools/                        # 独立的 C++ 检查与诊断工具
 │   ├── env_check.cpp             # 基础依赖检查
@@ -86,6 +89,7 @@ rk3588_voice_engine/
 │   ├── llm-probe.md              # 常驻 LLM、监督运行与模型侧验收
 │   ├── coexist-probe.md          # 四模型共驻、预热、监督采样与 A06
 │   ├── voice-file-demo.md        # 文件链路、监督执行、独立审核与 A07
+│   ├── realtime-engine.md        # 实时主引擎、取消、队列与控制命令
 │   ├── ACCEPTANCE.md             # 验收用例
 │   ├── PLAN_REVIEW.md            # 规划审阅记录
 │   ├── archive/                  # 历史计划，保留原始内容
@@ -100,7 +104,7 @@ rk3588_voice_engine/
 └── tmp/                          # 临时检查和中间文件（Git 忽略）
 ```
 
-`config/default.yaml` 保存通用模板，板端 `config/local.yaml` 已保存耳机参数，模型仍全部禁用；本轮未修改该配置。独立文件探针使用 `config/file-probes.yaml`，只启用 VAD/ASR/TTS，LLM/KWS 禁用；其中的文件输入输出标签不能用于真实录放。`config/coexist-probe.yaml` 用于文件模式四模型共驻，`config/voice-file-demo.yaml` 用于真实识别文本驱动的完整文件链路；两者禁用 KWS，TTS 4 线程；新增 `config/llm-probe.yaml` 仅启用 LLM，`config/llm-tts-probe.yaml` 仅启用 LLM/TTS（TTS显式4线程）；`config/tts-pronunciations.json` 是须由CLI显式选择的读音候选，不自动应用到主引擎。默认模板的设备字段为空，不能直接用于启动。空目录用 `.gitkeep` 保留；模型与依赖分别登记于 `models/manifest.json`、`deps/manifest.json`。模型、运行库、私有构建/转换环境和运行证据仍被 Git 忽略。
+`config/default.yaml` 保存通用模板，板端 `config/local.yaml` 已保存耳机参数，模型仍全部禁用；本轮未修改该配置。实时入口使用公开模板 `config/realtime.yaml` 和被忽略的本机 `config/realtime-local.yaml`，复用设备信息并启用现有四模型，见[实时配置](docs/realtime-engine.md#构建与配置)。独立文件探针使用 `config/file-probes.yaml`，只启用 VAD/ASR/TTS，LLM/KWS 禁用；其中的文件输入输出标签不能用于真实录放。`config/coexist-probe.yaml` 用于文件模式四模型共驻，`config/voice-file-demo.yaml` 用于真实识别文本驱动的完整文件链路；两者禁用 KWS，TTS 4 线程；新增 `config/llm-probe.yaml` 仅启用 LLM，`config/llm-tts-probe.yaml` 仅启用 LLM/TTS（TTS显式4线程）；`config/tts-pronunciations.json` 是须由CLI显式选择的读音候选，不自动应用到主引擎。默认模板的设备字段为空，不能直接用于启动。空目录用 `.gitkeep` 保留；模型与依赖分别登记于 `models/manifest.json`、`deps/manifest.json`。模型、运行库、私有构建/转换环境和运行证据仍被 Git 忽略。
 
 ## 基础环境检查
 
@@ -127,7 +131,7 @@ CMake 基础开关默认 `ON`；三个模型文件探针开关默认 `OFF`：
 | `VOICE_ENGINE_BUILD_ENV_CHECK` | `env_check`，单独检查 libpulse、libsamplerate、libsndfile、yaml-cpp 和 nlohmann-json |
 | `VOICE_ENGINE_BUILD_ASR_PROBE`（OFF） | VAD/RKNN 文件探针；显式开启后检查固定私有 RKNN、sherpa/ORT 与官方 fbank 依赖 |
 | `VOICE_ENGINE_BUILD_TTS_PROBE`（OFF） | CPU TTS 文件探针；显式开启后检查固定私有 sherpa/ORT，复用音频 DSP 与 libsndfile |
-| `VOICE_ENGINE_BUILD_LLM_PROBE`（OFF） | 常驻 RKLLM 文件探针；需 ENGINE 及固定私有 RKLLM 1.3.0。与 TTS 开关同时打开时额外构建 `llm_tts_probe`；三个模型开关全开时再构建 `coexist_probe` 和 `voice_file_demo` |
+| `VOICE_ENGINE_BUILD_LLM_PROBE`（OFF） | 常驻 RKLLM 文件探针；需 ENGINE 及固定私有 RKLLM 1.3.0。与 TTS 开关同时打开时额外构建 `llm_tts_probe`；三个模型开关全开时再构建 `coexist_probe` 和 `voice_file_demo`，真实 Pulse 后端可用时同时接通 `voice_engine` 实时入口 |
 
 构建工具使用现有 CMake/Ninja 与 C++17 编译器；引擎依赖通过 pkg-config/CMake 查找。启用引擎测试时还需要 Python 3；真实音频集成测试另需 `pipewire`、`pipewire-pulse`、`wireplumber`、`pactl`，测试服务在独立临时目录运行。`BUILD_TESTING=OFF` 可关闭测试目标。仅构建引擎并运行纯状态 mock：
 
@@ -167,31 +171,61 @@ ctest --test-dir build/native-audio-only --output-on-failure
 ./build/bin/voice_engine --help
 ```
 
-检查成功输出 `CONFIG_OK`、`ASSETS_OK models=N dependencies=N files=N` 和音频/日志摘要，退出码为 `0`；配置、资产或命令行错误退出码为 `2`，并提示相关文件或字段。`--help` 返回 `0`。`--check-config` 与 mock 控制模式互斥，不打开设备或 NPU。
+检查成功输出 `CONFIG_OK`、`ASSETS_OK models=N dependencies=N files=N` 和音频/日志摘要，退出码为 `0`；配置、资产或命令行错误退出码为 `2`，并提示相关文件或字段。`--help` 返回 `0`。`--check-config` 与 mock/实时控制模式互斥，不打开设备或 NPU。
 
-每次只加载 `--config` 指定的一个完整 YAML 文件，不合并 `default.yaml` 与 `local.yaml`。`audio.source`、`audio.sink`、`audio.profile` 必须是非空字符串，source 不能以 `.monitor` 结尾；`sample_rate`、`channels`、`frame_ms` 缺省为 `16000`、`1`、`20`，首版只支持这组参数。未知字段、重复键和非法类型会被拒绝。
+每次只加载 `--config` 指定的一个完整 YAML 文件，不合并 `default.yaml` 与 `local.yaml`。`audio.source`、`audio.sink`、`audio.profile` 必须是非空字符串，source 不能以 `.monitor` 结尾；`sample_rate`、`channels`、`frame_ms` 缺省为 `16000`、`1`、`20`，首版只支持这组参数。可选 `audio.playback_lead_in_ms` 缺省0，允许0～2000 ms且为20 ms整数倍；每个非空播放轮次的首段语音前添加该时长静音。可选 `audio.playback_keepalive` 为布尔值、通用缺省false；启用且允许播放时，用独立零PCM流保持指定输出运行，贯穿空闲/采集/回答/取消，退出或失联时释放。当前实时模板与本机实时配置启用保活、前置静音设0；不改变旧 `config/local.yaml`。语义和耗电取舍见[实时播放保活](docs/realtime-engine.md#播放保活与可选前置静音)。未知字段、重复键和非法类型会被拒绝。
 
 完整字段的缺省值、单位和数值范围集中在 [config/default.yaml](config/default.yaml) 的注释中。除必填音频设备字段外，各分组与字段均可省略；现有仅含 audio/logging 的 `local.yaml` 无须迁移。整数、布尔、字符串类型分别校验，字符串不得含 NUL。模板的设备字段留空，需填入设备名称或使用已有本机配置。
 
 | YAML 分组 | 内容与类型 |
 |---|---|
-| `audio` | 设备名称/双向 profile 字符串；采样率、声道和帧长整数 |
+| `audio` | 设备名称/双向 profile 字符串；采样率、声道、帧长和播放前置静音时长整数；播放保活布尔值 |
 | `logging` | 单个日志文件字节上限、保留文件数整数 |
 | `models` | `vad/asr/llm/tts/kws` 各含 `enabled` 布尔及 `id` 字符串；默认全部禁用 |
 | `assets` | 模型与依赖 manifest 路径字符串 |
 | `vad` | 预录、最短语音、尾部静音、等待开口与最长发言的毫秒整数 |
 | `threads` | 各模型模块的线程数整数 |
 | `llm` | 上下文、输出和余量 token 数整数 |
-| `tts` | 最短/最长分段字符数和冲刷等待毫秒整数 |
+| `tts` | 最短/最长分段字符数、软目标、标点前瞻、冲刷和预缓冲整数；合成语速数值；首段/后段策略及段内短句合成布尔值 |
 | `queues` | 采集/播放缓冲、待处理轮数、文本字节数、TTS 段数与音频时长整数 |
 | `timeouts` | ASR、LLM 首 token/总生成、TTS、取消超时的毫秒整数 |
 | `dialogue` | 唤醒/打断布尔开关、唤醒词字符串与对话窗口/打断持续毫秒整数 |
 
-跨字段检查包括：预录不超过采集缓冲、最短语音不超过最长发言、TTS 最短分段不超过最长分段、LLM 输出加余量小于总上下文、首 token 超时不超过生成总超时；采集/播放缓冲必须为音频帧长的整数倍。启用模型时 `id` 必须非空；启用唤醒时要求 KWS 与非空唤醒词，启用打断时要求 VAD 和 ASR。这里定义并校验参数，模型线程、端点检测、分句及真实超时执行仍由后续任务接入。
+`tts.prebuffer_ms` 通用缺省0、范围0～2000 ms；正值开启两槽原生语音预取和独立送音线程，等待真实音频达到目标、两槽满或合成结束后起播。当前实时模板/本机配置按用户要求为1500；它不是追加的数字静音。每槽仍受 `queues.max_tts_audio_ms` 单段上限约束，原PCM队列额度不变；首音等待可能增加，需计入A10。完整生命周期、内存和观测字段见[TTS worker](docs/tts-probe.md#有界-tts-worker-与提交边界)。
+
+`tts.target_chars` 通用缺省0，表示保持原先按句末、定时和硬上限切分；正值须位于 `min_chars`～`max_chars`，优先在目标附近的安全位置分段。较长数字、日期或英文单词可以超过目标，仍受原 `max_chars` 硬上限约束；输入字段范围0～1024。当前实时关闭first_segment覆盖，首块和后续统一min/target/lookahead=12/12/2，保留40字符硬上限、300 ms冲刷，起播储备改为1500 ms。调小目标可能改变语调和分段开销，候选需同时核验延迟、连续性与听感。
+
+`tts.speed` 缺省1.0，接受有限数值0.5～2.0；小于1放慢、大于1加快，带引号的数值、布尔和非有限值会被拒绝。这是传给固定Melo模型的合成语速，原生44100 Hz及设备16000 Hz采样率不变。用户此前同句耳机A/B选择0.95，后续曾改为0.9，当前按新要求在实时模板与本机配置设为0.85；调慢也会增加音频长度及合成成本，不能单独保证无顿挫。
+
+`tts.boundary_lookahead_chars` 缺省0，整数范围0～32。正值要求 `target_chars > 0` 且 `target_chars + boundary_lookahead_chars <= max_chars`；达到软目标后，在有限后续字符中优先找句末、中文逗号/顿号或非数字分组的ASCII逗号。等待从达到目标后的首次poll计时，最多再等 `flush_ms`；EOS立即冲刷，字符额度用完则回退安全软切。没有通用中文分词保证；新增文本等待必须计入实际首音延迟。历史单阶段候选6出现供音欠载，候选2曾按用户要求中止，见[历史记录](docs/environment.md#5617-同速标点前瞻分段验证)。动态首块2/后续4的实验见[环境§56.24](docs/environment.md#5624-用户指定的首块后续块动态分段)；当前已按用户要求回退为所有段统一前瞻2，见[环境§56.25](docs/environment.md#5625-回退统一分段并调整前瞻语速和储备)。
+
+`tts.sentence_mode` 为布尔值，缺省false保持原规则；true时要求 `target_chars=0`、`boundary_lookahead_chars=0`，且不设置first_segment覆盖。首段达到min_chars后可在分句标点提前输出，后续优先等完整句末；已排队的文字在触发定时回退前先读取。flush_ms到期只在已有分句标点或词间空白处回退；没有边界时等EOS或max_chars，避免短定时器机械切中文字。40字等硬上限仍优先使用已有标点，完全无边界时沿用安全硬切/不可分词拒绝。它不是通用语义分析或中文分词。当前方案的启用与验证状态见[环境§56.19](docs/environment.md#5619-首段快出与后续完整句分段)。
+
+`tts.first_segment` 是可选映射，缺省/null表示不覆盖首块，保持旧配置行为。启用时必须完整提供`min_chars`（1～256）、`target_chars`（1～1024）和`boundary_lookahead_chars`（0～32），满足min≤target且target+lookahead≤共享max_chars，并要求sentence_mode=false。仅首个已输出非空文本块使用该组，随后使用tts顶层值；每轮和reset恢复首块。字符计数包含标点。当前实时配置为：
+
+~~~yaml
+tts:
+  sentence_mode: false
+  first_segment: null
+  min_chars: 12
+  target_chars: 12
+  boundary_lookahead_chars: 2
+  max_chars: 40
+  flush_ms: 300
+  prebuffer_ms: 1500
+  speed: 0.85
+  join_short_sentences: true
+~~~
+
+启用可选动态模式时，两阶段均可在达到各自min后遇逗号/句末提前输出；没有标点时只等待有限前瞻字符或既有flush期限，不强制完整句末。动态模式也会先读取积压文字，避免旧计时器把已到齐的后续文本提前切碎。精确计时明细新增text_chars及本段实际min/target/lookahead，可核对策略切换。实现与验证范围见[环境§56.24](docs/environment.md#5624-用户指定的首块后续块动态分段)。
+
+`tts.join_short_sentences` 为布尔值，通用缺省false、当前实时true。将已有有界段内部的中文句末标点按逗号音素连接，使短句共享声学上下文；保留段尾语气和原文，不改变分段长度、不额外等待。独立于sentence_mode，详细说明见[TTS前端契约](docs/tts-probe.md#中文逗号与固定前端契约)，结果见[环境§56.20](docs/environment.md#5620-参考项目标点控制与有界段内短句合成)。
+
+跨字段检查包括：预录不超过采集缓冲、最短语音不超过最长发言、TTS 最短分段不超过最长分段、LLM 输出加余量小于总上下文、首 token 超时不超过生成总超时；采集/播放缓冲必须为音频帧长的整数倍。启用模型时 `id` 必须非空；启用唤醒时要求 KWS 与非空唤醒词，启用打断时要求 VAD 和 ASR。这些参数由模型适配器和 P4 实时控制器执行；实时模式的附加要求见[实时主引擎](docs/realtime-engine.md)。
 
 ### 资产清单
 
-`--check-config` 只检查已启用模型及其声明的依赖，不自动下载。`models.<模块>.id` 绑定模型清单中的同名 `id`；所有模型禁用时不读取两份 manifest，输出的三个资产计数均为 `0`。两份清单已合并本轮实际取得的模型及 RKNN 2.3.2 / RKLLM 1.3.0 / sherpa-onnx 1.12.14 / ORT 1.17.1-patched 依赖；当前模型和依赖已按 `verification_scope` 标记为 P0/M0 最小基线 verified。各模型阶段结果见专属准备记录。文件校验通过不代表推理验收；文件探针的适配器可单独运行，实时控制入口尚未接入它们。
+`--check-config` 只检查已启用模型及其声明的依赖，不自动下载。`models.<模块>.id` 绑定模型清单中的同名 `id`；所有模型禁用时不读取两份 manifest，输出的三个资产计数均为 `0`。两份清单已合并本轮实际取得的模型及 RKNN 2.3.2 / RKLLM 1.3.0 / sherpa-onnx 1.12.14 / ORT 1.17.1-patched 依赖；当前模型和依赖已按 `verification_scope` 标记为 P0/M0 最小基线 verified。各模型阶段结果见专属准备记录。文件校验通过不代表推理验收；文件探针的适配器可单独运行，也由 P4 实时入口复用；运行方式与验证范围见[实时主引擎](docs/realtime-engine.md)。
 
 `assets.models_manifest` 与 `assets.deps_manifest` 可用绝对路径，或相对于所加载 YAML 所在目录的路径；每个 `files[].path` 则相对于对应 manifest 所在目录。资产文件必须是目录内的普通文件，禁止绝对路径、`..` 以及解析后逃出目录的符号链接；同一条目内不得重复声明同一文件。检查逐文件精确比较非负整数 `size_bytes` 和 64 个十六进制字符的 `sha256`，流式调用构建时找到的 `sha256sum`，不把大文件读入进程内存。
 
@@ -209,6 +243,8 @@ ctest --test-dir build/native-audio-only --output-on-failure
 元数据用于完整性、追溯记录与版本字符串匹配；程序不联网核实来源 URL、不验证 `run_id` 证据，也不判断平台/量化/SDK 字符串的兼容性。`candidate` 可以通过文件校验，`verified` 标签仍须按执行计划取得推理证据，并读取条目的 `verification_scope`；当前组合只覆盖 P0/M0，范围字段不由程序强制执行；`ASSETS_OK` 不证明 ABI、驱动、官方真实性或推理已经通过。
 
 ## 终端控制与 JSONL 日志
+
+真实实时模式使用启用全部模型的构建及本机实时配置，详见[运行与命令](docs/realtime-engine.md#运行与命令)。下面保留不加载模型、不打开设备的 mock 回归入口。两种模式共用 run/session/generation/seq 日志关联与轮转规则。
 
 在项目根目录启动：
 

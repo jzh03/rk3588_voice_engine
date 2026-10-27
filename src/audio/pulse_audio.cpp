@@ -4,6 +4,7 @@
 #include <pulse/pulseaudio.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
@@ -68,6 +69,9 @@ public:
             options_.capture_capacity_frames < 1 || options_.capture_capacity_frames > 500 ||
             options_.playback_capacity_frames < 1 || options_.playback_capacity_frames > 500)
             throw AudioError("audio directions or queue capacities are invalid");
+        if (options_.playback_lead_in_ms < 0 || options_.playback_lead_in_ms > 2000 ||
+            options_.playback_lead_in_ms % 20 != 0)
+            throw AudioError("playback lead-in must be 0..2000 ms and a multiple of 20");
         status_.source = options_.source;
         status_.sink = options_.sink;
         status_.profile = options_.profile;
@@ -77,8 +81,8 @@ public:
         {
             std::lock_guard<std::mutex> lock(mutex_);
             stopping_ = true;
+            wake_worker();
         }
-        wake_.notify_one();
         if (worker_.joinable()) worker_.join();
     }
     bool start_session(AudioContext context, bool capture) override {
@@ -102,7 +106,7 @@ public:
         ++epoch_;
         status_.reset_pending = true;
         emit("session_start_requested", capture ? "capture and playback session" : "playback session");
-        wake_.notify_one();
+        wake_worker();
         return true;
     }
     void stop_capture() override {
@@ -113,7 +117,7 @@ public:
         status_.capture_stopping = true;
         stop_capture_pending_ = true;
         emit("capture_stop_requested", "capture cork requested; buffered input and filter tail will finish normally");
-        wake_.notify_one();
+        wake_worker();
     }
     void cancel() override {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -123,7 +127,7 @@ public:
         ++epoch_;
         status_.reset_pending = status_.state != LiveAudioState::device_wait;
         emit("cancel_requested", "application queues invalidated; server flush requested");
-        wake_.notify_one();
+        wake_worker();
     }
     bool try_capture_frame(AudioFrame& frame) override {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -154,7 +158,7 @@ public:
         status_.playback_queue_peak_frames = std::max(status_.playback_queue_peak_frames,
             playback_.size() + (native_playback_.empty() ? 0 : 1));
         status_.drained = false;
-        wake_.notify_one();
+        wake_worker();
         return true;
     }
     void request_drain() override {
@@ -163,13 +167,20 @@ public:
             drain_requested_ = true;
             status_.drained = false;
             drain_deadline_ = Clock::now() + std::chrono::milliseconds(
-                options_.playback_capacity_frames * 20 + 5000);
-            wake_.notify_one();
+                options_.playback_capacity_frames * 20 + options_.playback_lead_in_ms + 5000);
+            wake_worker();
         }
     }
     bool playback_drained() const override {
         std::lock_guard<std::mutex> lock(mutex_);
         return status_.drained;
+    }
+    bool commit_if_drained(AudioContext context, const std::function<bool()>& commit) override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (fault_pending_ || !status_.session_active || !same_context(context, status_.context) ||
+            status_.state == LiveAudioState::device_wait || status_.reset_pending ||
+            !drain_requested_ || !status_.drained) return false;
+        return commit();
     }
     LiveAudioStatus status() const override {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -190,6 +201,41 @@ public:
     }
 
 private:
+    // All callers hold mutex_; the only cross-thread Pulse call is wakeup(),
+    // documented to interrupt poll(). Creation, callbacks and teardown stay on
+    // the owner thread, and no app mutex is held during the blocking poll.
+    void wake_worker() {
+        if (loop_) pa_mainloop_wakeup(loop_);
+        wake_.notify_one();
+    }
+    void wait_events(std::unique_lock<std::mutex>& lock) {
+        if (!loop_) { wake_.wait_for(lock, 5ms); return; }
+        // Pulse specifies microseconds. Preserve the existing 5 ms upper bound,
+        // but wake immediately for server I/O, timers, deferred work or commands.
+        if (pa_mainloop_prepare(loop_, raw_.empty() ? 5000 : 0) < 0) {
+            fault("audio event prepare failed"); return;
+        }
+        lock.unlock();
+        const int polled = pa_mainloop_poll(loop_);
+        lock.lock();
+        if (polled < 0 || pa_mainloop_dispatch(loop_) < 0)
+            fault("audio event poll/dispatch failed");
+    }
+    void service_output() {
+        const auto now = now_ns();
+        if (last_output_service_ns_)
+            status_.output_service_max_gap_ns = std::max(status_.output_service_max_gap_ns,
+                                                         now - last_output_service_ns_);
+        last_output_service_ns_ = now;
+        process_keepalive();
+        process_playback();
+    }
+    std::string service_detail() const {
+        return "output_service_gap_ns=" + std::to_string(last_output_service_ns_ ?
+            now_ns() - last_output_service_ns_ : 0) +
+            " playback_queued_frames=" + std::to_string(playback_.size()) +
+            " raw_capture_samples=" + std::to_string(raw_samples_);
+    }
     void emit(std::string type, std::string detail) {
         if (events_.size() == 256) {
             events_.pop_front();
@@ -207,10 +253,11 @@ private:
         status_.capturing = false;
         status_.capture_stopping = false;
         stop_capture_pending_ = false; stop_cork_done_ = false;
-        capture_.clear(); playback_.clear(); raw_.clear(); raw_samples_ = 0;
+        capture_.clear(); playback_.clear(); raw_.clear(); raw_samples_ = 0; raw_offset_ = 0;
         native_playback_.clear(); native_offset_ = 0;
         drain_requested_ = false; tail_finished_ = false;
-        playback_started_ = false; status_.drained = true;
+        playback_started_ = false; playback_transport_started_ = false;
+        lead_in_remaining_frames_ = 0; status_.drained = true;
     }
     void clear_operation(pa_operation*& operation) {
         if (operation) {
@@ -241,7 +288,11 @@ private:
         clear_operation(capture_flush_); clear_operation(playback_flush_);
         clear_operation(drain_operation_); clear_operation(stop_cork_);
         clear_operation(capture_cork_); clear_operation(playback_cork_);
-        destroy_stream(record_); destroy_stream(play_);
+        clear_operation(keepalive_cork_);
+        destroy_stream(keepalive_); destroy_stream(record_); destroy_stream(play_);
+        keepalive_started_ = false; keepalive_uncorked_ = false;
+        status_.playback_keepalive_active = false;
+        status_.playback_keepalive_buffer = {};
         if (context_) {
             pa_context_set_state_callback(context_, nullptr, nullptr);
             pa_context_set_subscribe_callback(context_, nullptr, nullptr);
@@ -251,6 +302,7 @@ private:
         capture_dsp_.reset(); playback_dsp_.reset(); assembler_.reset();
         discovering_ = false; source_done_ = false; sink_done_ = false;
         streams_ready_ = false; bound_source_ = {}; bound_sink_ = {};
+        last_output_service_ns_ = 0;
         current_card_.clear();
     }
     void enter_wait() {
@@ -401,16 +453,30 @@ private:
             if (pa_stream_connect_playback(play_, options_.sink.c_str(), &attr, flags, nullptr, nullptr) < 0)
                 fault("playback stream connection to explicit sink failed");
             playback_dsp_ = std::make_unique<StreamResampler>(16000, spec.rate, 1, spec.channels);
+            if (options_.playback_keepalive) {
+                keepalive_ = pa_stream_new(context_, "explicit earphone keepalive", &spec, nullptr);
+                if (!keepalive_) { fault("keepalive stream allocation failed"); return; }
+                pa_stream_set_state_callback(keepalive_, stream_state, this);
+                pa_stream_set_underflow_callback(keepalive_, underflow, this);
+                pa_stream_set_overflow_callback(keepalive_, overflow, this);
+                pa_stream_set_moved_callback(keepalive_, moved, this);
+                pa_stream_set_suspended_callback(keepalive_, suspended, this);
+                if (pa_stream_connect_playback(keepalive_, options_.sink.c_str(), &attr,
+                                               flags, nullptr, nullptr) < 0)
+                    fault("keepalive stream connection to explicit sink failed");
+            }
         }
         stream_deadline_ = Clock::now() + 3s;
     }
     void check_streams() {
         if (streams_ready_ || fault_pending_) return;
         if ((record_ && pa_stream_get_state(record_) != PA_STREAM_READY) ||
-            (play_ && pa_stream_get_state(play_) != PA_STREAM_READY)) return;
+            (play_ && pa_stream_get_state(play_) != PA_STREAM_READY) ||
+            (keepalive_ && pa_stream_get_state(keepalive_) != PA_STREAM_READY)) return;
         if (!record_ && !play_) return;
         for (const auto& binding : {std::make_pair(record_, &bound_source_),
-                                    std::make_pair(play_, &bound_sink_)}) {
+                                    std::make_pair(play_, &bound_sink_),
+                                    std::make_pair(keepalive_, &bound_sink_)}) {
             if (!binding.first) continue;
             const auto* spec = pa_stream_get_sample_spec(binding.first);
             if (safe(pa_stream_get_device_name(binding.first)) != binding.second->name ||
@@ -422,6 +488,7 @@ private:
         }
         status_.capture_buffer = buffer_info(record_ ? pa_stream_get_buffer_attr(record_) : nullptr);
         status_.playback_buffer = buffer_info(play_ ? pa_stream_get_buffer_attr(play_) : nullptr);
+        status_.playback_keepalive_buffer = buffer_info(keepalive_ ? pa_stream_get_buffer_attr(keepalive_) : nullptr);
         streams_ready_ = true; retry_attempt_ = 0;
         if (ready_once_) ++status_.reconnects;
         ready_once_ = true;
@@ -481,25 +548,30 @@ private:
         return true;
     }
     void process_capture() {
-        if ((!status_.capturing && !status_.capture_stopping) || status_.reset_pending || fault_pending_) return;
-        while (!raw_.empty()) {
-            auto input = std::move(raw_.front()); raw_.pop_front(); raw_samples_ -= input.size();
-            for (auto& sample : input) {
-                if (!std::isfinite(sample)) {
-                    fault("capture contains a non-finite sample"); return;
-                }
-                sample = std::clamp(sample, -1.0F, 1.0F);
+        if ((!status_.capturing && !status_.capture_stopping) || status_.reset_pending ||
+            fault_pending_ || raw_.empty()) return;
+        const auto begin = now_ns();
+        // One 20 ms native slice per service pass. Retain the rest in the same
+        // bounded queue; an accumulated capture fragment must not monopolize
+        // the worker while speech and keepalive wait for transport service.
+        auto& input = raw_.front();
+        const std::size_t channels = bound_source_.spec.channels;
+        const auto count = std::min<std::size_t>(
+            bound_source_.spec.rate / 50 * channels, input.size() - raw_offset_);
+        for (std::size_t i = raw_offset_; i < raw_offset_ + count; ++i) {
+            if (!std::isfinite(input[i])) {
+                fault("capture contains a non-finite sample"); return;
             }
-            const std::size_t channels = bound_source_.spec.channels;
-            const std::size_t slice_samples = (bound_source_.spec.rate / 10) * channels;
-            for (std::size_t offset = 0; offset < input.size(); offset += slice_samples) {
-                const std::size_t count = std::min(slice_samples, input.size() - offset);
-                auto mono = capture_dsp_->process(input.data() + offset, count / channels);
-                for (const auto& samples : assembler_.push(mono.data(), mono.size())) {
-                    if (!enqueue_capture(samples)) return;
-                }
-            }
+            input[i] = std::clamp(input[i], -1.0F, 1.0F);
         }
+        auto mono = capture_dsp_->process(input.data() + raw_offset_, count / channels);
+        raw_offset_ += count; raw_samples_ -= count;
+        if (raw_offset_ == input.size()) { raw_.pop_front(); raw_offset_ = 0; }
+        for (const auto& samples : assembler_.push(mono.data(), mono.size())) {
+            if (!enqueue_capture(samples)) return;
+        }
+        status_.capture_service_max_work_ns = std::max(
+            status_.capture_service_max_work_ns, now_ns() - begin);
     }
     void finish_capture() {
         if (!status_.capture_stopping || status_.reset_pending || fault_pending_) return;
@@ -521,22 +593,17 @@ private:
         // still part of normal input. Pull bounded fragments outside callbacks
         // and finish conversion before publishing the final padded frame.
         if (record_) {
-            for (std::size_t work = 0; work < options_.capture_capacity_frames + 2; ++work) {
-                const auto readable = pa_stream_readable_size(record_);
-                if (readable == static_cast<std::size_t>(-1)) {
-                    fault("capture readable-size query failed while stopping"); return;
-                }
-                if (!readable) break;
-                read_ready(record_, readable, this);
-                process_capture();
-                if (fault_pending_) return;
+            const auto readable = pa_stream_readable_size(record_);
+            if (readable == static_cast<std::size_t>(-1)) {
+                fault("capture readable-size query failed while stopping"); return;
             }
-            if (pa_stream_readable_size(record_) != 0) {
-                fault("capture stop exceeded its bounded pending-input budget"); return;
-            }
+            if (readable) read_ready(record_, readable, this);
         }
         process_capture();
         if (fault_pending_) return;
+        // Normal stop still preserves every buffered sample and the DSP tail;
+        // finish across service passes rather than draining a backlog at once.
+        if (!raw_.empty() || (record_ && pa_stream_readable_size(record_) != 0)) return;
         if (capture_dsp_) {
             auto tail = capture_dsp_->finish();
             for (const auto& samples : assembler_.push(tail.data(), tail.size())) {
@@ -550,12 +617,45 @@ private:
         status_.state = LiveAudioState::ready;
         emit("capture_stopped", "capture cork acknowledged; buffered input and DSP tail queued; context remains playable");
     }
+    void start_playback_transport() {
+        if (playback_transport_started_) return;
+        playback_transport_started_ = true;
+        playback_started_at_ = Clock::now();
+        request_cork(play_, false);
+    }
     void process_playback() {
         if (!play_ || !status_.session_active || status_.reset_pending || fault_pending_) return;
         std::size_t writable = pa_stream_writable_size(play_);
         if (writable == static_cast<std::size_t>(-1)) { fault("playback writable-size query failed"); return; }
         const std::size_t frame_bytes = bound_sink_.spec.channels * sizeof(float);
         writable -= writable % frame_bytes;
+        // Do not wake or add silence for an empty turn. Native silence goes
+        // straight to Pulse's existing bounded server buffer; the constant
+        // 1 KiB scratch below is not a queue of additional speech frames.
+        if (!playback_transport_started_ && !playback_.empty())
+            lead_in_remaining_frames_ = static_cast<std::size_t>(bound_sink_.spec.rate) *
+                                        options_.playback_lead_in_ms / 1000;
+        static constexpr std::array<float, 256> silence{};
+        const auto channels = static_cast<std::size_t>(bound_sink_.spec.channels);
+        for (std::size_t work = 0; lead_in_remaining_frames_ &&
+                work < options_.playback_capacity_frames + 2; ++work) {
+            const auto frames = std::min({lead_in_remaining_frames_, writable / frame_bytes,
+                                          silence.size() / channels});
+            if (!frames) return;
+            const auto bytes = frames * frame_bytes;
+            if (pa_stream_write(play_, silence.data(), bytes, nullptr, 0, PA_SEEK_RELATIVE) < 0) {
+                fault("playback lead-in write failed"); return;
+            }
+            lead_in_remaining_frames_ -= frames; writable -= bytes;
+            if (!playback_transport_started_) {
+                start_playback_transport();
+                emit("playback_lead_in_started", std::to_string(options_.playback_lead_in_ms) +
+                     " ms native-rate silence before speech; software submission only");
+            }
+            if (!lead_in_remaining_frames_)
+                emit("playback_lead_in_queued", "all configured silence submitted; not an acoustic readiness claim");
+        }
+        if (lead_in_remaining_frames_) return;
         for (std::size_t work = 0; work < options_.playback_capacity_frames + 2; ++work) {
             if (native_playback_.empty()) {
                 if (!playback_.empty()) {
@@ -579,9 +679,8 @@ private:
             if (native_offset_ == native_playback_.size()) { native_playback_.clear(); native_offset_ = 0; }
             if (!playback_started_) {
                 playback_started_ = true;
-                playback_started_at_ = Clock::now();
-                request_cork(play_, false);
-                emit("playback_started", "first native-rate float samples submitted to explicit sink");
+                start_playback_transport();
+                emit("playback_started", "first native-rate speech samples submitted after any lead-in; not acoustic onset");
             }
         }
         if (drain_requested_ && tail_finished_ && playback_.empty() && native_playback_.empty() &&
@@ -592,15 +691,55 @@ private:
             if (!drain_operation_) fault("playback drain request failed");
         }
     }
+    void process_keepalive() {
+        // Deliberately independent of session/reset/drain: no user PCM or
+        // generation data ever enters this stream. It cannot delay speech drain.
+        if (!keepalive_ || fault_pending_) return;
+        const std::size_t channels = bound_sink_.spec.channels;
+        const std::size_t stride = channels * sizeof(float);
+        std::size_t writable = pa_stream_writable_size(keepalive_);
+        if (writable == static_cast<std::size_t>(-1)) {
+            fault("keepalive writable size failed"); return;
+        }
+        const std::array<float, 1024> silence{};
+        const std::size_t chunk_bytes = silence.size() / channels * stride;
+        // Bound each worker pass even if the server grants an oversized buffer.
+        for (std::size_t work = 0; writable >= stride && work < 32; ++work) {
+            const auto bytes = std::min(writable / stride * stride, chunk_bytes);
+            if (pa_stream_write(keepalive_, silence.data(), bytes, nullptr, 0, PA_SEEK_RELATIVE) < 0) {
+                fault("keepalive silence write failed"); return;
+            }
+            status_.playback_keepalive_native_frames += bytes / stride;
+            writable -= bytes;
+            if (!keepalive_started_) {
+                keepalive_started_ = true;
+                keepalive_started_at_ = Clock::now();
+                keepalive_cork_ = pa_stream_cork(keepalive_, 0, keepalive_cork_done, this);
+                if (!keepalive_cork_) { fault("keepalive uncork request failed"); return; }
+                emit("playback_keepalive_started", "independent zero-PCM stream; no per-turn prefix");
+            }
+        }
+    }
     void check_active_streams() {
         // A corked device can legitimately suspend while idle. Give an
         // uncorked stream time to resume, then fail instead of feeding an
         // indefinitely suspended device or carrying its generation forward.
+        if (fault_pending_) return;
+        if (keepalive_ && keepalive_started_) {
+            const bool active = keepalive_uncorked_ && pa_stream_is_suspended(keepalive_) == 0;
+            if (active != status_.playback_keepalive_active) {
+                status_.playback_keepalive_active = active;
+                emit(active ? "playback_keepalive_active" : "playback_keepalive_inactive",
+                     "server transport state only; not acoustic readiness");
+            }
+            if (Clock::now() > keepalive_started_at_ + 3s && !active)
+                fault("keepalive stream did not remain uncorked and available");
+        }
         if (status_.reset_pending || fault_pending_) return;
         if (record_ && status_.capturing && Clock::now() > capture_started_at_ + 1s &&
             pa_stream_is_suspended(record_) != 0)
             fault("active capture device is suspended or unavailable");
-        if (play_ && playback_started_ && !status_.drained &&
+        if (play_ && playback_transport_started_ && !status_.drained &&
             Clock::now() > playback_started_at_ + 1s && pa_stream_is_suspended(play_) != 0)
             fault("active playback device is suspended or unavailable");
     }
@@ -637,15 +776,17 @@ private:
                     complete_reset();
                     if (status_.reset_pending && Clock::now() > reset_deadline_)
                         fault("audio server flush acknowledgement timeout");
-                    process_capture(); finish_capture(); process_playback();
+                    service_output();
+                    process_capture(); finish_capture();
+                    service_output();
                     check_active_streams();
                     if (drain_requested_ && !status_.drained && Clock::now() > drain_deadline_)
                         fault("playback drain timeout");
                 }
                 pump_events();
+                wait_events(lock);
             } catch (const std::exception& error) { fault(std::string("audio worker error: ") + error.what()); }
             catch (...) { fault("audio worker encountered an unknown error"); }
-            wake_.wait_for(lock, 5ms);
         }
         teardown();
     }
@@ -731,20 +872,33 @@ private:
         static_cast<PulseAudio*>(userdata)->fault("audio stream moved; refusing automatic fallback");
     }
     static void suspended(pa_stream*, void* userdata) noexcept {
-        static_cast<PulseAudio*>(userdata)->check_active_streams();
+        auto& self = *static_cast<PulseAudio*>(userdata);
+        try { self.check_active_streams(); }
+        catch (...) { self.fault("suspend state callback failed"); }
     }
     static void overflow(pa_stream* stream, void* userdata) noexcept {
         auto& self = *static_cast<PulseAudio*>(userdata);
+        if (stream == self.keepalive_) {
+            self.fault("keepalive server stream overflow"); return;
+        }
         if (stream == self.record_) ++self.status_.capture_overflows;
         else ++self.status_.playback_overflows;
         self.fault("audio server stream overflow; generation cancelled");
     }
-    static void underflow(pa_stream*, void* userdata) noexcept {
+    static void underflow(pa_stream* stream, void* userdata) noexcept {
         auto& self = *static_cast<PulseAudio*>(userdata);
-        if (self.status_.session_active && self.playback_started_ && !self.drain_requested_ &&
+        if (stream == self.keepalive_) {
+            if (self.keepalive_uncorked_) {
+                ++self.status_.playback_keepalive_underruns;
+                try { self.emit("playback_keepalive_underrun", "silent transport buffer underrun; " + self.service_detail()); }
+                catch (...) { self.fault("keepalive underflow callback failed"); }
+            }
+            return;
+        }
+        if (self.status_.session_active && self.playback_transport_started_ && !self.drain_requested_ &&
             !self.status_.reset_pending) {
             ++self.status_.playback_underruns;
-            try { self.emit("playback_underrun", "server playback buffer underrun after playback started"); }
+            try { self.emit("playback_underrun", "server playback buffer underrun after transport started; " + self.service_detail()); }
             catch (...) { self.fault("underflow event callback failed"); }
         }
     }
@@ -804,12 +958,21 @@ private:
         if (self.applied_epoch_ != self.epoch_) return;
         if (!success) self.fault("server rejected audio stream cork/uncork");
     }
+    static void keepalive_cork_done(pa_stream* stream, int success, void* userdata) noexcept {
+        auto& self = *static_cast<PulseAudio*>(userdata);
+        // This operation is backend-scoped, not tied to a speech epoch.
+        if (stream != self.keepalive_) return;
+        if (!success) { self.fault("server rejected keepalive uncork"); return; }
+        self.keepalive_uncorked_ = true;
+    }
     static void drain_done(pa_stream*, int success, void* userdata) noexcept {
         auto& self = *static_cast<PulseAudio*>(userdata);
         if (self.applied_epoch_ != self.epoch_) return;
         if (!success) { self.fault("server rejected playback drain"); return; }
         self.status_.drained = true;
         self.playback_started_ = false;
+        self.playback_transport_started_ = false;
+        self.lead_in_remaining_frames_ = 0;
         try { self.emit("playback_drained", "server playback drain acknowledged"); }
         catch (...) { self.fault("drain event callback failed"); }
     }
@@ -823,15 +986,19 @@ private:
     std::deque<LiveAudioEvent> events_;
     std::deque<AudioFrame> capture_, playback_;
     std::deque<std::vector<float>> raw_;
-    std::size_t raw_samples_ = 0;
+    std::size_t raw_samples_ = 0, raw_offset_ = 0;
+    std::int64_t last_output_service_ns_ = 0;
     std::vector<float> native_playback_;
-    std::size_t native_offset_ = 0;
+    std::size_t native_offset_ = 0, lead_in_remaining_frames_ = 0;
     std::unique_ptr<StreamResampler> capture_dsp_, playback_dsp_;
     MonoFrameAssembler assembler_;
     pa_mainloop* loop_ = nullptr;
     pa_context* context_ = nullptr;
     pa_stream* record_ = nullptr;
     pa_stream* play_ = nullptr;
+    pa_stream* keepalive_ = nullptr;
+    pa_operation* keepalive_cork_ = nullptr;
+    bool keepalive_started_ = false, keepalive_uncorked_ = false;
     pa_operation* capture_flush_ = nullptr;
     pa_operation* playback_flush_ = nullptr;
     pa_operation* drain_operation_ = nullptr;
@@ -846,13 +1013,14 @@ private:
     bool stop_cork_done_ = false;
     bool capture_flush_done_ = false, playback_flush_done_ = false;
     bool drain_requested_ = false, tail_finished_ = false, playback_started_ = false;
+    bool playback_transport_started_ = false;
     bool last_context_valid_ = false, fault_pending_ = false;
     AudioContext last_context_;
     std::string current_card_, expected_source_identity_, expected_sink_identity_, fault_reason_;
     std::uint64_t epoch_ = 0, applied_epoch_ = 0, capture_seq_ = 0, stop_epoch_ = 0;
     std::size_t retry_attempt_ = 0;
     Clock::time_point retry_at_{}, deadline_{}, next_discovery_{}, reset_deadline_{}, stream_deadline_{},
-                      stop_deadline_{}, drain_deadline_{}, capture_started_at_{}, playback_started_at_{};
+                      stop_deadline_{}, drain_deadline_{}, capture_started_at_{}, playback_started_at_{}, keepalive_started_at_{};
 };
 }  // namespace
 

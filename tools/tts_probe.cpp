@@ -285,9 +285,21 @@ int main(int argc, char **argv) {
         for (int i = 0; i < argc; ++i)
             argv_json.push_back(argv[i]);
         report["command"] = argv_json;
+        report["tts_first_segment"]=nullptr;
+        if(config.tts.first_segment) {
+            const auto& first=*config.tts.first_segment;
+            report["tts_first_segment"]={{"min_chars",first.min_chars},{"target_chars",first.target_chars},
+                                        {"boundary_lookahead_chars",first.boundary_lookahead_chars}};
+        }
+        report["tts_sentence_mode"] = config.tts.sentence_mode;
+        report["tts_join_short_sentences"] = config.tts.join_short_sentences;
+        report["tts_boundary_lookahead_chars"] = config.tts.boundary_lookahead_chars;
         report["frontend_debug"] = o.debug_frontend;
-        report["frontend_policy"] = "melo-fullwidth-comma-context-v1";
-        report["frontend_policy_scope"] =
+        report["frontend_policy"] = config.tts.join_short_sentences ?
+            "melo-bounded-sentence-context-v2" : "melo-fullwidth-comma-context-v1";
+        report["frontend_policy_scope"] = config.tts.join_short_sentences ?
+            "internal Chinese sentence marks and U+FF0C use U+3001 within the existing bounded "
+            "segment; trailing sentence marks and original text retained; no new wait or cross-segment merge" :
             "internal U+FF0C to U+3001 alias for the fixed Melo frontend; same comma phone, "
             "one AddBlank per comma-linked bounded segment; original text is retained";
         if (!o.text_only) {
@@ -308,7 +320,7 @@ int main(int argc, char **argv) {
                     r["segments"] = segment_tts_text(c.at("text"), config.tts);
                     r["frontend_segments"] = Json::array();
                     for (const auto &segment : r["segments"])
-                        r["frontend_segments"].push_back(melo_frontend_text(segment.get<std::string>()));
+                        r["frontend_segments"].push_back(melo_frontend_text(segment.get<std::string>(), config.tts.join_short_sentences));
                     r["success"] = true;
                 } catch (const std::exception &e) {
                     r["success"] = false;
@@ -365,7 +377,7 @@ int main(int argc, char **argv) {
             "excludes file I/O. First segment is not first sample streaming latency. Stats are "
             "successful measured attempts only; failures are retained and fail the gate.";
         report["fixed_options"] = {{"max_num_sentences", 1}, {"sid", 0},
-                                   {"speed", 1.0},
+                                   {"speed", config.tts.speed},
                                    {"silence_scale", 1.0},
                                    {"provider", "cpu"},
                                    {"noise_scale", 0.667},
@@ -441,7 +453,7 @@ int main(int argc, char **argv) {
                         accept(converter.push(audio.samples.data(), audio.samples.size()));
                         native.insert(native.end(), audio.samples.begin(), audio.samples.end());
                         segments.push_back({{"text", parts[si]},
-                                            {"frontend_text", melo_frontend_text(parts[si])},
+                                            {"frontend_text", melo_frontend_text(parts[si], config.tts.join_short_sentences)},
                                             {"generate_s", elapsed},
                                             {"adapter_s", segment_wall_s},
                                             {"native_samples", audio.samples.size()}});

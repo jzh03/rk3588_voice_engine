@@ -43,7 +43,20 @@ def cases():
     valid = audio_yaml()
     large_integer = "9" * 500
     large_hex_integer = "0x" + "f" * 500
+
+    dynamic = audio_yaml(extra="""tts:
+  first_segment: {min_chars: 8, target_chars: 15, boundary_lookahead_chars: 2}
+  min_chars: 10
+  target_chars: 24
+  boundary_lookahead_chars: 4
+  sentence_mode: false
+""")
     result = [
+        Case("dynamic first configuration reporting", dynamic, 0, stdout_terms=(
+            "tts.first_segment.min_chars: 8", "tts.first_segment.target_chars: 15",
+            "tts.first_segment.boundary_lookahead_chars: 2", "tts.target_chars: 24",
+            "tts.boundary_lookahead_chars: 4", "tts.sentence_mode: false")),
+
         Case(
             "explicit audio values",
             valid,
@@ -148,6 +161,27 @@ def cases():
             arguments=("--config", "{config}", "--check-config", "--check-config"),
         ),
     ]
+    for value in ("0", "20", "500", "2000"):
+        result.append(Case(
+            "playback lead-in " + value, audio_yaml({"playback_lead_in_ms": value}), 0,
+            stdout_terms=("audio.playback_lead_in_ms: " + value + " ms",)))
+    for value in ("-20", "2001", "2010", "1", "501", "0.5", "true", "null", "[]", "huge"):
+        result.append(Case(
+            "invalid playback lead-in " + value,
+            audio_yaml({"playback_lead_in_ms": value}),
+            error_terms=("playback_lead_in_ms",)))
+    result.append(Case(
+        "default playback lead-in disabled", valid, 0,
+        stdout_terms=("audio.playback_lead_in_ms: 0 ms",)))
+    result.append(Case("default keepalive disabled", valid, 0,
+                       stdout_terms=("audio.playback_keepalive: false",)))
+    for value in ("true", "false"):
+        result.append(Case("keepalive " + value, audio_yaml({"playback_keepalive": value}), 0,
+                           stdout_terms=("audio.playback_keepalive: " + value,)))
+    for value in ("1", "0", "null", "[]", "{}", '"true"', "0.5"):
+        result.append(Case("invalid keepalive " + value,
+                           audio_yaml({"playback_keepalive": value}),
+                           error_terms=("playback_keepalive", "boolean")))
     for field in ("source", "sink", "profile"):
         result.append(Case(
             "missing " + field,

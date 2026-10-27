@@ -242,3 +242,7 @@ SDK 警告 `rkllm_set_chat_template` 会禁用包括 `enable_thinking` 在内的
 固定组合见 [verified-combination.json](../output/runs/p0-r-closeout-20261021-161053/verified-combination.json) 与 [独立复核](../output/runs/p0-r-closeout-20261021-161053/review/final-review.md)。本轮未变更驱动、runtime、头文件或模型；Qwen 实际加载 `deps/rkllm-1.3.0/lib/librkllmrt.so`，maps 和 loader 再次确认 1.3.0 / RKNPU 0.9.8。ASR 的 RKNN 2.3.2、CPU 的 sherpa-onnx 1.12.14 / ORT 1.17.1 配套继续复用既有 ABI/加载证据。
 
 四模型和四依赖的清单 `status=verified`、`run_id=p0-r-closeout-20261021-161053`，另存原 `preparation_run_id`，范围明确为 P0/M0 单模型 SDK 最小可行性。用户明确使用社区预转换 LLM，不再追查其转换步骤；产物身份已固定，历史转换未知保持未知。完整 A04/A08、共驻库冲突、正式 adapter、实时与发布验收尚未完成。详细结果及边界集中见[环境记录 §43](environment.md#43-p0-收尾与首个已验证组合)。
+
+### TTS取消的应用ABI桥接（2026-10-27）
+
+SDK、模型和驱动组合未变。当前实时TTS在应用层对固定ORT1.17.1-patched/API17的`Run`加入generation取消绑定，Sherpa1.12.14仍使用原文件；编译期API17断言、现有运行版本/加载路径检查及真实Run观察共同限定支持范围。其他ONNX调用转发原接口；未来SDK升级必须重新审阅表布局、动态符号绑定和取消语义。实现契约见[TTS原生取消](tts-probe.md#原生取消与固定abi边界)，此次定向证据见[环境§56.30](environment.md#5630-tts取消与故障恢复送音定向修复)，不扩写原P0 verified资产清单。

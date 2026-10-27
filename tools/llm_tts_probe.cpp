@@ -122,6 +122,8 @@ J stats(const TtsStreamStats&r){
       {"peak_pcm_queue_frames",r.peak_pcm_frames},{"discarded_generation_results",r.discarded_generation_results},
       {"begin_ns",r.begin_ns},{"first_segment_ns",r.first_segment_ns},{"first_pcm_ns",r.first_pcm_ns},
       {"cancel_ns",r.cancel_ns},{"producer_done_ns",r.producer_done_ns},
+      {"first_generated_audio_ns",r.first_generated_audio_ns},{"playback_release_ns",r.playback_release_ns},
+      {"peak_native_slots",r.peak_native_slots},{"peak_native_samples",r.peak_native_samples},
       {"generate_s",r.generate_seconds}};
 }
 void wav(const fs::path&p,const std::vector<float>&samples){
@@ -151,8 +153,18 @@ int main(int argc,char**argv){
           {"executable_sha256",file_sha256(fs::canonical("/proc/self/exe"))},
           {"source","real LLM stream"},{"cancel_ms",o.cancel_ms},
           {"tts_threads",config.threads.tts},{"tts_min_chars",config.tts.min_chars},
-          {"tts_max_chars",config.tts.max_chars},{"tts_flush_ms",config.tts.flush_ms}};
-        record["tts_frontend_policy"]="melo-fullwidth-comma-context-v1";
+          {"tts_max_chars",config.tts.max_chars},{"tts_flush_ms",config.tts.flush_ms},
+          {"tts_prebuffer_ms",config.tts.prebuffer_ms},
+          {"tts_target_chars",config.tts.target_chars},{"tts_speed",config.tts.speed},{"tts_sentence_mode",config.tts.sentence_mode},{"tts_join_short_sentences",config.tts.join_short_sentences},
+          {"tts_boundary_lookahead_chars",config.tts.boundary_lookahead_chars}};
+        record["tts_first_segment"]=nullptr;
+        if(config.tts.first_segment) {
+            const auto& first=*config.tts.first_segment;
+            record["tts_first_segment"]={{"min_chars",first.min_chars},{"target_chars",first.target_chars},
+                                        {"boundary_lookahead_chars",first.boundary_lookahead_chars}};
+        }
+        record["tts_frontend_policy"]=config.tts.join_short_sentences ?
+            "melo-bounded-sentence-context-v2" : "melo-fullwidth-comma-context-v1";
         record["tts_max_num_sentences"]=1;
         if(!o.replay.empty())record["source"]="frozen token-time replay, TTS only";
         record["input_sha256"]=o.replay.empty()?"":file_sha256(o.replay);
@@ -171,7 +183,7 @@ int main(int argc,char**argv){
         TtsStreamWorker worker([&](const std::string&s){
             const auto begin=ns();auto a=model.generate(s);
             std::lock_guard<std::mutex> l(generated_mutex);
-            generated.push_back(J{{"text",s},{"frontend_text",melo_frontend_text(s)},
+            generated.push_back(J{{"text",s},{"frontend_text",melo_frontend_text(s,config.tts.join_short_sentences)},
                                  {"begin_ns",begin},{"end_ns",ns()},
                                  {"native_samples",a.samples.size()}});
             return a;

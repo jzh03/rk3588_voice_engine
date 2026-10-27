@@ -216,6 +216,12 @@ Json status_json(const ve::LiveAudioStatus& s) {
         {"capture_frames",s.capture_frames},{"playback_frames",s.playback_frames},
         {"capture_overflows",s.capture_overflows},{"capture_holes",s.capture_holes},
         {"playback_overflows",s.playback_overflows},{"playback_underruns",s.playback_underruns},
+        {"output_service_max_gap_ns",s.output_service_max_gap_ns},
+        {"capture_service_max_work_ns",s.capture_service_max_work_ns},
+        {"playback_keepalive_buffer",buffer_json(s.playback_keepalive_buffer)},
+        {"playback_keepalive_active",s.playback_keepalive_active},
+        {"playback_keepalive_native_frames",s.playback_keepalive_native_frames},
+        {"playback_keepalive_underruns",s.playback_keepalive_underruns},
         {"stale_rejections",s.stale_rejections},{"reconnects",s.reconnects},{"dropped_events",s.dropped_events}};
 }
 
@@ -238,6 +244,8 @@ int run(const Arguments& args) {
         {"control_stdin",args.control},{"record_wav",args.record_wav},
         {"play_wav",args.play_wav.empty()?Json(nullptr):Json(args.play_wav.string())},
         {"source",config.audio.source},{"sink",config.audio.sink},{"profile",config.audio.profile},
+        {"playback_lead_in_ms",config.audio.playback_lead_in_ms},
+        {"playback_keepalive",config.audio.playback_keepalive},
         {"internal_format",{{"rate",16000},{"channels",1},{"samples_per_frame",320},{"sample_type","float32_normalized"}}},
         {"models_loaded",false}};
     if (player) metadata["play_wav_sha256"] = ve::file_sha256(args.play_wav);
@@ -251,6 +259,8 @@ int run(const Arguments& args) {
     }
     ve::LiveAudioOptions options;
     options.source = config.audio.source; options.sink = config.audio.sink; options.profile = config.audio.profile;
+    options.playback_lead_in_ms = config.audio.playback_lead_in_ms;
+    options.playback_keepalive = config.audio.playback_keepalive;
     options.capture_enabled = capture; options.playback_enabled = playback;
     options.capture_capacity_frames = static_cast<std::size_t>(config.queues.capture_ms / config.audio.frame_ms);
     options.playback_capacity_frames = static_cast<std::size_t>(config.queues.playback_ms / config.audio.frame_ms);
@@ -506,6 +516,7 @@ int run(const Arguments& args) {
         std::abs(static_cast<double>(capture_samples)/16000-args.duration_sec)/args.duration_sec : 0;
     const bool counters_ok=!final_status.capture_overflows && !final_status.capture_holes &&
         !final_status.playback_overflows && !final_status.playback_underruns && !final_status.dropped_events &&
+        !final_status.playback_keepalive_underruns &&
         !final_status.stale_rejections && !invalid_capture_frames;
     if (!exit_code && !args.control && initial_started &&
         (device_lost || final_status.state == ve::LiveAudioState::device_wait)) {

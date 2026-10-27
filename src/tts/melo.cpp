@@ -3,6 +3,7 @@
 #include "voice_engine/assets.hpp"
 #include "voice_engine/probe_support.hpp"
 #include "voice_engine/tts.hpp"
+#include "ort_cancel.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -187,7 +188,8 @@ struct MeloTts::Impl {
         t.silence_scale = 1;
         // Batching separately AddBlank-padded sentences flips phone/blank
         // parity in every second sentence, conflicting with Melo language IDs.
-        // melo_frontend_text preserves context across Chinese commas instead.
+        // melo_frontend_text preserves context across Chinese commas and,
+        // optionally, internal short-sentence boundaries before AddBlank.
         t.max_num_sentences = 1;
         std::string rules;
         for (const auto &f : assets.rule_fsts) {
@@ -208,21 +210,27 @@ struct MeloTts::Impl {
 MeloTts::MeloTts(const Config &c, int threads, bool debug_frontend,
                  const fs::path &pronunciation_rules, const fs::path &derived_lexicon) {
     probe::require_model_validation_lock();
+    if (!std::isfinite(c.tts.speed) || c.tts.speed < 0.5 || c.tts.speed > 2.0)
+        throw ConfigError("TTS: speed must be finite and within 0.5..2.0");
     impl_ = std::make_unique<Impl>(c, threads, debug_frontend, pronunciation_rules, derived_lexicon);
 }
 MeloTts::~MeloTts() = default;
-TtsNativeAudio MeloTts::generate(const std::string &text) {
+TtsNativeAudio MeloTts::generate(const std::string &text, std::shared_ptr<TtsCancellation> cancellation) {
     probe::require_model_validation_lock();
-    const auto segments = segment_tts_text(text, impl_->text_config);
-    if (segments.size() != 1 || segments[0] != text)
-        throw std::invalid_argument(
-            "TTS: generate requires one presegmented bounded plain-text segment");
-    const auto frontend_text = melo_frontend_text(text);
+    // The caller already selected this segment. Reapplying a fresh segmenter's
+    // first-fragment rule would incorrectly split a later complete sentence.
+    validate_tts_segment(text, impl_->text_config.max_chars);
+    const auto frontend_text = melo_frontend_text(text, impl_->text_config.join_short_sentences);
+    TtsOrtCancellationScope cancel_scope(std::move(cancellation));
+    if (cancel_scope.token && cancel_scope.token->requested())
+        throw std::runtime_error("TTS generation cancelled before frontend");
     const auto generate_start = std::chrono::steady_clock::now();
     const std::unique_ptr<const SherpaOnnxGeneratedAudio,
                           decltype(&SherpaOnnxDestroyOfflineTtsGeneratedAudio)>
-        a(SherpaOnnxOfflineTtsGenerate(impl_->model.get(), frontend_text.c_str(), 0, 1.0F),
+        a(SherpaOnnxOfflineTtsGenerate(impl_->model.get(), frontend_text.c_str(), 0,
+                                     static_cast<float>(impl_->text_config.speed)),
           SherpaOnnxDestroyOfflineTtsGeneratedAudio);
+    cancel_scope.verify_observed();
     const double generate_seconds =
         std::chrono::duration<double>(std::chrono::steady_clock::now() - generate_start).count();
     if (!a || a->sample_rate != 44100 || a->n <= 0 || !a->samples)

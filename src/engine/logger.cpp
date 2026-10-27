@@ -41,7 +41,7 @@ JsonlLogger::JsonlLogger(const std::filesystem::path& run_dir, std::string run_i
                          LogLimits limits, std::string mode)
     : run_dir_(run_dir.lexically_normal()), run_id_(std::move(run_id)),
       mode_(std::move(mode)), limits_(limits) {
-    if (mode_ != "mock" && mode_ != "audio_probe") {
+    if (mode_ != "mock" && mode_ != "audio_probe" && mode_ != "realtime") {
         throw LogError("unsupported JSONL run mode");
     }
     if (limits_.max_file_bytes == 0 || limits_.max_files == 0) {
