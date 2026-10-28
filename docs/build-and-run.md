@@ -2,6 +2,8 @@
 
 本手册面向开发和排查，日常使用见[项目首页](../README.md#日常使用)。命令在板端工程根目录执行。以下说明通用接口；已公开的结果与计时口径见[性能快照](performance-snapshot.md)。
 
+首次搭建先完成[支持矩阵与系统依赖](supported-platform.md)和[资产获取与首次配置](assets-setup.md)。下面的构建命令以依赖已准备好为前提；正式版本与源码包见[发布入口](releases.md)。
+
 ## 基础环境检查
 
 在开发板仓库根目录执行：
@@ -25,9 +27,9 @@ CMake 基础开关默认 `ON`；三个模型文件探针开关默认 `OFF`：
 | `VOICE_ENGINE_BUILD_AUDIO` | `voice_engine_audio` 内存 mock，仅依赖 C++17 标准库；与下一开关共同决定是否构建真实后端 |
 | `VOICE_ENGINE_BUILD_PULSE_AUDIO` | 音频模块开启时构建 `voice_engine_audio_dsp` 和 `voice_engine_pulse_audio`，依赖 libpulse、libsamplerate 和 pthread；引擎也开启时构建 `audio_probe`，另需 libsndfile |
 | `VOICE_ENGINE_BUILD_ENV_CHECK` | `env_check`，单独检查 libpulse、libsamplerate、libsndfile、yaml-cpp 和 nlohmann-json |
-| `VOICE_ENGINE_BUILD_ASR_PROBE`（OFF） | VAD/RKNN及CPU KWS文件探针；显式开启后检查固定私有 RKNN、sherpa/ORT 与官方 fbank 依赖 |
-| `VOICE_ENGINE_BUILD_TTS_PROBE`（OFF） | CPU TTS 文件探针；显式开启后检查固定私有 sherpa/ORT，复用音频 DSP 与 libsndfile |
-| `VOICE_ENGINE_BUILD_LLM_PROBE`（OFF） | 常驻 RKLLM 文件探针；需 ENGINE 及固定私有 RKLLM 1.3.0。与 TTS 开关同时打开时额外构建 `llm_tts_probe`；三个模型开关全开时再构建 `coexist_probe` 和 `voice_file_demo`，真实 Pulse 后端可用时同时接通 `voice_engine` 实时入口 |
+| `VOICE_ENGINE_BUILD_ASR_PROBE`（OFF） | VAD/RKNN及CPU KWS文件探针；显式开启后检查固定版本的外部 RKNN、sherpa/ORT 与官方 fbank 依赖 |
+| `VOICE_ENGINE_BUILD_TTS_PROBE`（OFF） | CPU TTS 文件探针；显式开启后检查固定版本的外部 sherpa/ORT，复用音频 DSP 与 libsndfile |
+| `VOICE_ENGINE_BUILD_LLM_PROBE`（OFF） | 常驻 RKLLM 文件探针；需 ENGINE 及固定版本的外部 RKLLM 1.3.0。与 TTS 开关同时打开时额外构建 `llm_tts_probe`；三个模型开关全开时再构建 `coexist_probe` 和 `voice_file_demo`，真实 Pulse 后端可用时同时接通 `voice_engine` 实时入口 |
 
 构建工具使用现有 CMake/Ninja 与 C++17 编译器；引擎依赖通过 pkg-config/CMake 查找。启用引擎测试时还需要 Python 3；真实音频集成测试另需 `pipewire`、`pipewire-pulse`、`wireplumber`、`pactl`，测试服务在独立临时目录运行。`BUILD_TESTING=OFF` 可关闭测试目标。仅构建引擎并运行纯状态 mock：
 
@@ -189,7 +191,7 @@ flock -x /tmp/rk3588_voice_engine_model_validation.lock \
   python3 tests/integration/check_fixtures.py
 ```
 
-这组 CTest 不初始化模型或访问物理音频设备；音频集成项使用完全隔离的合成输入和空输出，现已纳入完整回归。固定集负例也在 CTest 中运行，只变异临时副本。默认构建不要求私有模型 SDK，三种独立构建边界继续保留。
+这组 CTest 不初始化模型或访问物理音频设备；音频集成项使用完全隔离的合成输入和空输出，现已纳入完整回归。固定集负例也在 CTest 中运行，只变异临时副本。默认构建不要求额外模型 SDK，三种独立构建边界继续保留。
 
 以下只读取固定文件、保存结果。每次把 `NEW_ASR_RUN`、`NEW_TTS_RUN` 改成新 run ID；`--output-dir` 是父目录，已有 `<父目录>/<run-id>` 会被拒绝。初始化、推理和采样全程共用同一锁，未持有锁时程序在模型初始化前退出 2。
 
@@ -218,7 +220,9 @@ flock -x /tmp/rk3588_voice_engine_model_validation.lock \
 python3 scripts/deploy.py stage --project . --binary build/model-probes/bin/voice_engine \
   --config config/barge-in-local.yaml --release example-release
 python3 scripts/deploy.py verify --release example-release
-systemctl --user stop rk3588-voice-engine
+if systemctl --user cat rk3588-voice-engine.service >/dev/null 2>&1; then
+  systemctl --user stop rk3588-voice-engine
+fi
 python3 scripts/deploy.py activate --release example-release
 python3 scripts/deploy.py install-service --template packaging/rk3588-voice-engine.service.in
 systemctl --user start rk3588-voice-engine

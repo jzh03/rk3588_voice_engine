@@ -42,11 +42,6 @@
           "sha256": "2ad824a11d70447533b69261b120a7c662343efa7de7c1eb99d06b605aea182c"
         },
         {
-          "path": "llm/qwen3.5-2b/provenance.json",
-          "size_bytes": 1892,
-          "sha256": "5650ea7e55f9fda187f1433049fd839ef7c3bcff55e8815f47c00e91a4f73b52"
-        },
-        {
           "path": "llm/qwen3.5-2b/source/LICENSE",
           "size_bytes": 11544,
           "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a"
@@ -93,6 +88,10 @@
         {
           "id": "rknn-runtime",
           "version": "2.3.2"
+        },
+        {
+          "id": "kaldi-native-fbank-model-zoo",
+          "version": "model-zoo-bad6c7334531"
         }
       ],
       "files": [
@@ -100,11 +99,6 @@
           "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/LICENSE-model-zoo-Apache-2.0",
           "size_bytes": 11357,
           "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
-        },
-        {
-          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/decoder-conversion-inputs.json",
-          "size_bytes": 264,
-          "sha256": "32a495901ab269aed9c3758a8c7b6cf09c06246a846d9f5482449ca902c7840f"
         },
         {
           "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/decoder-epoch-99-avg-1.onnx",
@@ -115,11 +109,6 @@
           "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/decoder-epoch-99-avg-1.rknn",
           "size_bytes": 8017769,
           "sha256": "715c669b1cd05ab54b9185dcb6fec9c882fb1bc2be491f6838a5696be18d6dba"
-        },
-        {
-          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/encoder-conversion-inputs.json",
-          "size_bytes": 2624,
-          "sha256": "5e762925a2c0acd4e5043b5030bdfd8c249fdb73aeaa068477e999e86d3d015d"
         },
         {
           "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/encoder-epoch-99-avg-1.onnx",
@@ -137,11 +126,6 @@
           "sha256": "10f53cdc931b44dc8b3199af84efe54a18693b9a48610e8d231a63e67fc14973"
         },
         {
-          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/joiner-conversion-inputs.json",
-          "size_bytes": 327,
-          "sha256": "e5fe989bffbea688a6c00b1bb4250269fed6575602b96508b29f1bc290a8d534"
-        },
-        {
           "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/joiner-epoch-99-avg-1.onnx",
           "size_bytes": 12833675,
           "sha256": "bcbcf0cc1b449bc32b7777084ab5a65d1199b822e2aae149d3a43adc9f4b5775"
@@ -150,11 +134,6 @@
           "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/joiner-epoch-99-avg-1.rknn",
           "size_bytes": 6495894,
           "sha256": "1093b40f3f690bfc1a19d64310f860aae99fadac1c3d7dc59c8d2f379df18e29"
-        },
-        {
-          "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/onnx-io.json",
-          "size_bytes": 13755,
-          "sha256": "175cab3bec4610d82510369ed7c0280a0f061f81cf129639cf13674337cb735f"
         },
         {
           "path": "asr/zipformer-bilingual-zh-en-epoch99-exp96/test.wav",
@@ -414,12 +393,6 @@
           "size_bytes": 28,
           "sha256": "98b45ea81164d1e1a1dd82255207053b15cd6c69d922a1c5cf3387ce604d4b74",
           "role": "license_declaration_source"
-        },
-        {
-          "path": "tts/vits-melo-tts-zh_en/third-party/provenance.json",
-          "size_bytes": 4560,
-          "sha256": "80b4bbd283facf482ae3f51f0a028e84414ea96d8e291b6c41e6f7315d5b2f8b",
-          "role": "component_provenance_supplement"
         }
       ],
       "output": {

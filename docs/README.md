@@ -4,6 +4,10 @@
 
 | 内容 | 入口 |
 |---|---|
+| 首次安装：支持的板卡、系统、驱动及系统包 | [支持的平台与系统依赖](supported-platform.md) |
+| 首次安装：模型、运行库、配置与资产检查 | [资产获取与首次运行](assets-setup.md) |
+| 项目版本、发布说明及正式分发入口 | [版本变更](../CHANGELOG.md)、[发布约定](releases.md)、[v0.2.0说明](releases/v0.2.0.md) |
+| 项目许可证与第三方来源 | [MIT License](../LICENSE)、[第三方声明](../THIRD_PARTY_NOTICES.md) |
 | 构建、配置、资产清单、开发控制与部署 | [构建与运行](build-and-run.md) |
 | 耳机录放、设备等待与重连排查 | [音频诊断](audio-diagnostics.md) |
 | 性能样例、固定参数与结果复算 | [性能快照](performance-snapshot.md)、[精简证据](evidence/performance-snapshot-20261027.json) |

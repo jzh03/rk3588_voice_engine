@@ -2,6 +2,16 @@
 
 在香橙派5上离线完成“听懂问题 → 生成回答 → 耳机播报”的C++17语音引擎。识别、语言模型和语音合成都在板端运行，支持蓝牙耳机双向录放。
 
+## 首次安装与版本
+
+当前项目版本为 **0.2.0**，源码包和 SHA-256 校验文件见 [v0.2.0 正式发布](https://github.com/jzh03/rk3588_voice_engine/releases/tag/v0.2.0)；后续版本以 [GitHub Releases](https://github.com/jzh03/rk3588_voice_engine/releases) 为准。
+
+1. 按[支持的平台与系统依赖](docs/supported-platform.md)确认 Orange Pi 5 / RK3588S、Ubuntu 22.04.5、内核 6.1.99 和 RKNPU 0.9.8 组合，并安装开发与音频依赖。
+2. 按[资产获取与首次运行](docs/assets-setup.md)准备固定模型、运行库和本机音频配置，再完成编译与部署。
+3. 查阅[版本变更](CHANGELOG.md)、[发布说明](docs/releases/v0.2.0.md)及[发布与回退约定](docs/releases.md)。
+
+支持范围以已验证组合为准；其他板卡、内核、运行库组合需独立验证。安装和模型准备需要联网，资产齐备后的语音交互在本机完成。
+
 <a id="当前进度"></a>
 
 ## 能做什么
@@ -37,7 +47,7 @@ python3 scripts/deploy.py send cancel
 systemctl --user stop rk3588-voice-engine
 ```
 
-服务按需手动启停。首次搭建、开发配置与部署命令见[构建与运行](docs/build-and-run.md)。
+服务按需手动启停。首次搭建从[安装入口](#首次安装与版本)开始；配置、CLI和部署命令见[构建与运行](docs/build-and-run.md)。
 
 ## 性能快照
 
@@ -55,12 +65,15 @@ systemctl --user stop rk3588-voice-engine
 
 | 内容 | 入口 |
 |---|---|
+| 支持的平台、系统及依赖安装 | [支持矩阵与依赖](docs/supported-platform.md) |
+| 模型、运行库获取与首次配置 | [资产获取与首次运行](docs/assets-setup.md) |
+| 版本、正式发布与回退 | [版本变更](CHANGELOG.md)、[发布入口](docs/releases.md) |
 | 编译、配置、CLI与资产清单 | [构建与运行](docs/build-and-run.md) |
 | 耳机录放与设备排查 | [音频诊断](docs/audio-diagnostics.md) |
 | 性能快照、参数与证据复算 | [快照说明](docs/performance-snapshot.md) |
 | 公开文档和工具入口 | [文档索引](docs/README.md) |
 
-模型权重与运行库按[资产清单](models/manifest.json)准备；仓库提供固定合成输入和相应工具。
+模型权重与运行库按[资产准备说明](docs/assets-setup.md)获取，身份由[模型清单](models/manifest.json)和[依赖清单](deps/manifest.json)固定；仓库提供固定合成输入和相应工具。
 
 ## 项目目录
 
@@ -89,3 +102,7 @@ AGENTS.md            协作和文件同步约定
 | <a id="模型文件诊断"></a>模型文件诊断 | [文件工具](docs/build-and-run.md#模型文件诊断) |
 | <a id="真实音频诊断"></a>真实音频诊断 | [耳机排查](docs/audio-diagnostics.md#真实音频诊断) |
 | <a id="版本管理约定"></a>版本管理约定 | [版本管理](docs/build-and-run.md#版本管理约定) |
+
+## 许可证
+
+项目自有代码和文档采用 [MIT License](LICENSE)，Copyright (c) 2026 jzh03。第三方代码、模型和运行库保留各自许可，详见[第三方来源与许可](THIRD_PARTY_NOTICES.md)。源码发布不捆绑模型、运行库、本机配置或私人录音。

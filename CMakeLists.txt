@@ -176,6 +176,11 @@ if(BUILD_TESTING)
                     "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/check_fixtures_negative.py")
         set_tests_properties(fixed_fixtures_negative PROPERTIES TIMEOUT 60)
 
+        add_test(NAME asset_setup
+            COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/asset_setup.py")
+        set_tests_properties(asset_setup PROPERTIES TIMEOUT 30)
+
         add_executable(keyword_test tests/unit/keyword_test.cpp)
         voice_engine_cpp_target(keyword_test)
         target_link_libraries(keyword_test PRIVATE voice_engine_keyword)

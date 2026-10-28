@@ -1,0 +1,601 @@
+{
+  "schema_version": 1,
+  "archives": {
+    "sherpa": {
+      "path": "deps/model-prep/speech/downloads/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu.tar.bz2",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.14/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu.tar.bz2",
+      "size_bytes": 23484407,
+      "sha256": "ad3e41f19899754735a074938db955a6818153b305fd2959bffc33405976e180"
+    },
+    "ort": {
+      "path": "deps/model-prep/speech/downloads/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched.zip",
+      "url": "https://github.com/csukuangfj/onnxruntime-libs/releases/download/v1.17.1/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched.zip",
+      "size_bytes": 5073164,
+      "sha256": "6e0e68985f8dd1f643e5a4dbe7cd54c9e176a0cc62249c6bee0699b87fc6d4fb"
+    },
+    "tts": {
+      "path": "models/tts/downloads/vits-melo-tts-zh_en.tar.bz2",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2",
+      "size_bytes": 167006755,
+      "sha256": "e58351ed7149f290a54534538badd4077cdbe6fddc964b24d0bee870415d1514"
+    },
+    "kws": {
+      "path": "models/kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01.tar.bz2",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01.tar.bz2",
+      "size_bytes": 32654866,
+      "sha256": "b2f7c89690dc8ce4c6ed6afeab7cd800c36ad1421fb6b6302b4a4b194cf7f35f"
+    }
+  },
+  "files": [
+    {
+      "path": "models/llm/qwen3.5-2b/Qwen3.5-2B_RK3588_w8a8.rkllm",
+      "group": "models",
+      "url": "https://huggingface.co/HanzoHuang/Qwen3.5-2B-RKLLM/resolve/888bdd28aa55fc77ce135ab3e1b0c6c395f5b108/RK3588/Qwen3.5-2B_RK3588_w8a8.rkllm"
+    },
+    {
+      "path": "models/llm/qwen3.5-2b/conversion/Qwen3.5-2B_data_quant.json",
+      "group": "models",
+      "url": "https://huggingface.co/HanzoHuang/Qwen3.5-2B-RKLLM/resolve/888bdd28aa55fc77ce135ab3e1b0c6c395f5b108/Qwen3.5-2B_data_quant.json"
+    },
+    {
+      "path": "models/llm/qwen3.5-2b/conversion/README.md",
+      "group": "models",
+      "url": "https://huggingface.co/HanzoHuang/Qwen3.5-2B-RKLLM/resolve/888bdd28aa55fc77ce135ab3e1b0c6c395f5b108/README.md"
+    },
+    {
+      "path": "models/llm/qwen3.5-2b/source/LICENSE",
+      "group": "models",
+      "url": "https://huggingface.co/Qwen/Qwen3.5-2B/resolve/15852e8c16360a2fea060d615a32b45270f8a8fc/LICENSE"
+    },
+    {
+      "path": "models/llm/qwen3.5-2b/source/README.md",
+      "group": "models",
+      "url": "https://huggingface.co/Qwen/Qwen3.5-2B/resolve/15852e8c16360a2fea060d615a32b45270f8a8fc/README.md"
+    },
+    {
+      "path": "models/llm/qwen3.5-2b/source/chat_template.jinja",
+      "group": "models",
+      "url": "https://huggingface.co/Qwen/Qwen3.5-2B/resolve/15852e8c16360a2fea060d615a32b45270f8a8fc/chat_template.jinja"
+    },
+    {
+      "path": "models/llm/qwen3.5-2b/source/config.json",
+      "group": "models",
+      "url": "https://huggingface.co/Qwen/Qwen3.5-2B/resolve/15852e8c16360a2fea060d615a32b45270f8a8fc/config.json"
+    },
+    {
+      "path": "models/llm/qwen3.5-2b/source/model.safetensors.index.json",
+      "group": "models",
+      "url": "https://huggingface.co/Qwen/Qwen3.5-2B/resolve/15852e8c16360a2fea060d615a32b45270f8a8fc/model.safetensors.index.json"
+    },
+    {
+      "path": "models/llm/qwen3.5-2b/source/tokenizer_config.json",
+      "group": "models",
+      "url": "https://huggingface.co/Qwen/Qwen3.5-2B/resolve/15852e8c16360a2fea060d615a32b45270f8a8fc/tokenizer_config.json"
+    },
+    {
+      "path": "models/asr/zipformer-bilingual-zh-en-epoch99-exp96/LICENSE-model-zoo-Apache-2.0",
+      "group": "models",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/LICENSE"
+    },
+    {
+      "path": "models/asr/zipformer-bilingual-zh-en-epoch99-exp96/decoder-epoch-99-avg-1.onnx",
+      "group": "models",
+      "url": "https://huggingface.co/csukuangfj/k2fsa-zipformer-bilingual-zh-en-t/resolve/e2382758de9a0219b4efe682b95af30b399db3b8/exp/96/decoder-epoch-99-avg-1.onnx"
+    },
+    {
+      "path": "models/asr/zipformer-bilingual-zh-en-epoch99-exp96/decoder-epoch-99-avg-1.rknn",
+      "group": "models",
+      "generated_by": "scripts/convert_zipformer.py"
+    },
+    {
+      "path": "models/asr/zipformer-bilingual-zh-en-epoch99-exp96/encoder-epoch-99-avg-1.onnx",
+      "group": "models",
+      "url": "https://huggingface.co/csukuangfj/k2fsa-zipformer-bilingual-zh-en-t/resolve/e2382758de9a0219b4efe682b95af30b399db3b8/exp/96/encoder-epoch-99-avg-1.onnx"
+    },
+    {
+      "path": "models/asr/zipformer-bilingual-zh-en-epoch99-exp96/encoder-epoch-99-avg-1.rknn",
+      "group": "models",
+      "generated_by": "scripts/convert_zipformer.py"
+    },
+    {
+      "path": "models/asr/zipformer-bilingual-zh-en-epoch99-exp96/feature-config.json",
+      "group": "models",
+      "copy": "scripts/assets/zipformer-feature-config.json"
+    },
+    {
+      "path": "models/asr/zipformer-bilingual-zh-en-epoch99-exp96/joiner-epoch-99-avg-1.onnx",
+      "group": "models",
+      "url": "https://huggingface.co/csukuangfj/k2fsa-zipformer-bilingual-zh-en-t/resolve/e2382758de9a0219b4efe682b95af30b399db3b8/exp/96/joiner-epoch-99-avg-1.onnx"
+    },
+    {
+      "path": "models/asr/zipformer-bilingual-zh-en-epoch99-exp96/joiner-epoch-99-avg-1.rknn",
+      "group": "models",
+      "generated_by": "scripts/convert_zipformer.py"
+    },
+    {
+      "path": "models/asr/zipformer-bilingual-zh-en-epoch99-exp96/test.wav",
+      "group": "models",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/examples/zipformer/model/test.wav"
+    },
+    {
+      "path": "models/asr/zipformer-bilingual-zh-en-epoch99-exp96/tokens-upstream.txt",
+      "group": "models",
+      "url": "https://huggingface.co/csukuangfj/k2fsa-zipformer-bilingual-zh-en-t/resolve/e2382758de9a0219b4efe682b95af30b399db3b8/data/lang_char_bpe/tokens.txt"
+    },
+    {
+      "path": "models/asr/zipformer-bilingual-zh-en-epoch99-exp96/upstream-model-card.md",
+      "group": "models",
+      "url": "https://huggingface.co/csukuangfj/k2fsa-zipformer-bilingual-zh-en-t/resolve/e2382758de9a0219b4efe682b95af30b399db3b8/README.md"
+    },
+    {
+      "path": "models/asr/zipformer-bilingual-zh-en-epoch99-exp96/vocab.txt",
+      "group": "models",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/examples/zipformer/model/vocab.txt"
+    },
+    {
+      "path": "models/vad/silero-v5/LICENSE",
+      "group": "models",
+      "url": "https://raw.githubusercontent.com/snakers4/silero-vad/5cd2ba54db059f961e7545d4f211b44f005a6dfb/LICENSE"
+    },
+    {
+      "path": "models/vad/silero-v5/silero_vad_v5.onnx",
+      "group": "models",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad_v5.onnx"
+    },
+    {
+      "path": "models/vad/silero-v5/upstream-v5.0.onnx",
+      "group": "models",
+      "copy": "models/vad/silero-v5/silero_vad_v5.onnx"
+    },
+    {
+      "path": "models/tts/downloads/vits-melo-tts-zh_en.tar.bz2",
+      "group": "models",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/LICENSE",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/LICENSE"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/README.md",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/README.md"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/date.fst",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/date.fst"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/dict/README.md",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/dict/README.md"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/dict/hmm_model.utf8",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/dict/hmm_model.utf8"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/dict/idf.utf8",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/dict/idf.utf8"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/dict/jieba.dict.utf8",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/dict/jieba.dict.utf8"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/dict/pos_dict/char_state_tab.utf8",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/dict/pos_dict/char_state_tab.utf8"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/dict/pos_dict/prob_emit.utf8",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/dict/pos_dict/prob_emit.utf8"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/dict/pos_dict/prob_start.utf8",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/dict/pos_dict/prob_start.utf8"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/dict/pos_dict/prob_trans.utf8",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/dict/pos_dict/prob_trans.utf8"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/dict/stop_words.utf8",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/dict/stop_words.utf8"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/dict/user.dict.utf8",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/dict/user.dict.utf8"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/lexicon.txt",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/lexicon.txt"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/model.int8.onnx",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/model.int8.onnx"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/model.onnx",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/model.onnx"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/new_heteronym.fst",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/new_heteronym.fst"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/number.fst",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/number.fst"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/phone.fst",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/phone.fst"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/tokens.txt",
+      "group": "models",
+      "archive": "tts",
+      "member": "vits-melo-tts-zh_en/tokens.txt"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/third-party/LICENSE-cppjieba-reference.txt",
+      "group": "models",
+      "url": "https://raw.githubusercontent.com/csukuangfj/cppjieba/f03dd931a00330c279c8590275850fd1f6749a18/LICENSE"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/third-party/LICENSE-fst-Apache-2.0.txt",
+      "group": "models",
+      "url": "https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/26aa2fa93210376a89de3a65a1a4dd320c37f5e9/LICENSE"
+    },
+    {
+      "path": "models/tts/vits-melo-tts-zh_en/third-party/fst-source-model-card.md",
+      "group": "models",
+      "url": "https://huggingface.co/csukuangfj/icefall-tts-aishell3-vits-low-2024-04-06/resolve/57345c004e13ed640e408c4c29ab56187b18f065/README.md"
+    },
+    {
+      "path": "models/kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/encoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+      "group": "models",
+      "archive": "kws",
+      "member": "sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/encoder-epoch-12-avg-2-chunk-16-left-64.onnx"
+    },
+    {
+      "path": "models/kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/decoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+      "group": "models",
+      "archive": "kws",
+      "member": "sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/decoder-epoch-12-avg-2-chunk-16-left-64.onnx"
+    },
+    {
+      "path": "models/kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/joiner-epoch-12-avg-2-chunk-16-left-64.onnx",
+      "group": "models",
+      "archive": "kws",
+      "member": "sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/joiner-epoch-12-avg-2-chunk-16-left-64.onnx"
+    },
+    {
+      "path": "models/kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/tokens.txt",
+      "group": "models",
+      "archive": "kws",
+      "member": "sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/tokens.txt"
+    },
+    {
+      "path": "models/kws/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/README.md",
+      "group": "models",
+      "archive": "kws",
+      "member": "sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/README.md"
+    },
+    {
+      "path": "deps/rknn-2.3.2/upstream/CHANGELOG.md",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-toolkit2/42aa1d426c0a9e0869b6374edba009f7208a1926/CHANGELOG.md"
+    },
+    {
+      "path": "deps/rknn-2.3.2/upstream/LICENSE",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-toolkit2/42aa1d426c0a9e0869b6374edba009f7208a1926/LICENSE"
+    },
+    {
+      "path": "deps/rknn-2.3.2/upstream/README.md",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-toolkit2/42aa1d426c0a9e0869b6374edba009f7208a1926/README.md"
+    },
+    {
+      "path": "deps/rknn-2.3.2/lib/librknnrt.so",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-toolkit2/42aa1d426c0a9e0869b6374edba009f7208a1926/rknpu2/runtime/Linux/librknn_api/aarch64/librknnrt.so"
+    },
+    {
+      "path": "deps/rknn-2.3.2/include/rknn_api.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-toolkit2/42aa1d426c0a9e0869b6374edba009f7208a1926/rknpu2/runtime/Linux/librknn_api/include/rknn_api.h"
+    },
+    {
+      "path": "deps/rknn-2.3.2/include/rknn_custom_op.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-toolkit2/42aa1d426c0a9e0869b6374edba009f7208a1926/rknpu2/runtime/Linux/librknn_api/include/rknn_custom_op.h"
+    },
+    {
+      "path": "deps/rknn-2.3.2/include/rknn_matmul_api.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-toolkit2/42aa1d426c0a9e0869b6374edba009f7208a1926/rknpu2/runtime/Linux/librknn_api/include/rknn_matmul_api.h"
+    },
+    {
+      "path": "deps/rkllm-1.3.0/upstream/CHANGELOG.md",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-llm/878f9361fd3afa7e167b7079918918f78d2c1c2a/CHANGELOG.md"
+    },
+    {
+      "path": "deps/rkllm-1.3.0/upstream/LICENSE",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-llm/878f9361fd3afa7e167b7079918918f78d2c1c2a/LICENSE"
+    },
+    {
+      "path": "deps/rkllm-1.3.0/upstream/README.md",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-llm/878f9361fd3afa7e167b7079918918f78d2c1c2a/README.md"
+    },
+    {
+      "path": "deps/rkllm-1.3.0/lib/librkllmrt.so",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-llm/878f9361fd3afa7e167b7079918918f78d2c1c2a/rkllm-runtime/Linux/librkllm_api/aarch64/librkllmrt.so"
+    },
+    {
+      "path": "deps/rkllm-1.3.0/include/rkllm.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-llm/878f9361fd3afa7e167b7079918918f78d2c1c2a/rkllm-runtime/Linux/librkllm_api/include/rkllm.h"
+    },
+    {
+      "path": "deps/model-prep/speech/downloads/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu.tar.bz2",
+      "group": "deps",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.14/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu.tar.bz2"
+    },
+    {
+      "path": "deps/model-prep/speech/include/sherpa-onnx/c-api/c-api.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/26aa2fa93210376a89de3a65a1a4dd320c37f5e9/sherpa-onnx/c-api/c-api.h"
+    },
+    {
+      "path": "deps/model-prep/speech/include/sherpa-onnx/c-api/cxx-api.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/26aa2fa93210376a89de3a65a1a4dd320c37f5e9/sherpa-onnx/c-api/cxx-api.h"
+    },
+    {
+      "path": "deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libsherpa-onnx-c-api.so",
+      "group": "deps",
+      "archive": "sherpa",
+      "member": "sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libsherpa-onnx-c-api.so"
+    },
+    {
+      "path": "deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libsherpa-onnx-cxx-api.so",
+      "group": "deps",
+      "archive": "sherpa",
+      "member": "sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libsherpa-onnx-cxx-api.so"
+    },
+    {
+      "path": "deps/model-prep/speech/source-evidence/LICENSE",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/26aa2fa93210376a89de3a65a1a4dd320c37f5e9/LICENSE"
+    },
+    {
+      "path": "deps/model-prep/speech/downloads/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched.zip",
+      "group": "deps",
+      "url": "https://github.com/csukuangfj/onnxruntime-libs/releases/download/v1.17.1/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched.zip"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/GIT_COMMIT_ID",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/GIT_COMMIT_ID"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/LICENSE",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/LICENSE"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/Privacy.md",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/Privacy.md"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/README.md",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/README.md"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/ThirdPartyNotices.txt",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/ThirdPartyNotices.txt"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/VERSION_NUMBER",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/VERSION_NUMBER"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/cpu_provider_factory.h",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/cpu_provider_factory.h"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_c_api.h",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_c_api.h"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_cxx_api.h",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_cxx_api.h"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_cxx_inline.h",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_cxx_inline.h"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_float16.h",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_float16.h"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_run_options_config_keys.h",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_run_options_config_keys.h"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_session_options_config_keys.h",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_session_options_config_keys.h"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_training_c_api.h",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_training_c_api.h"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_training_cxx_api.h",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_training_cxx_api.h"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_training_cxx_inline.h",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/onnxruntime_training_cxx_inline.h"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/provider_options.h",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/include/provider_options.h"
+    },
+    {
+      "path": "deps/model-prep/speech/onnxruntime/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/lib/libonnxruntime.so",
+      "group": "deps",
+      "archive": "ort",
+      "member": "onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1-patched/lib/libonnxruntime.so"
+    },
+    {
+      "path": "deps/model-prep/speech/sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libonnxruntime.so",
+      "group": "deps",
+      "archive": "sherpa",
+      "member": "sherpa-onnx-v1.12.14-linux-aarch64-shared-cpu/lib/libonnxruntime.so"
+    },
+    {
+      "path": "deps/model-prep/asr/upstream/3rdparty/kaldi_native_fbank/Linux/aarch64/libkaldi-native-fbank-core.a",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/3rdparty/kaldi_native_fbank/Linux/aarch64/libkaldi-native-fbank-core.a"
+    },
+    {
+      "path": "deps/model-prep/asr/upstream/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/feature-fbank.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/feature-fbank.h"
+    },
+    {
+      "path": "deps/model-prep/asr/upstream/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/feature-functions.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/feature-functions.h"
+    },
+    {
+      "path": "deps/model-prep/asr/upstream/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/feature-mfcc.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/feature-mfcc.h"
+    },
+    {
+      "path": "deps/model-prep/asr/upstream/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/feature-window.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/feature-window.h"
+    },
+    {
+      "path": "deps/model-prep/asr/upstream/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/kaldi-math.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/kaldi-math.h"
+    },
+    {
+      "path": "deps/model-prep/asr/upstream/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/log.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/log.h"
+    },
+    {
+      "path": "deps/model-prep/asr/upstream/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/mel-computations.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/mel-computations.h"
+    },
+    {
+      "path": "deps/model-prep/asr/upstream/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/online-feature.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/online-feature.h"
+    },
+    {
+      "path": "deps/model-prep/asr/upstream/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/rfft.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/rfft.h"
+    },
+    {
+      "path": "deps/model-prep/asr/upstream/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/whisper-feature.h",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/3rdparty/kaldi_native_fbank/include/kaldi-native-fbank/csrc/whisper-feature.h"
+    },
+    {
+      "path": "deps/model-prep/asr/upstream/LICENSE",
+      "group": "deps",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn_model_zoo/bad6c7334531becaf90a561988519b7bec34d0ab/LICENSE"
+    }
+  ],
+  "extras": [
+    {
+      "path": "deps/model-prep/asr/downloads/rknn_toolkit2-2.3.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
+      "group": "converter",
+      "url": "https://raw.githubusercontent.com/airockchip/rknn-toolkit2/42aa1d426c0a9e0869b6374edba009f7208a1926/rknn-toolkit2/packages/arm64/rknn_toolkit2-2.3.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
+      "size_bytes": 37641091,
+      "sha256": "73d0bb55d30ee00bbd9603331a4118da73a4e12fa9d9196200460d07d67c6a12"
+    }
+  ]
+}
