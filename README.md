@@ -86,10 +86,8 @@ tests/               回归代码与固定合成输入
 models/、deps/        资产身份清单；权重与运行库实体不随Git发布
 docs/                使用说明、性能快照与官方参考资料
 output/              本机运行记录，不随Git发布
-AGENTS.md            协作和文件同步约定
 ```
 
-日常开发通过Windows上的Codex与SSH操作板端工程；Windows目录仅作参考。
 
 ## 开发与旧章节入口
 
