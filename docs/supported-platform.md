@@ -22,6 +22,8 @@
 
 系统包表中的 Debian/Ubuntu 修订号是已记录环境，不是全系统依赖锁。下文 apt 命令从 Jammy 仓库解析可用包；若解析结果与表中不同，应记录差异并完成相应回归，不能直接继承原组合的验证结论。模型、NPU runtime 和 CPU 语音库则按清单固定文件校验。
 
+云端构建所需的附加系统包及 CPU 语音资产见[云端语音指南](cloud-voice.md#构建和准备资产)。
+
 ## 取得匹配系统并核对身份
 
 板厂镜像入口为 [Orange Pi 5 官方资料页](https://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/service-and-support/Orange-pi-5.html)。现用镜像名称记录为 `Orangepi5_1.2.4_ubuntu_jammy_desktop_xfce_linux6.1.99`。板厂构建工程见 [orangepi-build](https://github.com/orangepi-xunlong/orangepi-build)。
@@ -151,20 +153,20 @@ WirePlumber 0.5 已改变配置格式，本项目隔离测试使用的 0.4 Lua �
 
 ## 基础构建检查与下一步
 
-已按[发布入口](releases.md)校验并解压源码包时，继续留在 `rk3588_voice_engine-0.2.0` 目录，跳过下面的 clone；后续构建不需要 `.git`。已有工作副本也直接进入原目录，不另建副本。
+已按[发布入口](releases.md)校验并解压源码包时，继续留在 `rk3588_voice_engine-0.3.0` 目录，跳过下面的 clone；后续构建不需要 `.git`。已有工作副本也直接进入原目录，不另建副本。
 
-选择 Git 安装且 `v0.2.0` 已正式发布时，在板端获取该标签，避免默认分支的后续变更改变安装版本：
+选择 Git 安装时，先在 [GitHub Releases](https://github.com/jzh03/rk3588_voice_engine/releases) 确认可用版本，再在板端获取对应标签。以下以 `v0.3.0` 为例。
 
 ```bash
 mkdir -p "$HOME/projects"
 cd "$HOME/projects"
-git clone --branch v0.2.0 --depth 1 https://github.com/jzh03/rk3588_voice_engine.git
+git clone --branch v0.3.0 --depth 1 https://github.com/jzh03/rk3588_voice_engine.git
 cd rk3588_voice_engine
 ```
 
 如果找不到目标标签或对应 Release 附件，先检查正式发布页面和网络连接，不以默认分支替代所选版本。
 
-在工程根目录执行下列基础检查。锁覆盖整个构建和测试进程，避免与模型推理及性能采样争用：
+在工程根目录执行下列端侧基础检查。锁覆盖整个构建和测试进程，避免与模型推理及性能采样争用。构建云端或双后端版本时，按[云端语音指南](cloud-voice.md#构建和准备资产)补齐系统依赖并使用对应选项。
 
 ```bash
 flock -x /tmp/rk3588_voice_engine_model_validation.lock bash -c '

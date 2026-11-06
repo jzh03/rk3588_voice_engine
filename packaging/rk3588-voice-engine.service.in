@@ -1,5 +1,5 @@
 [Unit]
-Description=RK3588 local voice engine
+Description=RK3588 voice engine
 Wants=pipewire-pulse.service wireplumber.service
 After=pipewire-pulse.service wireplumber.service
 StartLimitIntervalSec=300
@@ -9,9 +9,10 @@ StartLimitBurst=3
 Type=simple
 ExecStart="@PYTHON@" "@ROOT@/current/deploy.py" --root "@ROOT@" serve
 Environment=PULSE_SERVER=unix:%t/pulse/native
+EnvironmentFile=-%h/.config/rk3588-voice-engine/.env.cloud
 UMask=0077
 NoNewPrivileges=yes
-RestrictAddressFamilies=AF_UNIX
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 Restart=on-failure
 RestartPreventExitStatus=2
 RestartSec=5

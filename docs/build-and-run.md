@@ -19,7 +19,7 @@ ctest --test-dir build --output-on-failure
 
 多人或多代理并行开发时，构建、CTest 和大文件校验也应通过 `flock -x /tmp/rk3588_voice_engine_model_validation.lock <完整命令>` 与模型初始化、推理及性能采样互斥，锁覆盖整个进程。性能采样窗口内不得并行编译或大文件校验。单独运行的上述命令仍使用同一板端构建目录。
 
-CMake 基础开关默认 `ON`；三个模型文件探针开关默认 `OFF`：
+CMake 基础开关默认 `ON`，模型探针和云端构建开关默认 `OFF`。
 
 | 开关 | 构建内容与依赖 |
 |---|---|
@@ -30,6 +30,8 @@ CMake 基础开关默认 `ON`；三个模型文件探针开关默认 `OFF`：
 | `VOICE_ENGINE_BUILD_ASR_PROBE`（OFF） | VAD/RKNN及CPU KWS文件探针；显式开启后检查固定版本的外部 RKNN、sherpa/ORT 与官方 fbank 依赖 |
 | `VOICE_ENGINE_BUILD_TTS_PROBE`（OFF） | CPU TTS 文件探针；显式开启后检查固定版本的外部 sherpa/ORT，复用音频 DSP 与 libsndfile |
 | `VOICE_ENGINE_BUILD_LLM_PROBE`（OFF） | 常驻 RKLLM 文件探针；需 ENGINE 及固定版本的外部 RKLLM 1.3.0。与 TTS 开关同时打开时额外构建 `llm_tts_probe`；三个模型开关全开时再构建 `coexist_probe` 和 `voice_file_demo`，真实 Pulse 后端可用时同时接通 `voice_engine` 实时入口 |
+| `VOICE_ENGINE_BUILD_CLOUD`（OFF） | 云端 ASR/LLM/TTS、本地 CPU 唤醒和 VAD，依赖 libcurl |
+| `VOICE_ENGINE_BUILD_STREAMING_ASR` / `VOICE_ENGINE_BUILD_STREAMING_TTS`（OFF） | 分别启用百炼 WebSocket 转写或合成，依赖 CLOUD 和 libwebsockets |
 
 构建工具使用现有 CMake/Ninja 与 C++17 编译器；引擎依赖通过 pkg-config/CMake 查找。启用引擎测试时还需要 Python 3；真实音频集成测试另需 `pipewire`、`pipewire-pulse`、`wireplumber`、`pactl`，测试服务在独立临时目录运行。`BUILD_TESTING=OFF` 可关闭测试目标。仅构建引擎并运行纯状态 mock：
 
@@ -140,6 +142,14 @@ tts:
 
 清单用于完整性和版本字符串匹配；程序不联网核实来源、不验证run_id所代表的记录，也不据平台字符串证明兼容性。status保持本机资产登记值；schema要求run_id时使用明确的`private-validation-record-withheld`标记，不链接或冒充公开实验记录。`ASSETS_OK`只表示资产检查通过。清理元数据会改变工程清单自身的哈希，不改变资产文件或现有已安装发布目录。
 
+## 百炼流式 ASR
+
+ASR 协议、VAD、预卷和构建选项集中见[云端语音指南](cloud-voice.md#流式识别播报与检查)。
+
+## 百炼流式 TTS
+
+TTS 协议、PCM 播放和配置模板集中见[云端语音指南](cloud-voice.md#流式识别播报与检查)。
+
 ## 终端控制与 JSONL 日志
 
 真实实时模式需要启用模型的构建及已准备好的本机配置。以下mock入口不加载模型或打开音频设备；两种模式共用run/session/generation/seq关联和日志轮转规则。
@@ -217,12 +227,12 @@ flock -x /tmp/rk3588_voice_engine_model_validation.lock \
 部署管理器是[scripts/deploy.py](../scripts/deploy.py)。准备好本机配置后，可将程序和固定资产打包；下面的版本名是示例，不能覆盖已存在版本：
 
 ```bash
+if systemctl --user is-active --quiet rk3588-voice-engine; then
+  systemctl --user stop rk3588-voice-engine
+fi
 python3 scripts/deploy.py stage --project . --binary build/model-probes/bin/voice_engine \
   --config config/barge-in-local.yaml --release example-release
 python3 scripts/deploy.py verify --release example-release
-if systemctl --user cat rk3588-voice-engine.service >/dev/null 2>&1; then
-  systemctl --user stop rk3588-voice-engine
-fi
 python3 scripts/deploy.py activate --release example-release
 python3 scripts/deploy.py install-service --template packaging/rk3588-voice-engine.service.in
 systemctl --user start rk3588-voice-engine
@@ -239,6 +249,10 @@ systemctl --user start rk3588-voice-engine
 ```
 
 回退恢复上一程序、配置及资产组合，不回退系统库或内核。更多子命令以`python3 scripts/deploy.py --help`为准。
+
+### 同一版本的端侧与云端切换
+
+百炼和兼容服务的模板、凭据、双后端打包、换档及共用语速见[云端语音指南](cloud-voice.md#部署切换与共用语速)。
 
 ## 版本管理约定
 

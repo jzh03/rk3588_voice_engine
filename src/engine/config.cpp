@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <initializer_list>
+#include <iterator>
 #include <set>
 #include <string_view>
 
@@ -171,6 +172,159 @@ int fixed_integer(const YAML::Node& audio, const char* key, int expected) {
     return actual;
 }
 
+bool identifier(const std::string& text, std::string_view punctuation, std::size_t max) {
+    return !text.empty() && text.size() <= max && std::all_of(text.begin(), text.end(), [&](unsigned char ch) {
+        return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') ||
+               punctuation.find(ch) != std::string_view::npos;
+    });
+}
+
+void parse_cloud_service(const YAML::Node& node, const std::string& section,
+                         const char* compatible_protocol, const char* bailian_protocol,
+                         CloudService& service, const char* websocket_protocol = nullptr) {
+    service.provider = string_value(node, section, "provider");
+    service.protocol = string_value(node, section, "protocol");
+    const bool bailian = service.provider == "bailian";
+    const bool streaming = websocket_protocol && bailian && service.protocol == websocket_protocol;
+    if (!streaming && ((service.provider != "openai_compatible" && !bailian) ||
+        service.protocol != (bailian ? bailian_protocol : compatible_protocol)))
+        throw ConfigError(section + " requires openai_compatible/" + compatible_protocol +
+                          " or bailian/" + bailian_protocol + (websocket_protocol ? std::string(" or bailian/") + websocket_protocol : ""));
+    if (streaming && service.protocol == "dashscope_asr_ws") service.total_ms = 5000;
+    service.allow_http = boolean_or_default(node, section, "allow_http", false);
+    service.endpoint = string_value(node, section, "endpoint");
+    const std::string_view workspace_prefix = streaming ? "wss://{WorkspaceId}." : "https://{WorkspaceId}.";
+    if (bailian && service.endpoint.compare(0, workspace_prefix.size(), workspace_prefix) == 0) {
+        const char* value = std::getenv("DASHSCOPE_WORKSPACE_ID");
+        const std::string workspace = value ? value : "";
+        if (!identifier(workspace, "-", 63) || workspace.front() == '-' || workspace.back() == '-')
+            throw ConfigError(section + " requires DASHSCOPE_WORKSPACE_ID for the workspace endpoint");
+        service.endpoint.replace(workspace_prefix.find('{'), std::string_view("{WorkspaceId}").size(), workspace);
+    }
+    const auto& url = service.endpoint;
+    const auto https = url.compare(0, 8, "https://") == 0;
+    const auto http = url.compare(0, 7, "http://") == 0;
+    const auto start = streaming ? 6 : https ? 8 : 7;
+    const auto slash = url.find('/', start);
+    const bool allowed = streaming ? !service.allow_http && url.compare(0, 6, "wss://") == 0 :
+                                     https || (http && service.allow_http);
+    if (!allowed || slash == std::string::npos ||
+        slash == static_cast<std::size_t>(start) ||
+        !identifier(url.substr(start, slash - start), ".-:[]", 260) ||
+        !identifier(url.substr(slash), "/._-~", 1024))
+        throw ConfigError(section + (streaming ? ".endpoint requires a complete WSS address with a path" :
+            ".endpoint requires a complete HTTPS address with a path (HTTP requires allow_http)"));
+    service.model = string_value(node, section, "model");
+    if (!identifier(service.model, "_-.:/@", 256))
+        throw ConfigError(section + ".model must be a model identifier");
+    const auto auth = node["auth"] ? string_value(node, section, "auth") : "bearer";
+    if (auth != "bearer" && auth != "none")
+        throw ConfigError(section + ".auth must be bearer or none");
+    service.bearer_auth = auth == "bearer";
+    if (bailian && !service.bearer_auth)
+        throw ConfigError(section + " requires bearer auth for Bailian");
+    if (service.bearer_auth) {
+        service.api_key_env = string_value(node, section, "api_key_env");
+        if (!identifier(service.api_key_env, "_", 128) ||
+            (service.api_key_env.front() >= '0' && service.api_key_env.front() <= '9'))
+            throw ConfigError(section + ".api_key_env must be an environment variable name");
+        try { cloud_api_key(service); }
+        catch (const ConfigError& error) { throw ConfigError(section + ": " + error.what()); }
+    } else if (node["api_key_env"]) {
+        throw ConfigError(section + ".auth=none requires omitting api_key_env");
+    }
+    service.total_ms = bounded_integer(node, section, "total_ms", service.total_ms, 1, 120000);
+    service.connect_ms = bounded_integer(node, section, "connect_ms", std::min(service.connect_ms, service.total_ms),
+                                        1, service.total_ms);
+    service.first_response_ms = bounded_integer(node, section, "first_response_ms",
+        std::min(service.first_response_ms, service.total_ms), 1, service.total_ms);
+    service.idle_ms = bounded_integer(node, section, "idle_ms", std::min(service.idle_ms, service.total_ms),
+                                     1, service.total_ms);
+    service.max_request_bytes = bounded_integer(node, section, "max_request_bytes", service.max_request_bytes,
+                                               1024, 8 * 1024 * 1024);
+    service.max_response_bytes = bounded_integer(node, section, "max_response_bytes", service.max_response_bytes,
+                                                128, 16 * 1024 * 1024);
+}
+
+void parse_backends(const YAML::Node& root, Config& config) {
+    const auto backends = root["backends"];
+    if (backends) {
+        check_fields(backends, "backends", {"asr", "llm", "tts"});
+        auto backend = [&](const char* name) {
+            if (!backends[name]) return Backend::local;
+            const auto value = string_value(backends, "backends", name);
+            if (value == "local") return Backend::local;
+            if (value == "cloud") return Backend::cloud;
+            throw ConfigError(std::string("backends.") + name + " must be local or cloud");
+        };
+        config.backends = {backend("asr"), backend("llm"), backend("tts")};
+    }
+    const auto& mode = config.backends;
+    if (mode.asr != mode.llm || mode.asr != mode.tts)
+        throw ConfigError("backends supports all-local or all-cloud only");
+    if (!mode.cloud()) return;
+
+    const auto cloud = root["cloud"];
+    check_fields(cloud, "cloud", {"asr", "llm", "tts", "turn_timeout_ms"});
+    auto& c = config.cloud;
+    c.turn_timeout_ms = bounded_integer(cloud, "cloud", "turn_timeout_ms", c.turn_timeout_ms, 1000, 300000);
+
+    const auto asr = cloud["asr"];
+    check_fields(asr, "cloud.asr", {"provider", "protocol", "endpoint", "model", "auth", "api_key_env", "allow_http",
+        "connect_ms", "first_response_ms", "idle_ms", "total_ms", "max_request_bytes", "max_response_bytes",
+        "language", "wav_bytes", "stream_pre_roll_ms", "stream_queue_ms"});
+    parse_cloud_service(asr, "cloud.asr", "audio_transcriptions", "dashscope_asr_json", c.asr, "dashscope_asr_ws");
+    if (c.asr.streaming()) {
+        if (asr["wav_bytes"]) throw ConfigError("cloud.asr.wav_bytes applies to batch ASR");
+        if (c.asr.model != "qwen-audio-3.1-asr-flash-message")
+            throw ConfigError("cloud.asr dashscope_asr_ws requires qwen-audio-3.1-asr-flash-message");
+        c.asr.stream_pre_roll_ms = bounded_integer(asr, "cloud.asr", "stream_pre_roll_ms",
+            c.asr.stream_pre_roll_ms, 0, 1000);
+        c.asr.stream_queue_ms = bounded_integer(asr, "cloud.asr", "stream_queue_ms",
+            c.asr.stream_queue_ms, c.asr.stream_pre_roll_ms + 32, 5000);
+    } else if (asr["stream_pre_roll_ms"] || asr["stream_queue_ms"]) {
+        throw ConfigError("cloud.asr stream settings require dashscope_asr_ws");
+    }
+    if (asr["language"]) c.asr.language = string_value(asr, "cloud.asr", "language", true);
+    if (!c.asr.language.empty() && !identifier(c.asr.language, "-", 16))
+        throw ConfigError("cloud.asr.language must be a language code");
+    c.asr.wav_bytes = bounded_integer(asr, "cloud.asr", "wav_bytes", c.asr.wav_bytes, 4096, 4 * 1024 * 1024);
+
+    const auto llm = cloud["llm"];
+    check_fields(llm, "cloud.llm", {"provider", "protocol", "endpoint", "model", "auth", "api_key_env", "allow_http",
+        "connect_ms", "first_response_ms", "idle_ms", "total_ms", "max_request_bytes", "max_response_bytes",
+        "context_tokens", "max_output_tokens", "margin_tokens"});
+    c.llm.total_ms = 30000;
+    parse_cloud_service(llm, "cloud.llm", "chat_completions_sse", "chat_completions_sse", c.llm);
+    c.llm.context_tokens = bounded_integer(llm, "cloud.llm", "context_tokens", c.llm.context_tokens, 256, 262144);
+    c.llm.max_output_tokens = bounded_integer(llm, "cloud.llm", "max_output_tokens", c.llm.max_output_tokens, 1, 8192);
+    c.llm.margin_tokens = bounded_integer(llm, "cloud.llm", "margin_tokens", c.llm.margin_tokens, 32, 16384);
+    if (c.llm.max_output_tokens + c.llm.margin_tokens >= c.llm.context_tokens)
+        throw ConfigError("cloud.llm output and margin must fit the configured model context");
+
+    const auto tts = cloud["tts"];
+    check_fields(tts, "cloud.tts", {"provider", "protocol", "endpoint", "model", "auth", "api_key_env", "allow_http",
+        "connect_ms", "first_response_ms", "idle_ms", "total_ms", "max_request_bytes", "max_response_bytes",
+        "voice", "speed", "sample_rate"});
+    c.tts.total_ms = 10000;
+    c.tts.max_request_bytes = 16 * 1024;
+    c.tts.max_response_bytes = 2 * 1024 * 1024;
+    parse_cloud_service(tts, "cloud.tts", "audio_speech_wav", "dashscope_tts_wav_url", c.tts, "dashscope_tts_ws");
+    c.tts.voice = string_value(tts, "cloud.tts", "voice");
+    if (!identifier(c.tts.voice, "_-.:/@", 256))
+        throw ConfigError("cloud.tts.voice must be a voice identifier");
+    c.tts.speed = bounded_number(tts, "cloud.tts", "speed", 1.0, 0.25, 4.0);
+    c.tts.sample_rate = bounded_integer(tts, "cloud.tts", "sample_rate", c.tts.sample_rate, 8000, 48000);
+    if (c.tts.provider == "bailian") {
+        constexpr int rates[] = {8000, 12000, 16000, 22050, 24000, 44100, 48000};
+        if (std::find(std::begin(rates), std::end(rates), c.tts.sample_rate) == std::end(rates) ||
+            (c.tts.streaming() && c.tts.sample_rate == 12000))
+            throw ConfigError("cloud.tts.sample_rate is unsupported by the selected Bailian protocol");
+        if (c.tts.speed < 0.5 || c.tts.speed > 2.0)
+            throw ConfigError("cloud.tts.speed must be within 0.5..2.0 for Bailian");
+    }
+}
+
 Config parse_config(const std::string& path) {
     const auto documents = YAML::LoadAllFromFile(path);
     if (documents.size() != 1) {
@@ -178,7 +332,7 @@ Config parse_config(const std::string& path) {
     }
     const auto& root = documents.front();
     check_fields(root, "root", {"audio", "logging", "models", "assets", "vad",
-                                 "threads", "llm", "tts", "queues", "timeouts", "dialogue"});
+                                 "threads", "llm", "tts", "queues", "timeouts", "dialogue", "backends", "cloud"});
     const auto audio = root["audio"];
     check_fields(audio, "audio", {"source", "sink", "profile", "sample_rate",
                                   "channels", "frame_ms", "playback_lead_in_ms", "playback_keepalive"});
@@ -215,6 +369,8 @@ Config parse_config(const std::string& path) {
         config.logging.max_files = bounded_integer(
             logging, "logging", "max_files", config.logging.max_files, 1, 10);
     }
+
+    parse_backends(root, config);
 
     const auto models = root["models"];
     if (models) {
@@ -279,7 +435,7 @@ Config parse_config(const std::string& path) {
     }
 
     const auto llm = root["llm"];
-    if (llm) {
+    if (llm && !config.backends.cloud()) {
         check_fields(llm, "llm", {"context_tokens", "max_output_tokens", "margin_tokens"});
         config.llm.context_tokens = bounded_integer(
             llm, "llm", "context_tokens", config.llm.context_tokens, 128, 2048);
@@ -337,14 +493,16 @@ Config parse_config(const std::string& path) {
     if (timeouts) {
         check_fields(timeouts, "timeouts", {"asr_final_ms", "llm_first_token_ms",
                                             "llm_total_ms", "tts_segment_ms", "cancel_ms"});
-        config.timeouts.asr_final_ms = bounded_integer(
-            timeouts, "timeouts", "asr_final_ms", config.timeouts.asr_final_ms, 1, 120000);
-        config.timeouts.llm_first_token_ms = bounded_integer(
-            timeouts, "timeouts", "llm_first_token_ms", config.timeouts.llm_first_token_ms, 1, 120000);
-        config.timeouts.llm_total_ms = bounded_integer(
-            timeouts, "timeouts", "llm_total_ms", config.timeouts.llm_total_ms, 1, 300000);
-        config.timeouts.tts_segment_ms = bounded_integer(
-            timeouts, "timeouts", "tts_segment_ms", config.timeouts.tts_segment_ms, 1, 120000);
+        if (!config.backends.cloud()) {
+            config.timeouts.asr_final_ms = bounded_integer(
+                timeouts, "timeouts", "asr_final_ms", config.timeouts.asr_final_ms, 1, 120000);
+            config.timeouts.llm_first_token_ms = bounded_integer(
+                timeouts, "timeouts", "llm_first_token_ms", config.timeouts.llm_first_token_ms, 1, 120000);
+            config.timeouts.llm_total_ms = bounded_integer(
+                timeouts, "timeouts", "llm_total_ms", config.timeouts.llm_total_ms, 1, 300000);
+            config.timeouts.tts_segment_ms = bounded_integer(
+                timeouts, "timeouts", "tts_segment_ms", config.timeouts.tts_segment_ms, 1, 120000);
+        }
         config.timeouts.cancel_ms = bounded_integer(
             timeouts, "timeouts", "cancel_ms", config.timeouts.cancel_ms, 1, 10000);
     }
@@ -417,13 +575,46 @@ Config parse_config(const std::string& path) {
         throw ConfigError("dialogue.wake_word must be non-empty when dialogue.wake_enabled");
     }
     if (config.dialogue.barge_in &&
-        (!config.models.vad.enabled || !config.models.asr.enabled)) {
-        throw ConfigError("dialogue.barge_in requires models.vad.enabled and models.asr.enabled");
+        (!config.models.vad.enabled || (!config.backends.cloud() && !config.models.asr.enabled))) {
+        throw ConfigError(config.backends.cloud() ? "dialogue.barge_in requires models.vad.enabled" :
+                          "dialogue.barge_in requires models.vad.enabled and models.asr.enabled");
+    }
+    if (config.backends.cloud()) {
+        const auto& asr = config.cloud.asr;
+        if (asr.streaming()) {
+            const auto max_audio_bytes = 32 * (asr.stream_pre_roll_ms + config.vad.max_speech_ms +
+                                               config.vad.end_silence_ms + 64);
+            if (max_audio_bytes > asr.max_request_bytes)
+                throw ConfigError("cloud.asr.max_request_bytes is too small for the streaming PCM budget");
+        } else {
+            // Include trailing silence for the VAD and two windows of look-ahead.
+            const auto samples = 16 * (config.vad.pre_roll_ms + config.vad.max_speech_ms +
+                                      config.vad.end_silence_ms) + 1024;
+            const int payload = asr.provider == "bailian" ? 4 * ((asr.wav_bytes + 2) / 3) : asr.wav_bytes;
+            if (44 + 2 * samples > asr.wav_bytes || payload + 2048 > asr.max_request_bytes)
+                throw ConfigError("cloud.asr WAV/request budget is too small for the configured VAD");
+        }
+        config.timeouts.asr_final_ms = asr.total_ms;
+        config.timeouts.llm_first_token_ms = config.cloud.llm.first_response_ms;
+        config.timeouts.llm_total_ms = config.cloud.llm.total_ms;
+        config.timeouts.tts_segment_ms = config.cloud.tts.total_ms;
+        if (config.cloud.tts.streaming() && config.tts.prebuffer_ms != 0)
+            throw ConfigError("dashscope_tts_ws requires tts.prebuffer_ms: 0");
     }
     return config;
 }
 
 }  // namespace
+
+std::string cloud_api_key(const CloudService& service) {
+    if (!service.bearer_auth) return {};
+    const char* raw = std::getenv(service.api_key_env.c_str());
+    const std::string key = raw ? raw : "";
+    if (key.empty() || key.size() > 4096 || std::any_of(key.begin(), key.end(),
+        [](unsigned char ch) { return ch <= 32 || ch >= 127; }))
+        throw ConfigError("missing or invalid credential in the configured api_key_env");
+    return key;
+}
 
 Config load_config(const std::string& path) {
     try {

@@ -18,10 +18,11 @@ bool equal(TtsStreamId a,TtsStreamId b) {
 }
 struct TtsStreamWorker::Impl {
     CancellableGenerate generate;
+    StreamingGenerate stream_generate;
     std::shared_ptr<TtsCancellation> cancellation;
     TtsConfig text;
     QueuesConfig limits;
-    int timeout_ms;
+    int timeout_ms, native_sample_rate;
     const std::size_t frame_limit;
     mutable std::mutex mutex;
     std::condition_variable cv;
@@ -42,13 +43,17 @@ struct TtsStreamWorker::Impl {
     std::deque<std::string> chunks;
     std::deque<TtsStreamFrame> pcm;
     TtsStreamStats report;
-    Impl(CancellableGenerate f,TtsConfig t,QueuesConfig q,int timeout)
-        :generate(std::move(f)),text(t),limits(q),timeout_ms(timeout),
+    Impl(CancellableGenerate f, StreamingGenerate stream, TtsConfig t, QueuesConfig q,
+         int timeout, int sample_rate)
+        :generate(std::move(f)),stream_generate(std::move(stream)),text(t),limits(q),
+         timeout_ms(timeout),native_sample_rate(sample_rate),
          frame_limit(static_cast<std::size_t>(q.playback_ms/20)) {
-        if(!generate || q.llm_text_bytes<1 || q.llm_text_bytes>8192 ||
+        if((!generate && !stream_generate) || (stream_generate && t.prebuffer_ms) ||
+           q.llm_text_bytes<1 || q.llm_text_bytes>8192 ||
            q.tts_segments<1 || q.tts_segments>64 || q.playback_ms<20 ||
            q.playback_ms>2000 || q.max_tts_audio_ms<1 || q.max_tts_audio_ms>20000 || timeout<1 ||
-           t.prebuffer_ms<0 || t.prebuffer_ms>2000)
+           t.prebuffer_ms<0 || t.prebuffer_ms>2000 ||
+           native_sample_rate<8000 || native_sample_rate>48000)
             throw std::invalid_argument("TTS stream: invalid bounds");
         TtsSegmenter check(text);
         timings.reserve(kTtsSegmentTimingCapacity);
@@ -75,7 +80,10 @@ struct TtsStreamWorker::Impl {
             cv.wait(lock,[&]{return !valid(id) || pcm.size()<frame_limit;});
             if(!valid(id)) return false;
             const auto enqueued=now_ns();
-            if(!report.first_pcm_ns)report.first_pcm_ns=enqueued;
+            if(!report.first_pcm_ns) {
+                report.first_pcm_ns=enqueued;
+                if(stream_generate)report.playback_release_ns=enqueued;
+            }
             if(auto* t=timing(timing_index)) {
                 t->pcm_queue_wait_ns+=enqueued-wait_begin;
                 if(!t->pcm_frames) {
@@ -91,15 +99,16 @@ struct TtsStreamWorker::Impl {
         return true;
     }
     bool publish_audio(TtsStreamId id,TtsPcmConverter& converter,
-                       const TtsNativeAudio& audio,std::size_t timing_index) {
+                       const float* samples,std::size_t count,std::size_t timing_index) {
         const auto begin=now_ns();
-        auto frames=converter.push(audio.samples.data(),audio.samples.size());
+        auto frames=converter.push(samples,count);
         const auto converted=now_ns();
         {
             std::lock_guard<std::mutex> lock(mutex);
             if(!valid(id))return false;
             if(auto* t=timing(timing_index)) {
-                t->publish_begin_ns=begin;t->resample_end_ns=converted;
+                if(!t->publish_begin_ns)t->publish_begin_ns=begin;
+                t->resample_end_ns=converted;
             }
         }
         if(!put_frames(id,std::move(frames),timing_index))return false;
@@ -120,7 +129,7 @@ struct TtsStreamWorker::Impl {
         return true;
     }
     void publish_turn(TtsStreamId id) {
-        TtsPcmConverter converter(44100);
+        TtsPcmConverter converter(native_sample_rate);
         bool released=false;
         while(true) {
             TtsNativeAudio audio;
@@ -134,7 +143,7 @@ struct TtsStreamWorker::Impl {
                         // Two short segments must also release at capacity,
                         // otherwise the producer could never reserve slot three.
                         return synthesis_done || native.size()>=2 ||
-                            native_samples>=static_cast<std::size_t>(44100)*text.prebuffer_ms/1000;
+                            native_samples>=static_cast<std::size_t>(native_sample_rate)*text.prebuffer_ms/1000;
                     }
                     return synthesis_done || !native.empty();
                 });
@@ -154,7 +163,7 @@ struct TtsStreamWorker::Impl {
                 return;
             }
             if(audio.samples.empty())continue;
-            if(!publish_audio(id,converter,audio,timing_index))return;
+            if(!publish_audio(id,converter,audio.samples.data(),audio.samples.size(),timing_index))return;
             {
                 std::lock_guard<std::mutex> lock(mutex);
                 if(!valid(id))return;
@@ -188,9 +197,45 @@ struct TtsStreamWorker::Impl {
             }
         }
     }
+    bool stream_segment(TtsStreamId id, const std::shared_ptr<TtsCancellation>& token,
+                        const std::string& part, TtsPcmConverter& converter,
+                        std::size_t timing_index, std::int64_t begin) {
+        const auto limit=static_cast<std::size_t>(native_sample_rate)*limits.max_tts_audio_ms/1000;
+        std::size_t samples=0;
+        stream_generate(part, token, [&](const float* pcm_data,std::size_t count) {
+            if(!pcm_data || !count || count>limit-samples)
+                throw std::runtime_error("invalid or oversized streamed TTS audio");
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                if(!valid(id))return false;
+                const auto now=now_ns();
+                if(!report.first_generated_audio_ns)report.first_generated_audio_ns=now;
+                if(auto* t=timing(timing_index)) {
+                    if(!samples)t->native_enqueued_ns=now;
+                    t->native_samples=samples+count;t->native_sample_rate=native_sample_rate;
+                }
+            }
+            samples+=count;
+            return publish_audio(id,converter,pcm_data,count,timing_index);
+        });
+        const auto end=now_ns();
+        std::lock_guard<std::mutex> lock(mutex);
+        if(!valid(id))return false;
+        if(!samples || (end-begin)/1000000>timeout_ms) {
+            fail_locked(samples ? "streaming TTS segment timed out" : "empty streamed TTS audio");
+            return false;
+        }
+        ++report.segments;
+        const double seconds=(end-begin)/1e9;
+        report.generate_seconds+=seconds;
+        if(auto* t=timing(timing_index)) {
+            t->generate_begin_ns=begin;t->generate_end_ns=end;t->sdk_generate_seconds=seconds;
+        }
+        return true;
+    }
     void turn(TtsStreamId id, const std::shared_ptr<TtsCancellation>& token) {
         TtsSegmenter segmenter(text);
-        TtsPcmConverter converter(44100);
+        TtsPcmConverter converter(native_sample_rate);
         struct SelectedSegment { std::string text; std::size_t timing_index; };
         std::deque<SelectedSegment> segments;
         auto pending_since=Clock::now();
@@ -278,6 +323,10 @@ struct TtsStreamWorker::Impl {
                     }
                 }
                 const auto generate_begin=now_ns();
+                if(stream_generate) {
+                    if(!stream_segment(id,token,part,converter,timing_index,generate_begin))return;
+                    continue;
+                }
                 auto audio=generate(part,token);
                 const auto generate_end=now_ns();
                 const auto elapsed=(generate_end-generate_begin)/1000000;
@@ -286,8 +335,8 @@ struct TtsStreamWorker::Impl {
                     native_generating=false;
                     if(!valid(id)){++report.discarded_generation_results;return;}
                     if(elapsed>timeout_ms){fail_locked("blocking TTS segment timed out; result discarded");return;}
-                    if(audio.sample_rate!=44100 || audio.samples.empty() ||
-                       audio.samples.size()>static_cast<std::size_t>(44100)*limits.max_tts_audio_ms/1000){
+                    if(audio.sample_rate!=native_sample_rate || audio.samples.empty() ||
+                       audio.samples.size()>static_cast<std::size_t>(native_sample_rate)*limits.max_tts_audio_ms/1000){
                         fail_locked("invalid or oversized generated TTS segment");return;
                     }
                     ++report.segments;report.generate_seconds+=audio.generate_seconds;
@@ -304,7 +353,7 @@ struct TtsStreamWorker::Impl {
                         native.push_back({std::move(audio),timing_index});cv.notify_all();
                     }
                 }
-                if(!text.prebuffer_ms && !publish_audio(id,converter,audio,timing_index))return;
+                if(!text.prebuffer_ms && !publish_audio(id,converter,audio.samples.data(),audio.samples.size(),timing_index))return;
             } else if(finished) {
                 if(text.prebuffer_ms) {
                     std::lock_guard<std::mutex> lock(mutex);
@@ -346,12 +395,14 @@ struct TtsStreamWorker::Impl {
         }
     }
 };
-TtsStreamWorker::TtsStreamWorker(Generate f,TtsConfig t,QueuesConfig q,int timeout)
+TtsStreamWorker::TtsStreamWorker(Generate f,TtsConfig t,QueuesConfig q,int timeout,int sample_rate)
     :TtsStreamWorker(f ? CancellableGenerate([f=std::move(f)](
         const std::string& text, const std::shared_ptr<TtsCancellation>&){return f(text);})
-        : CancellableGenerate{},t,q,timeout){}
-TtsStreamWorker::TtsStreamWorker(CancellableGenerate f,TtsConfig t,QueuesConfig q,int timeout)
-    :impl_(std::make_unique<Impl>(std::move(f),t,q,timeout)){}
+        : CancellableGenerate{},t,q,timeout,sample_rate){}
+TtsStreamWorker::TtsStreamWorker(CancellableGenerate f,TtsConfig t,QueuesConfig q,int timeout,int sample_rate)
+    :impl_(std::make_unique<Impl>(std::move(f),StreamingGenerate{},t,q,timeout,sample_rate)){}
+TtsStreamWorker::TtsStreamWorker(StreamingGenerate f,TtsConfig t,QueuesConfig q,int timeout,int sample_rate)
+    :impl_(std::make_unique<Impl>(CancellableGenerate{},std::move(f),t,q,timeout,sample_rate)){}
 TtsStreamWorker::~TtsStreamWorker(){
     if(!impl_)return;
     {

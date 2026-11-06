@@ -21,16 +21,18 @@ namespace {
 
 void print_usage(std::ostream& output) {
     output << "Usage: voice_engine --config <path.yaml> --check-config\n"
-              "       voice_engine --config <path.yaml> [--mock] --control stdin\n"
+              "       voice_engine [--config <path.yaml>] --control stdin\n"
+              "       voice_engine --config <path.yaml> --mock --control stdin\n"
               "                    [--run-id <id>] [--output-dir <root>]\n"
               "       voice_engine --help\n\n"
               "Checks configuration/assets, or runs terminal controls.\n"
-              "Reads one complete file; default/local files are not merged.\n"
+              "Realtime without --config uses config/cloud-local.yaml from the working directory.\n"
+              "Pass --config to select a different profile. Configuration files are not merged.\n"
               "Relative manifest paths are based on the configuration file directory.\n"
               "Commands: start stop cancel new-session status help quit.\n"
               "Mock mode skips model assets and does not open devices or run models.\n"
-              "Realtime requires all three model build options, enabled VAD/ASR/LLM/TTS,\n"
-              "and flock -x /tmp/rk3588_voice_engine_model_validation.lock.\n"
+              "Realtime requires a local model build or VOICE_ENGINE_BUILD_CLOUD=ON,\n"
+              "the selected backend's assets and flock -x /tmp/rk3588_voice_engine_model_validation.lock.\n"
               "Busy start buffers new capture while old models cancel; overflow requires repetition.\n"
               "Logs: <root>/<run-id>/events.jsonl; root defaults to output/runs.\n"
               "The run directory must be new; an ID is generated if omitted.\n"
@@ -123,7 +125,8 @@ int main(int argc, char* argv[]) {
         }
     }
     if (config_path.empty()) {
-        return usage_error("--config <path.yaml> is required");
+        if (check_config || mock) return usage_error("--config <path.yaml> is required");
+        config_path = "config/cloud-local.yaml";
     }
     if (check_config) {
         if (mock || !control.empty() || options.count("--run-id") != 0 ||
@@ -135,7 +138,7 @@ int main(int argc, char* argv[]) {
     }
 #if !VOICE_ENGINE_HAS_REALTIME
     if (!check_config && !mock)
-        return usage_error("realtime engine requires all three model build options; use --mock or an enabled build");
+        return usage_error("realtime requires a cloud or local realtime build; use --mock or an enabled build");
 #endif
     if (!run_id.empty() && !valid_run_id(run_id)) {
         return usage_error("invalid --run-id; use 1-64 ASCII letters/digits/_.- starting with letter/digit");
@@ -156,6 +159,13 @@ int main(int argc, char* argv[]) {
 #else
             return voice_engine::run_stdin_control(
                 config, run_id.empty() ? generate_run_id() : run_id, output_root);
+#endif
+        }
+        if (config.backends.cloud()) {
+#if VOICE_ENGINE_HAS_REALTIME
+            voice_engine::validate_realtime_config(config);
+#else
+            throw voice_engine::ConfigError("cloud realtime requires VOICE_ENGINE_BUILD_CLOUD=ON");
 #endif
         }
         const auto assets = voice_engine::validate_assets(config);

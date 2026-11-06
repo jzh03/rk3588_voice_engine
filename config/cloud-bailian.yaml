@@ -1,0 +1,92 @@
+# 百炼北京流式云端模板。复制为 cloud-local.yaml，填写本机耳机节点和 profile。
+audio:
+  source: ""
+  sink: ""
+  profile: ""
+  sample_rate: 16000
+  channels: 1
+  frame_ms: 20
+  playback_keepalive: true  # silent output while this audio backend is alive
+  playback_lead_in_ms: 0  # optional per-turn prefix; keepalive candidate uses no prefix
+
+backends:
+  asr: cloud
+  llm: cloud
+  tts: cloud
+cloud:
+  turn_timeout_ms: 90000
+  asr:
+    provider: bailian
+    protocol: dashscope_asr_ws
+    endpoint: "wss://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/api-ws/v1/inference"
+    model: qwen-audio-3.1-asr-flash-message
+    api_key_env: DASHSCOPE_API_KEY
+    language: zh
+    connect_ms: 3000
+    first_response_ms: 3000
+    idle_ms: 5000
+    total_ms: 5000
+    stream_pre_roll_ms: 300
+    stream_queue_ms: 2000
+    max_request_bytes: 1048576
+    max_response_bytes: 65536
+  llm:
+    provider: bailian
+    protocol: chat_completions_sse
+    endpoint: "https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions"
+    model: qwen3.8-flash
+    api_key_env: DASHSCOPE_API_KEY
+    connect_ms: 3000
+    first_response_ms: 10000
+    idle_ms: 5000
+    total_ms: 30000
+    context_tokens: 8192
+    max_output_tokens: 96
+    margin_tokens: 128
+    max_request_bytes: 1048576
+    max_response_bytes: 65536
+  tts:
+    provider: bailian
+    protocol: dashscope_tts_ws
+    endpoint: "wss://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/api-ws/v1/inference"
+    model: qwen-audio-3.1-tts-flash
+    api_key_env: DASHSCOPE_API_KEY
+    voice: longanhuan_v3.1
+    speed: 0.85
+    sample_rate: 24000
+    connect_ms: 3000
+    first_response_ms: 10000
+    idle_ms: 5000
+    total_ms: 10000
+    max_request_bytes: 16384
+    max_response_bytes: 2097152
+models:
+  vad: {enabled: true, id: silero-vad-v5.0}
+  asr: {enabled: false, id: ""}
+  llm: {enabled: false, id: ""}
+  tts: {enabled: false, id: ""}
+  kws: {enabled: true, id: sherpa-kws-wenetspeech-3.3m-20240101-fp32}
+assets:
+  models_manifest: ../models/manifest.json
+  deps_manifest: ../deps/manifest.json
+threads:
+  vad: 1
+tts:
+  first_segment: null  # uniform policy for every segment
+  sentence_mode: false    # early first clause, later full sentences; requires target/lookahead 0
+  boundary_lookahead_chars: 2
+  prebuffer_ms: 0
+  min_chars: 12
+  target_chars: 12
+  max_chars: 40
+  flush_ms: 300
+vad:
+  min_speech_ms: 160
+
+dialogue:
+  wake_enabled: true
+  wake_word: "你好小派"
+  keywords_file: wake-keywords.txt
+  window_ms: 15000
+  barge_in: true
+  barge_in_min_ms: 160

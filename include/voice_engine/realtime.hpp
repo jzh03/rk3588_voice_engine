@@ -2,6 +2,7 @@
 #include "voice_engine/config.hpp"
 #include "voice_engine/barge_in.hpp"
 #include "voice_engine/live_audio.hpp"
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -25,7 +26,8 @@ struct RealtimeEvent {
 class RealtimePipeline {
 public:
     virtual ~RealtimePipeline() = default;
-    virtual void begin(AudioContext) = 0;
+    // Absolute monotonic deadline for speech to begin; zero leaves it to the VAD.
+    virtual void begin(AudioContext, std::int64_t opening_deadline_ns) = 0;
     virtual void begin_wake(AudioContext) { throw ConfigError("KWS unavailable in this pipeline"); }
     virtual void begin_barge_in(AudioContext) { throw ConfigError("barge-in unavailable"); }
     virtual void end_barge_in() {}
@@ -35,6 +37,8 @@ public:
     virtual bool can_accept_capture() const = 0;
     virtual bool submit(const AudioFrame&) = 0;
     virtual void finish_input() = 0;
+    // The controller has accepted the endpoint and checked capture continuity.
+    virtual void confirm_endpoint(AudioContext) {}
     virtual void cancel() = 0;
     virtual void new_session() = 0;
     virtual bool idle() const = 0;

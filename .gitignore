@@ -12,6 +12,9 @@ __pycache__/
 /config/realtime-local.yaml
 /config/wake-local.yaml
 /config/barge-in-local.yaml
+/config/cloud-local.yaml
+/config/speech-local.yaml
+/config/cloud-http-local.yaml
 .env
 .env.*
 !.env.example

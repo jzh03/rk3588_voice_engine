@@ -2,6 +2,15 @@
 
 项目源码版本见 [VERSION](VERSION)，正式发布状态见 [GitHub Releases](https://github.com/jzh03/rk3588_voice_engine/releases)。版本号采用 `MAJOR.MINOR.PATCH`，Git 标签加 `v` 前缀；0.x 阶段尚未承诺配置与内部接口长期兼容。
 
+## 0.3.0 — 2026-11-06
+
+源码包和校验文件通过 GitHub Releases 提供。安装路径和验证范围见 [v0.3.0 发布说明](docs/releases/v0.3.0.md)。
+
+- 同一引擎支持端侧与云端配置，部署后通过同一个用户服务切换。
+- 百炼档在录音期间通过 WebSocket 上传音频，回答通过 SSE 增量返回，合成音频分块到达后直接进入播放队列。唤醒、VAD、耳机录放和插话控制在板端运行。
+- 云端续问从新采集开始。语音转写为空时可以在当前窗口内重说。
+- 双后端版本可从一个公共配置读取语速。安装与配置见[云端语音指南](docs/cloud-voice.md)。
+
 ## 0.2.0 — 2026-10-28
 
 发布日期：2026-10-28。功能与公开性能资料基于提交 `8a2464afaaba7ac2d5172d7b222060f22913daf4`；`v0.2.0` 标签包含本次许可证、安装、资产准备工具和版本资料，正式附件见 [Release](https://github.com/jzh03/rk3588_voice_engine/releases/tag/v0.2.0)。

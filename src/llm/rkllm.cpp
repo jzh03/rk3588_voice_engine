@@ -125,14 +125,6 @@ public:
     }
 };
 } // namespace
-LlmOptions llm_options_from_config(const Config& c) {
-    LlmOptions o; o.context_tokens=c.llm.context_tokens;
-    o.max_output_tokens=c.llm.max_output_tokens; o.margin_tokens=c.llm.margin_tokens;
-    o.queue_bytes=static_cast<std::size_t>(c.queues.llm_text_bytes);
-    o.first_token_timeout_ms=c.timeouts.llm_first_token_ms;
-    o.total_timeout_ms=c.timeouts.llm_total_ms; o.cancel_timeout_ms=c.timeouts.cancel_ms;
-    return o;
-}
 RkllmAssets resolve_rkllm_assets(const Config& original) {
     probe::require_model_validation_lock();
     Config c=original;

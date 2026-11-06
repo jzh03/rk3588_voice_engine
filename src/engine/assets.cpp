@@ -368,9 +368,11 @@ fs::path resolve_manifest(const Config& config, const std::string& value) {
 
 AssetCheckResult validate_assets(const Config& config) {
     AssetCheckResult result;
+    const ModelRef unused;
+    const bool cloud = config.backends.cloud();
     const std::array<std::pair<const char*, const ModelRef*>, 5> references {{
-        {"vad", &config.models.vad}, {"asr", &config.models.asr},
-        {"llm", &config.models.llm}, {"tts", &config.models.tts},
+        {"vad", &config.models.vad}, {"asr", cloud ? &unused : &config.models.asr},
+        {"llm", cloud ? &unused : &config.models.llm}, {"tts", cloud ? &unused : &config.models.tts},
         {"kws", &config.models.kws},
     }};
     if (std::none_of(references.begin(), references.end(), [](const auto& reference) {

@@ -1,16 +1,16 @@
-# RK3588 本地语音助手
+# RK3588 语音助手
 
-在香橙派5上离线完成“听懂问题 → 生成回答 → 耳机播报”的C++17语音引擎。识别、语言模型和语音合成都在板端运行，支持蓝牙耳机双向录放与播放中插话（全双工）。
+在香橙派5上完成“听懂问题 → 生成回答 → 耳机播报”的C++17语音引擎，支持蓝牙耳机双向录放与播放中插话（全双工）。双后端构建可选择由板端离线完成识别、回答和合成，或调用百炼服务。
 
 ## 首次安装与版本
 
-当前项目版本为 **0.2.0**，源码包和 SHA-256 校验文件见 [v0.2.0 正式发布](https://github.com/jzh03/rk3588_voice_engine/releases/tag/v0.2.0)；后续版本以 [GitHub Releases](https://github.com/jzh03/rk3588_voice_engine/releases) 为准。
+当前源码版本为 **v0.3.0**，新增阿里云百炼语音链路。源码包和校验文件通过 [GitHub Releases](https://github.com/jzh03/rk3588_voice_engine/releases) 提供。云端构建、百炼配置和切换方法见[云端语音指南](docs/cloud-voice.md)。
 
 1. 按[支持的平台与系统依赖](docs/supported-platform.md)确认 Orange Pi 5 / RK3588S、Ubuntu 22.04.5、内核 6.1.99 和 RKNPU 0.9.8 组合，并安装开发与音频依赖。
-2. 按[资产获取与首次运行](docs/assets-setup.md)准备固定模型、运行库和本机音频配置，再完成编译与部署。
-3. 查阅[版本变更](CHANGELOG.md)、[发布说明](docs/releases/v0.2.0.md)及[发布与回退约定](docs/releases.md)。
+2. 端侧安装按[资产获取与首次运行](docs/assets-setup.md)准备模型、运行库和本机音频配置。云端或双后端安装按[云端语音指南](docs/cloud-voice.md)选择构建方式、准备所需资产并配置凭据。
+3. 查阅[版本变更](CHANGELOG.md)、[v0.3.0 发布说明](docs/releases/v0.3.0.md)和[发布约定](docs/releases.md)。
 
-支持范围以已验证组合为准；其他板卡、内核、运行库组合需独立验证。安装和模型准备需要联网，资产齐备后的语音交互在本机完成。
+支持范围以已验证组合为准；其他板卡、内核、运行库组合需独立验证。安装和模型准备需要联网，端侧模式在资产齐备后可离线交互。
 
 <a id="当前进度"></a>
 
@@ -47,7 +47,7 @@ python3 scripts/deploy.py send cancel
 systemctl --user stop rk3588-voice-engine
 ```
 
-服务按需手动启停。首次搭建从[安装入口](#首次安装与版本)开始；配置、CLI和部署命令见[构建与运行](docs/build-and-run.md)。
+服务按需手动启停。双后端版本的[换档与共用语速](docs/cloud-voice.md#部署切换与共用语速)使用同一个用户服务。配置、CLI 和通用部署命令见[构建与运行](docs/build-and-run.md)。
 
 ## 性能快照
 
@@ -69,6 +69,7 @@ systemctl --user stop rk3588-voice-engine
 | 模型、运行库获取与首次配置 | [资产获取与首次运行](docs/assets-setup.md) |
 | 版本、正式发布与回退 | [版本变更](CHANGELOG.md)、[发布入口](docs/releases.md) |
 | 编译、配置、CLI与资产清单 | [构建与运行](docs/build-and-run.md) |
+| 百炼和兼容服务配置、流式 ASR/TTS 与双后端部署 | [云端语音指南](docs/cloud-voice.md) |
 | 耳机录放与设备排查 | [音频诊断](docs/audio-diagnostics.md) |
 | 性能快照、参数与证据复算 | [快照说明](docs/performance-snapshot.md) |
 | 公开文档和工具入口 | [文档索引](docs/README.md) |
@@ -78,7 +79,7 @@ systemctl --user stop rk3588-voice-engine
 ## 项目目录
 
 ```text
-src/、include/       引擎实现与接口
+src/、include/       引擎实现与接口，云端协议适配位于 src/cloud/
 tools/               独立诊断工具
 config/              配置模板；本机配置不随Git发布
 scripts/、packaging/  部署脚本与用户服务模板
@@ -87,7 +88,6 @@ models/、deps/        资产身份清单；权重与运行库实体不随Git发
 docs/                使用说明、性能快照与官方参考资料
 output/              本机运行记录，不随Git发布
 ```
-
 
 ## 开发与旧章节入口
 

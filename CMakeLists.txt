@@ -8,6 +8,13 @@ option(VOICE_ENGINE_BUILD_ENV_CHECK "Build the system dependency check" ON)
 option(VOICE_ENGINE_BUILD_ASR_PROBE "Build the optional VAD/RKNN file diagnostic" OFF)
 option(VOICE_ENGINE_BUILD_TTS_PROBE "Build the optional CPU TTS file diagnostic" OFF)
 option(VOICE_ENGINE_BUILD_LLM_PROBE "Build the optional resident RKLLM diagnostic" OFF)
+option(VOICE_ENGINE_BUILD_CLOUD "Build the cloud realtime backends (libcurl and CPU KWS/VAD)" OFF)
+
+option(VOICE_ENGINE_BUILD_STREAMING_ASR "Build Bailian WebSocket ASR with libwebsockets" OFF)
+option(VOICE_ENGINE_BUILD_STREAMING_TTS "Build Bailian WebSocket TTS with libwebsockets" OFF)
+if((VOICE_ENGINE_BUILD_STREAMING_ASR OR VOICE_ENGINE_BUILD_STREAMING_TTS) AND NOT VOICE_ENGINE_BUILD_CLOUD)
+    message(FATAL_ERROR "Cloud streaming speech requires VOICE_ENGINE_BUILD_CLOUD=ON")
+endif()
 
 include(CTest)
 
@@ -232,9 +239,10 @@ endif()
 
 # File model diagnostics are explicit opt-ins. Default and independent builds
 # continue to work without model SDKs, private weights, or model initialization.
-if(VOICE_ENGINE_BUILD_ASR_PROBE OR VOICE_ENGINE_BUILD_TTS_PROBE OR VOICE_ENGINE_BUILD_LLM_PROBE)
+if(VOICE_ENGINE_BUILD_ASR_PROBE OR VOICE_ENGINE_BUILD_TTS_PROBE OR
+   VOICE_ENGINE_BUILD_LLM_PROBE OR VOICE_ENGINE_BUILD_CLOUD)
     if(NOT VOICE_ENGINE_BUILD_ENGINE)
-        message(FATAL_ERROR "Model probes require VOICE_ENGINE_BUILD_ENGINE=ON")
+        message(FATAL_ERROR "Model probes and cloud realtime require VOICE_ENGINE_BUILD_ENGINE=ON")
     endif()
     add_library(voice_engine_probe_support STATIC src/engine/probe_support.cpp)
     voice_engine_cpp_target(voice_engine_probe_support)
@@ -250,6 +258,27 @@ if(VOICE_ENGINE_BUILD_ASR_PROBE OR VOICE_ENGINE_BUILD_TTS_PROBE OR VOICE_ENGINE_
                     "$<TARGET_FILE:probe_lock_probe>")
         set_tests_properties(probe_lock PROPERTIES TIMEOUT 30)
     endif()
+endif()
+
+if(VOICE_ENGINE_BUILD_ASR_PROBE OR VOICE_ENGINE_BUILD_CLOUD)
+    include(cmake/cpu_speech.cmake)
+endif()
+if(VOICE_ENGINE_BUILD_LLM_PROBE OR VOICE_ENGINE_BUILD_CLOUD)
+    add_library(voice_engine_llm_core STATIC src/llm/adapter.cpp)
+    voice_engine_cpp_target(voice_engine_llm_core)
+    target_include_directories(voice_engine_llm_core PUBLIC include)
+    target_link_libraries(voice_engine_llm_core PUBLIC Threads::Threads)
+endif()
+if(VOICE_ENGINE_BUILD_TTS_PROBE OR VOICE_ENGINE_BUILD_CLOUD)
+    if(NOT TARGET voice_engine_audio_dsp)
+        message(FATAL_ERROR "TTS probes and cloud realtime require AUDIO and PULSE_AUDIO")
+    endif()
+    add_library(voice_engine_tts_text STATIC src/tts/text.cpp src/tts/pronunciation.cpp)
+    voice_engine_cpp_target(voice_engine_tts_text)
+    target_link_libraries(voice_engine_tts_text PUBLIC voice_engine_audio_dsp PRIVATE nlohmann_json::nlohmann_json)
+    add_library(voice_engine_tts_stream STATIC src/tts/stream.cpp)
+    voice_engine_cpp_target(voice_engine_tts_stream)
+    target_link_libraries(voice_engine_tts_stream PUBLIC voice_engine_tts_text PRIVATE Threads::Threads)
 endif()
 
 if(VOICE_ENGINE_BUILD_ASR_PROBE)
@@ -273,26 +302,73 @@ if(VOICE_ENGINE_BUILD_ASR_PROBE AND VOICE_ENGINE_BUILD_LLM_PROBE AND VOICE_ENGIN
 endif()
 
 
-# The real application reuses the exact opt-in model adapters used by P2/P3.
-# Default and engine-only builds continue to have no SDK dependency.
+# Preserve the original opt-in local realtime build. Cloud can be added to
+# that executable or built with only the CPU speech models and system audio.
+set(_local_realtime OFF)
+if(VOICE_ENGINE_BUILD_ASR_PROBE AND VOICE_ENGINE_BUILD_LLM_PROBE AND VOICE_ENGINE_BUILD_TTS_PROBE)
+    set(_local_realtime ON)
+endif()
 if(VOICE_ENGINE_BUILD_ENGINE)
-    if(VOICE_ENGINE_BUILD_ASR_PROBE AND VOICE_ENGINE_BUILD_LLM_PROBE AND VOICE_ENGINE_BUILD_TTS_PROBE)
+    if(_local_realtime OR VOICE_ENGINE_BUILD_CLOUD)
         if(NOT TARGET voice_engine_pulse_audio)
             message(FATAL_ERROR "Realtime engine requires native PulseAudio")
         endif()
         add_library(voice_engine_realtime_models STATIC src/engine/realtime_models.cpp src/engine/realtime_main.cpp)
         voice_engine_cpp_target(voice_engine_realtime_models)
+        file(STRINGS "${PROJECT_SOURCE_DIR}/VERSION" _engine_version LIMIT_COUNT 1)
+        target_compile_definitions(voice_engine_realtime_models PRIVATE
+            VOICE_ENGINE_VERSION="${_engine_version}"
+            VOICE_ENGINE_HAS_LOCAL=$<BOOL:${_local_realtime}>
+            VOICE_ENGINE_HAS_CLOUD=$<BOOL:${VOICE_ENGINE_BUILD_CLOUD}>
+            VOICE_ENGINE_HAS_STREAMING_ASR=$<BOOL:${VOICE_ENGINE_BUILD_STREAMING_ASR}>
+            VOICE_ENGINE_HAS_STREAMING_TTS=$<BOOL:${VOICE_ENGINE_BUILD_STREAMING_TTS}>)
         target_link_libraries(voice_engine_realtime_models PUBLIC voice_engine_realtime
-            voice_engine_asr voice_engine_kws voice_engine_llm voice_engine_tts voice_engine_tts_stream
-            voice_engine_pulse_audio voice_engine_probe_support voice_engine_assets)
+            voice_engine_listening_asr voice_engine_vad voice_engine_kws voice_engine_llm_core
+            voice_engine_tts_stream voice_engine_pulse_audio voice_engine_probe_support voice_engine_assets)
+        if(_local_realtime)
+            target_link_libraries(voice_engine_realtime_models PRIVATE voice_engine_asr voice_engine_llm voice_engine_tts)
+            set_target_properties(voice_engine PROPERTIES BUILD_RPATH "${_asr_rknn}/lib;${_llm_sdk}/lib;${_tts_lib}")
+            if(BUILD_TESTING)
+                add_test(NAME realtime_preflight COMMAND "${Python3_EXECUTABLE}"
+                    "${PROJECT_SOURCE_DIR}/tests/integration/realtime_preflight.py" "$<TARGET_FILE:voice_engine>")
+                set_tests_properties(realtime_preflight PROPERTIES TIMEOUT 30)
+            endif()
+        endif()
+        if(VOICE_ENGINE_BUILD_CLOUD)
+            pkg_check_modules(CLOUD_CURL REQUIRED IMPORTED_TARGET libcurl>=7.68)
+            target_sources(voice_engine_realtime_models PRIVATE src/cloud/http.cpp src/cloud/backends.cpp)
+            target_link_libraries(voice_engine_realtime_models PRIVATE PkgConfig::CLOUD_CURL)
+        endif()
+        if(VOICE_ENGINE_BUILD_STREAMING_ASR OR VOICE_ENGINE_BUILD_STREAMING_TTS)
+            pkg_check_modules(CLOUD_WEBSOCKETS REQUIRED IMPORTED_TARGET libwebsockets>=4.0)
+            target_link_libraries(voice_engine_realtime_models PRIVATE PkgConfig::CLOUD_WEBSOCKETS)
+        endif()
+        if(VOICE_ENGINE_BUILD_STREAMING_TTS)
+            target_sources(voice_engine_realtime_models PRIVATE src/cloud/tts_websocket.cpp)
+            if(BUILD_TESTING)
+                add_executable(streaming_tts_test tests/unit/streaming_tts_test.cpp)
+                voice_engine_cpp_target(streaming_tts_test)
+                target_include_directories(streaming_tts_test PRIVATE src/cloud)
+                target_link_libraries(streaming_tts_test PRIVATE voice_engine_realtime_models)
+                add_test(NAME streaming_tts COMMAND "${Python3_EXECUTABLE}"
+                    "${PROJECT_SOURCE_DIR}/tests/integration/streaming_tts.py" "$<TARGET_FILE:streaming_tts_test>")
+                set_tests_properties(streaming_tts PROPERTIES TIMEOUT 30)
+            endif()
+        endif()
+        if(VOICE_ENGINE_BUILD_STREAMING_ASR)
+            target_sources(voice_engine_realtime_models PRIVATE src/cloud/asr_stream.cpp)
+            if(BUILD_TESTING)
+                add_executable(streaming_asr_test tests/unit/streaming_asr_test.cpp)
+                voice_engine_cpp_target(streaming_asr_test)
+                target_include_directories(streaming_asr_test PRIVATE src/cloud)
+                target_link_libraries(streaming_asr_test PRIVATE voice_engine_realtime_models)
+                add_test(NAME streaming_asr COMMAND "${Python3_EXECUTABLE}"
+                    "${PROJECT_SOURCE_DIR}/tests/integration/streaming_asr.py" "$<TARGET_FILE:streaming_asr_test>")
+                set_tests_properties(streaming_asr PROPERTIES TIMEOUT 30)
+            endif()
+        endif()
         target_link_libraries(voice_engine PRIVATE voice_engine_realtime_models)
         target_compile_definitions(voice_engine PRIVATE VOICE_ENGINE_HAS_REALTIME=1)
-        if(BUILD_TESTING)
-            add_test(NAME realtime_preflight COMMAND "${Python3_EXECUTABLE}"
-                "${PROJECT_SOURCE_DIR}/tests/integration/realtime_preflight.py" "$<TARGET_FILE:voice_engine>")
-            set_tests_properties(realtime_preflight PROPERTIES TIMEOUT 30)
-        endif()
-        set_target_properties(voice_engine PROPERTIES BUILD_RPATH "${_asr_rknn}/lib;${_llm_sdk}/lib;${_tts_lib}")
     else()
         target_compile_definitions(voice_engine PRIVATE VOICE_ENGINE_HAS_REALTIME=0)
     endif()

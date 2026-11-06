@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 BINARY = Path(sys.argv.pop(1)).resolve()
@@ -54,6 +55,62 @@ class Deployment(unittest.TestCase):
         self.assertEqual(a["parameters"],{k:v for k,v in self.settings.items() if k!="assets"})
         self.assertEqual(deploy.verify(self.root,"base")["status"],"passed")
         self.assertEqual((self.root/"releases/base/models").resolve(),(self.root/"releases/next/models").resolve())
+
+    def test_dual_profile_switch_validates_before_saving(self):
+        cloud = self.project / "config/cloud.yaml"
+        deploy.save(cloud, {**self.settings, "backends": dict.fromkeys(("asr", "llm", "tts"), "cloud"),
+                            "cloud": {name: {"provider": "bailian"} for name in ("asr", "llm", "tts")}})
+        deploy.stage(self.root, self.project, BINARY, cloud, "dual", self.config)
+        release = self.root / "releases/dual"
+        run = deploy.subprocess.run
+
+        def preflight(command, **kwargs):
+            if Path(command[2]).name == "engine.yaml":
+                return deploy.subprocess.CompletedProcess(command, 0, "CONFIG_OK\n", "")
+            return run(command, **kwargs)
+
+        # Simulate a cloud config preflight without network or credentials.
+        with patch.object(deploy.subprocess, "run", side_effect=preflight):
+            self.assertEqual(deploy.activate(self.root, "dual")["backends"]["profile"], "cloud")
+        self.assertEqual(deploy.select_profile(self.root, "local")["config"], "config/local.yaml")
+        self.assertEqual(deploy.verify(self.root)["backends"]["profile"], "local")
+        with patch.object(deploy.subprocess, "run", return_value=
+                          deploy.subprocess.CompletedProcess([], 2, "", "missing cloud credentials")):
+            with self.assertRaises(ValueError):
+                deploy.select_profile(self.root, "cloud")
+        self.assertEqual(deploy.verify(self.root)["backends"]["profile"], "local")
+        with deploy.lock(self.root / "running.lock"):
+            with self.assertRaises(RuntimeError):
+                deploy.select_profile(self.root, "cloud")
+        with patch.object(deploy.subprocess, "run", side_effect=preflight):
+            self.assertEqual(deploy.select_profile(self.root, "cloud")["config"], "config/engine.yaml")
+            self.assertEqual(deploy.verify(self.root)["backends"]["profile"], "cloud")
+        self.assertEqual((self.root / "current").resolve(), release)
+
+    def test_shared_speech_speed_overrides_both_profiles(self):
+        local = {**self.settings, "tts": {"speed": 0.75, "prebuffer_ms": 100}}
+        cloud = {**self.settings, "backends": dict.fromkeys(("asr", "llm", "tts"), "cloud"),
+                 "cloud": {name: {"provider": "bailian"} for name in ("asr", "llm", "tts")}}
+        cloud["cloud"]["tts"]["speed"] = 1.2
+        cloud_config = self.project / "config/cloud.yaml"
+        speech = self.project / "config/speech-local.yaml"
+        deploy.save(self.config, local)
+        deploy.save(cloud_config, cloud)
+        deploy.save(speech, {"speed": 0.85})
+        deploy.stage(self.root, self.project, BINARY, cloud_config, "shared-speed", self.config)
+        release = self.root / "releases/shared-speed"
+        self.assertEqual(deploy.read_config(release / "config/local.yaml")["tts"],
+                         {"speed": 0.85, "prebuffer_ms": 100})
+        self.assertEqual(deploy.read_config(release / "config/engine.yaml")["cloud"]["tts"]["speed"], 0.85)
+        self.assertEqual(deploy.read_config(self.config), local)
+        self.assertEqual(deploy.read_config(cloud_config), cloud)
+        info = deploy.read_config(release / "release.json")
+        self.assertEqual(info["shared_tts_speed"], 0.85)
+        self.assertFalse(info["parameters_unchanged"])
+        deploy.save(speech, {"speed": True})
+        with self.assertRaisesRegex(ValueError, "speed must be a number"):
+            deploy.stage(self.root, self.project, BINARY, cloud_config, "bad-speed", self.config)
+        self.assertFalse((self.root / "releases/bad-speed").exists())
 
     def test_bad_config_never_replaces_current(self):
         deploy.activate(self.root,"base")

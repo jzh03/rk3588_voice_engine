@@ -101,7 +101,9 @@ struct Pipeline final : RealtimePipeline {
     int history = 0, history_attempts = 0, polls = 0, atomic_commits = 0;
     std::vector<AudioFrame> accepted;
     std::deque<RealtimeEvent> events;
-    void begin(AudioContext c) override {
+    std::int64_t opening_deadline_ns = 0;
+    void begin(AudioContext c, std::int64_t deadline_ns) override {
+        opening_deadline_ns = deadline_ns;
         if (busy) ++overlapping_begins;
         current = c; busy = valid = true; ++begins;
     }
@@ -149,8 +151,15 @@ struct Rig {
     std::vector<Log> logs;
     RealtimeController controller;
     std::int64_t now = 1000000000, memory = 4 * 1024 * 1024;
-    static Config settings(bool wake, bool barge) { Config c; c.dialogue.wake_enabled = wake; c.dialogue.barge_in = barge; return c; }
-    explicit Rig(bool wake = false, bool barge = false) : config(settings(wake, barge)), controller(config, audio, pipeline, [this](std::string_view name, AudioContext, RealtimeState, const nlohmann::json& data) {
+    static Config settings(bool wake, bool barge, bool cloud) {
+        Config c;
+        c.dialogue.wake_enabled = wake;
+        c.dialogue.barge_in = barge;
+        if (cloud) c.backends = {Backend::cloud, Backend::cloud, Backend::cloud};
+        return c;
+    }
+    explicit Rig(bool wake = false, bool barge = false, bool cloud = false) :
+        config(settings(wake, barge, cloud)), controller(config, audio, pipeline, [this](std::string_view name, AudioContext, RealtimeState, const nlohmann::json& data) {
         logs.push_back({std::string(name), data});
     }) { tick(); }
     void tick(std::int64_t milliseconds = 1) { now += milliseconds * 1000000; controller.tick(now, memory); }
@@ -282,6 +291,62 @@ void barge_normal_drain_and_manual_stop() {
     r.pipeline.capture_admission = true; r.tick();
     require(r.pipeline.accepted.back().seq == 62, "manual endpoint lost capture tail");
     require(r.audio.value.capturing && r.pipeline.finishes > 0, "manual endpoint disabled future insertion capture");
+}
+void cloud_followup_fresh_capture_and_empty_retry() {
+    Rig r(true, true, true);
+    const auto first = r.controller.snapshot().context;
+    r.pipeline.emit(RealtimeEvent::Kind::wake, first); r.pipeline.busy = false; r.tick();
+    r.response(first);
+    r.audio.capture.push_back(frame(first, 61)); r.tick();
+    require(!r.pipeline.barge_frames.empty(), "test did not buffer capture during playback");
+    r.audio.value.drained = true; r.tick(); r.tick();
+    const auto followup = r.controller.snapshot().context;
+    require(followup.session_id == first.session_id && followup.generation_id > first.generation_id,
+            "cloud follow-up did not advance within the session");
+    require(r.audio.starts.size() == 2 && r.audio.interrupts == 0 && r.pipeline.accepted.empty(),
+            "normal cloud follow-up reused playback-era capture");
+    r.audio.capture.push_back(frame(followup, 62)); r.tick();
+    require(r.pipeline.accepted.size() == 1 && r.pipeline.accepted.back().seq == 62,
+            "fresh follow-up capture did not reach ASR");
+
+    auto empty = [&](const std::string& end_reason) {
+        const auto c = r.controller.snapshot().context;
+        r.pipeline.emit(RealtimeEvent::Kind::endpoint, c, end_reason);
+        r.pipeline.emit(RealtimeEvent::Kind::asr_final, c, "empty");
+        r.pipeline.events.back().data["end_reason"] = end_reason;
+        r.pipeline.emit(RealtimeEvent::Kind::complete, c);
+        r.pipeline.busy = false; r.tick();
+        r.audio.value.drained = true; r.tick();
+    };
+    const auto opening_deadline = r.pipeline.opening_deadline_ns;
+    const auto pcm_count = r.audio.playback.size();
+    r.tick(2000); empty("vad_silence");
+    const auto retry = r.controller.snapshot().context;
+    require(r.controller.snapshot().state == RealtimeState::listening &&
+            retry.session_id == first.session_id && retry.generation_id > followup.generation_id,
+            "empty speech result ended the cloud session");
+    require(r.pipeline.opening_deadline_ns == opening_deadline &&
+            r.pipeline.history == 1 && r.audio.playback.size() == pcm_count,
+            "retry extended the window or emitted empty response/history");
+
+    r.response(retry); r.audio.value.drained = true; r.tick();
+    require(r.pipeline.history == 2 && r.pipeline.opening_deadline_ns > opening_deadline,
+            "successful retry did not commit or open a new window");
+    const auto renewed_deadline = r.pipeline.opening_deadline_ns;
+    r.tick(12000); empty("vad_silence");
+    require(r.pipeline.opening_deadline_ns == renewed_deadline,
+            "later empty response renewed the follow-up window");
+    const auto starts = r.pipeline.begins;
+    r.tick(3000); empty("vad_silence"); r.tick();
+    require(r.pipeline.begins == starts && r.controller.snapshot().wake_listening,
+            "an expired window kept retrying");
+
+    const auto wake = r.controller.snapshot().context;
+    r.pipeline.emit(RealtimeEvent::Kind::wake, wake); r.pipeline.busy = false; r.tick();
+    const auto before_silence = r.pipeline.begins;
+    r.tick(15000); empty("start_timeout"); r.tick();
+    require(r.pipeline.begins == before_silence && r.controller.snapshot().wake_listening,
+            "a silent cloud round did not return to wake listening");
 }
 void wake_handoff_window_and_session() {
     Rig r(true);
@@ -713,6 +778,7 @@ int main() {
         {"barge_prefix_bound_overflow", barge_prefix_bound_and_overflow},
         {"barge_stale_failure_deadline", barge_stale_failure_and_deadline},
         {"barge_normal_drain_manual_stop", barge_normal_drain_and_manual_stop},
+        {"cloud_followup_fresh_capture_and_empty_retry", cloud_followup_fresh_capture_and_empty_retry},
         {"wake_window_session_handoff", wake_handoff_window_and_session},
         {"wake_cancel_device_memory_stale", wake_cancel_device_memory_and_stale},
         {"wake_manual_start_overflow", manual_start_and_overflow_during_wake},

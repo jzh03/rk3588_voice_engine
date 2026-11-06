@@ -14,6 +14,8 @@
 
 若输出 `exit_code=3 reason=device_unavailable`，先在系统中连接耳机，确认蓝牙设备的 `Connected` 为 `yes`；已配对、已信任仍可能处于断开状态。再用 `pactl list short sources` 和 `pactl list short sinks` 核对配置中的两个节点均已出现、活动 profile 与配置一致，随后重试。具体等待原因记录在本次 `events.jsonl` 的 `device_wait` 事件中。
 
+如果蓝牙显示已连接但 `pactl` 还没有耳机的录放节点，重新连接耳机，并确认已启用支持麦克风的通话配置。云端档也需要同一对节点。[云端耳机配置](cloud-voice.md#选择模板与准备凭据)
+
 程序只连接配置中的 source/sink，并核验设备身份及当前 profile；禁止 monitor，不修改系统默认路由或 profile，不回退到 HDMI/其他声卡。即使只录音或只播放，也核验完整设备对。原生设备采样率/声道与内部 16 kHz、单声道、20 ms、归一化 float32 帧之间执行流式转换；最后不足一帧时补零并保留有效样本数。采集与播放使用配置中的有界队列，采集回调不推理或写磁盘。
 
 播放默认每 5 s 发出一段 300 ms 的低音量提示音；也可用 `--play-wav FILE` 播放本机测试 WAV。默认采集仅在内存中处理，只有显式添加 `--record-wav` 才保存本次目录内的 `capture.wav`（16 kHz 单声道 PCM16）；交互模式的多次录音会连续写入同一文件。

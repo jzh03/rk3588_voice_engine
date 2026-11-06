@@ -65,10 +65,17 @@ public:
     using Generate = std::function<TtsNativeAudio(const std::string&)>;
     using CancellableGenerate = std::function<TtsNativeAudio(
         const std::string&, const std::shared_ptr<TtsCancellation>&)>;
+    // The producer delivers bounded native PCM chunks synchronously. A false
+    // result tells it to stop delivering audio for this generation.
+    using PcmSink = std::function<bool(const float*, std::size_t)>;
+    using StreamingGenerate = std::function<void(
+        const std::string&, const std::shared_ptr<TtsCancellation>&, const PcmSink&)>;
+    TtsStreamWorker(StreamingGenerate generate, TtsConfig text, QueuesConfig queues,
+                    int segment_timeout_ms, int native_sample_rate);
     TtsStreamWorker(CancellableGenerate generate, TtsConfig text = {}, QueuesConfig queues = {},
-                    int segment_timeout_ms = 10000);
+                    int segment_timeout_ms = 10000, int native_sample_rate = 44100);
     TtsStreamWorker(Generate generate, TtsConfig text = {}, QueuesConfig queues = {},
-                    int segment_timeout_ms = 10000);
+                    int segment_timeout_ms = 10000, int native_sample_rate = 44100);
     ~TtsStreamWorker();
     TtsStreamWorker(const TtsStreamWorker&) = delete;
     TtsStreamWorker& operator=(const TtsStreamWorker&) = delete;

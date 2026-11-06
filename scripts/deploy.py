@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local, versioned RK3588 deployment. No downloads, root changes or remote API."""
+"""Versioned RK3588 deployment and local service control."""
 import argparse
 from contextlib import contextmanager
 import ctypes
@@ -19,6 +19,7 @@ import socket
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 
@@ -27,7 +28,8 @@ MODEL_LOCK = Path("/tmp/rk3588_voice_engine_model_validation.lock")
 LOG_LIMIT = 500 * 1024 * 1024
 SPACE_RESERVE = 3 * 1024**3
 COMMANDS = {"start", "stop", "cancel", "new-session", "status", "help", "quit"}
-PRIVATE_LIBRARIES = {"librknnrt.so", "librkllmrt.so", "libsherpa-onnx-c-api.so", "libonnxruntime.so"}
+CPU_LIBRARIES = {"libsherpa-onnx-c-api.so", "libonnxruntime.so"}
+PRIVATE_LIBRARIES = CPU_LIBRARIES | {"librknnrt.so", "librkllmrt.so"}
 
 def save(path, value):
     path = Path(path)
@@ -88,6 +90,28 @@ def read_config(path):
         import yaml  # Packaging only; service/runtime use the frozen JSON YAML.
         return yaml.safe_load(text)
 
+def backend_profile(settings):
+    modes = settings.get("backends", {})
+    names = ("asr", "llm", "tts")
+    selected = tuple(modes.get(name, "local") for name in names)
+    if selected == ("local",) * 3:
+        return {"profile": "local", "providers": dict.fromkeys(names, "local")}
+    if selected != ("cloud",) * 3:
+        raise ValueError("backends must be all-local or all-cloud")
+    providers = {}
+    for name in names:
+        provider = settings.get("cloud", {}).get(name, {}).get("provider")
+        if provider not in ("openai_compatible", "bailian"):
+            raise ValueError("unsupported cloud provider for " + name)
+        providers[name] = provider
+    return {"profile": "cloud", "providers": providers}
+
+def linked_private_libraries(binary, env):
+    result = subprocess.run(["ldd", str(binary)], env=env, text=True,
+                            capture_output=True, timeout=15, check=True)
+    matches = re.findall(r"^\s*(\S+)\s+=>\s+(\S+)", result.stdout, re.M)
+    return {name: path for name, path in matches if name in PRIVATE_LIBRARIES}
+
 def copy_checked(source, target, expected=None):
     target.parent.mkdir(parents=True, exist_ok=True)
     h = hashlib.sha256()
@@ -103,23 +127,93 @@ def copy_checked(source, target, expected=None):
 def freeze_metadata(path):
     return {"sha256": digest(path), "size_bytes": path.stat().st_size}
 
-def stage(root, project, binary, config, release_id):
+def freeze_config(config, settings, destination, keywords_name):
+    frozen = json.loads(json.dumps(settings))
+    frozen["assets"] = {"models_manifest": "../models/manifest.json",
+                        "deps_manifest": "../deps/manifest.json"}
+    if frozen.get("dialogue", {}).get("wake_enabled"):
+        source = (config.parent / frozen["dialogue"]["keywords_file"]).resolve()
+        copy_checked(source, destination.parent / keywords_name)
+        frozen["dialogue"]["keywords_file"] = keywords_name
+    destination.write_text(json.dumps(frozen, ensure_ascii=False, indent=2) + "\n")
+    # Only deployment-relative asset and keyword paths may change.
+    def parameters(value):
+        value = json.loads(json.dumps(value))
+        value.pop("assets", None)
+        value.get("dialogue", {}).pop("keywords_file", None)
+        return value
+    if parameters(settings) != parameters(frozen):
+        raise ValueError("packaging changed operational parameters")
+    return parameters(frozen)
+
+def stage(root, project, binary, config, release_id, local_config=None):
     root = initialize(root)
-    project, binary, config = Path(project).resolve(), Path(binary).resolve(), Path(config).resolve()
+    project, binary = Path(project).resolve(), Path(binary).resolve()
+    config = Path(config).resolve() if config is not None else project / "config/cloud-local.yaml"
     release_id = checked_id(release_id)
     with lock(root / "deployment.lock"), lock(root / "running.lock"), lock(MODEL_LOCK):
         release = root / "releases" / release_id
         if release.exists():
             raise ValueError("release already exists")
         settings = read_config(config)
+        profile = backend_profile(settings)
+        local_settings = None
+        shared_speed = None
+        parameters_unchanged = True
+        if local_config is not None:
+            local_config = Path(local_config).resolve()
+            local_settings = read_config(local_config)
+            if profile["profile"] != "cloud" or backend_profile(local_settings)["profile"] != "local":
+                raise ValueError("--local-config requires a cloud primary config and a local secondary config")
+            speech_config = project / "config/speech-local.yaml"
+            if speech_config.exists():
+                speech = read_config(speech_config)
+                if not isinstance(speech, dict) or set(speech) != {"speed"}:
+                    raise ValueError("config/speech-local.yaml must contain only speed")
+                shared_speed = speech["speed"]
+                if type(shared_speed) not in (int, float) or not 0.5 <= shared_speed <= 2.0:
+                    raise ValueError("config/speech-local.yaml speed must be a number within 0.5..2.0")
+                local_tts = local_settings.setdefault("tts", {})
+                if not isinstance(local_tts, dict):
+                    raise ValueError("local tts configuration must be a mapping")
+                cloud_tts = settings["cloud"]["tts"]
+                parameters_unchanged = all(
+                    tts.get("speed", 1.0) == shared_speed for tts in (local_tts, cloud_tts))
+                local_tts["speed"] = cloud_tts["speed"] = shared_speed
+        cloud_mode = profile["profile"] == "cloud" and local_settings is None
         manifests, assets = {}, {}
-        for kind, key, collection in (("models", "models_manifest", "models"), ("deps", "deps_manifest", "dependencies")):
-            source = (config.parent / settings["assets"][key]).resolve()
+        settings_assets = settings.get("assets", {})
+        cloud_models = {ref["id"] for name, ref in settings.get("models", {}).items()
+                        if name in {"vad", "kws"} and ref.get("enabled")}
+        needed_libs = PRIVATE_LIBRARIES
+        if cloud_mode:
+            needed_libs = set(linked_private_libraries(binary, engine_env(binary.parent.parent)))
+            if not CPU_LIBRARIES <= needed_libs:
+                raise ValueError("cloud release binary must include CPU VAD/KWS libraries")
+        model_dependencies = set()
+        for kind, collection in (("models", "models"), ("deps", "dependencies")):
+            key = "models_manifest" if kind == "models" else "deps_manifest"
+            default_manifest = f"../{kind}/manifest.json"
+            source = (config.parent / settings_assets.get(key, default_manifest)).resolve()
+            if local_settings is not None:
+                local_source = local_settings.get("assets", {}).get(key, default_manifest)
+                if (local_config.parent / local_source).resolve() != source:
+                    raise ValueError("both profiles must use the same " + key)
             raw = source.read_bytes()
             manifest = json.loads(raw)
             manifests[kind] = (source, raw)
             for entry in manifest[collection]:
-                for item in entry.get("files", []):
+                files = entry.get("files", [])
+                if cloud_mode:
+                    if kind == "models":
+                        if entry["id"] not in cloud_models:
+                            continue
+                        model_dependencies.update(dep["id"] for dep in entry.get("dependencies", []))
+                    elif entry["id"] not in model_dependencies:
+                        # A dual-mode executable can still link local shared
+                        # libraries. Package these libraries without the models.
+                        files = [item for item in files if Path(item["path"]).name in needed_libs]
+                for item in files:
                     rel = str(Path(kind) / item["path"])
                     src = child(source.parent, item["path"])
                     if not src.is_file() or src.stat().st_size != item["size_bytes"]:
@@ -128,7 +222,10 @@ def stage(root, project, binary, config, release_id):
                     if rel in assets and assets[rel][1:] != record[1:]:
                         raise ValueError("conflicting asset declaration: " + rel)
                     assets[rel] = record
-        pool_id = hashlib.sha256(manifests["models"][1] + b"\0" + manifests["deps"][1]).hexdigest()
+        pool_identity = manifests["models"][1] + b"\0" + manifests["deps"][1]
+        if cloud_mode:
+            pool_identity += b"\0cloud\0" + json.dumps(sorted(assets)).encode("utf-8")
+        pool_id = hashlib.sha256(pool_identity).hexdigest()
         pool = root / "assets" / pool_id
         if pool.is_symlink():
             raise ValueError("asset pool must not be a symlink")
@@ -176,28 +273,17 @@ def stage(root, project, binary, config, release_id):
                 (temp / kind).symlink_to("../../assets/" + pool_id + "/" + kind)
             libmap = {}
             for rel, (_, _, _) in assets.items():
-                if rel.startswith("deps/") and Path(rel).name in PRIVATE_LIBRARIES:
+                if rel.startswith("deps/") and Path(rel).name in needed_libs:
                     libmap[Path(rel).name] = rel
-            enabled = any(v.get("enabled") for v in settings.get("models", {}).values())
-            if enabled and set(libmap) != PRIVATE_LIBRARIES:
+            enabled = any(ref.get("enabled") for mode in (settings, local_settings or {})
+                          for ref in mode.get("models", {}).values())
+            if enabled and set(libmap) != needed_libs:
                 raise ValueError("incomplete private runtime library set")
             for name, rel in libmap.items():
                 (temp / "lib" / name).symlink_to("../../../assets/" + pool_id + "/" + rel)
-            original_settings = json.loads(json.dumps(settings))
-            settings["assets"] = {"models_manifest": "../models/manifest.json", "deps_manifest": "../deps/manifest.json"}
-            if settings.get("dialogue", {}).get("wake_enabled"):
-                source_keywords = (config.parent / settings["dialogue"]["keywords_file"]).resolve()
-                copy_checked(source_keywords, temp / "config/wake-keywords.txt")
-                settings["dialogue"]["keywords_file"] = "wake-keywords.txt"
-            (temp / "config/engine.yaml").write_text(json.dumps(settings, ensure_ascii=False, indent=2) + "\n")
-            # Only deployment-relative asset/keyword paths change.
-            before, after = json.loads(json.dumps(original_settings)), json.loads(json.dumps(settings))
-            for value in (before, after):
-                value.pop("assets", None)
-                if "dialogue" in value:
-                    value["dialogue"].pop("keywords_file", None)
-            if before != after:
-                raise ValueError("packaging changed operational parameters")
+            parameters = freeze_config(config, settings, temp / "config/engine.yaml", "wake-keywords.txt")
+            if local_settings is not None:
+                freeze_config(local_config, local_settings, temp / "config/local.yaml", "local-wake-keywords.txt")
             inventory = {str(p.relative_to(temp)): freeze_metadata(p)
                          for p in temp.rglob("*") if p.is_file() and not p.is_symlink()}
             info = {"schema_version": 1, "id": release_id, "asset_pool": pool_id,
@@ -205,9 +291,15 @@ def stage(root, project, binary, config, release_id):
                     "manifests": {k: hashlib.sha256(v[1]).hexdigest() for k, v in manifests.items()},
                     "source": {"project": str(project), "config_sha256": digest(config),
                                "binary_sha256": digest(binary)},
-                    "parameters_unchanged": True, "parameters": after,
+                    "parameters_unchanged": parameters_unchanged, "parameters": parameters,
+                    "backends": profile,
                     "log_limit_bytes": LOG_LIMIT, "host": {"machine": platform.machine(), "kernel": platform.release()},
                     "created_utc": datetime.now(timezone.utc).isoformat()}
+            if local_settings is not None:
+                info["profiles"] = {"cloud": "config/engine.yaml", "local": "config/local.yaml"}
+                info["source"]["local_config_sha256"] = digest(local_config)
+            if shared_speed is not None:
+                info["shared_tts_speed"] = shared_speed
             save(temp / "release.json", info)
             for p in temp.rglob("*"):
                 if p.is_file() and not p.is_symlink():
@@ -260,31 +352,64 @@ def engine_env(release):
     env["LD_LIBRARY_PATH"] = str(release / "lib")
     return env
 
-def verify_unlocked(root, release_id=None):
+def profile_state(root, release):
+    return root / ("profile-" + release.name + ".json")
+
+def selected_config(root, release, info, profile=None):
+    default = "config/engine.yaml"
+    profiles = info.get("profiles")
+    state = profile_state(root, release)
+    if profile is None and state.is_file():
+        profile = json.loads(state.read_text())["profile"]
+        if profile not in ("local", "cloud"):
+            raise ValueError("invalid saved profile")
+    if profile is not None and profiles is not None:
+        if profile not in profiles:
+            raise ValueError("profile unavailable in this release: " + profile)
+        relative = profiles[profile]
+    else:
+        relative = default
+    if relative not in info["files"]:
+        raise ValueError("profile configuration is missing from the release inventory")
+    config = child(release, relative)
+    backends = backend_profile(read_config(config))
+    if profile is not None and backends["profile"] != profile:
+        raise ValueError("profile unavailable in this release: " + profile)
+    return config, backends
+
+def verify_unlocked(root, release_id=None, profile=None):
     release, info = release_info(root, release_id)
+    config, backends = selected_config(root, release, info, profile)
     env = engine_env(release)
     loaded = {}
     if info["libraries"]:
-        result = subprocess.run(["ldd", str(release / "bin/voice_engine")], env=env,
-                                text=True, capture_output=True, timeout=15, check=True)
+        linked = linked_private_libraries(release / "bin/voice_engine", env)
         for name, rel in info["libraries"].items():
-            match = re.search(r"^\s*" + re.escape(name) + r"\s+=>\s+(\S+)", result.stdout, re.M)
             expected = (root / "assets" / info["asset_pool"] / rel).resolve()
-            if not match or Path(match.group(1)).resolve() != expected:
+            if name not in linked or Path(linked[name]).resolve() != expected:
                 raise ValueError("runtime loader would use a different library: " + name)
             loaded[name] = str(expected)
     result = subprocess.run([str(release / "bin/voice_engine"), "--config",
-                            str(release / "config/engine.yaml"), "--check-config"],
+                            str(config), "--check-config"],
                             env=env, cwd=release, capture_output=True, text=True, timeout=180)
     if result.returncode or "CONFIG_OK" not in result.stdout:
         raise ValueError("release preflight failed: " + (result.stderr or result.stdout)[-2000:])
     return {"release": info["id"], "status": "passed", "loaded_private_libraries": loaded,
+            "backends": backends, "config": str(config.relative_to(release)),
             "config_asset_check": result.stdout.splitlines()[:2]}
 
-def verify(root, release_id=None):
+def verify(root, release_id=None, profile=None):
     root = initialize(root)
     with lock(root / "deployment.lock"), lock(MODEL_LOCK):
-        return verify_unlocked(root, release_id)
+        return verify_unlocked(root, release_id, profile)
+
+def select_profile(root, profile):
+    root = initialize(root)
+    with lock(root / "deployment.lock"), lock(root / "running.lock"), lock(MODEL_LOCK):
+        result = verify_unlocked(root, profile=profile)
+        release = resolve_release(root, result["release"])
+        save(profile_state(root, release), {"profile": profile})
+        return result
 
 def point(root, name, release_id):
     temp = root / ("." + name + "-" + uuid.uuid4().hex)
@@ -357,9 +482,13 @@ def offline_exec(args):
     lock_fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
     fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     os.set_inheritable(lock_fd, True)
-    proof = apply_offline_guard()
-    save(args.proof, {"status": "passed", "method": "inherited_seccomp_allow_AF_UNIX_only",
-                     "socket_checks": proof, "pid": os.getpid(), "model_lock": str(lock_path)})
+    profile = backend_profile(read_config(args.config))
+    if profile["profile"] == "cloud" and not args.mock:
+        save(args.proof, {"policy": "cloud_network_enabled", "pid": os.getpid(), "model_lock": str(lock_path)})
+    else:
+        proof = apply_offline_guard()
+        save(args.proof, {"status": "passed", "method": "inherited_seccomp_allow_AF_UNIX_only",
+                         "socket_checks": proof, "pid": os.getpid(), "model_lock": str(lock_path)})
     command = [str(args.binary), "--config", str(args.config), "--control", "stdin",
                "--run-id", "engine", "--output-dir", str(args.output)]
     if args.mock:
@@ -434,7 +563,7 @@ def serve(root, release_id=None, run_id=None, mock=False):
         descriptor = os.open(fifo, os.O_RDWR | os.O_NONBLOCK)
         console = Console(run / "console.log")
         command = [sys.executable, str(release / "deploy.py"), "_exec", "--binary",
-                   str(release / "bin/voice_engine"), "--config", str(release / "config/engine.yaml"),
+                   str(release / "bin/voice_engine"), "--config", str(release / result["config"]),
                    "--output", str(run), "--proof", str(run / "network.json"),
                    "--lock-path", str(MODEL_LOCK)]
         if mock: command.append("--mock")
@@ -448,7 +577,8 @@ def serve(root, release_id=None, run_id=None, mock=False):
             process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                        stderr=subprocess.STDOUT, cwd=release, env=engine_env(release), start_new_session=True)
             state = {"status": "running", "release": info["id"], "run_id": run_id,
-                     "supervisor_pid": os.getpid(), "engine_pid": process.pid, "run_directory": str(run)}
+                     "supervisor_pid": os.getpid(), "engine_pid": process.pid, "run_directory": str(run),
+                     "backends": result["backends"]}
             save(root / "status.json", state)
             save(run / "launcher.json", {**state, "command": command})
             print(json.dumps(state), flush=True)
@@ -501,7 +631,7 @@ def serve(root, release_id=None, run_id=None, mock=False):
             for number, handler in previous.items():
                 signal.signal(number, handler)
             outcome = {"status": "stopped", "release": info["id"], "run_id": run_id,
-                       "exit_code": code, "error": error}
+                       "exit_code": code, "error": error, "backends": result["backends"]}
             save(run / "exit.json", outcome)
             save(root / "status.json", outcome)
         return code
@@ -516,18 +646,23 @@ def send(root, command):
     try: os.write(fd, (command + "\n").encode("ascii"))
     finally: os.close(fd)
 
-def install_service(root, template):
+def install_service(root, template, replace=False):
     root = initialize(root)
     resolve_release(root)
     target = Path.home() / ".config/systemd/user/rk3588-voice-engine.service"
     target.parent.mkdir(parents=True, exist_ok=True)
     text = Path(template).read_text().replace("@ROOT@", str(root).replace("%", "%%"))
     text = text.replace("@PYTHON@", sys.executable.replace("%", "%%"))
-    if target.exists() and target.read_text() != text:
-        raise ValueError("different service unit already exists; preserve it for explicit update")
-    target.write_text(text)
-    subprocess.run(["systemd-analyze", "--user", "verify", str(target)], check=True, capture_output=True, text=True)
-    subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+    with lock(root / "running.lock"):
+        if target.exists() and target.read_text() != text and not replace:
+            raise ValueError("different service unit already exists; use install-service --replace to update it")
+        with tempfile.TemporaryDirectory(dir=target.parent) as directory:
+            candidate = Path(directory) / target.name
+            candidate.write_text(text)
+            subprocess.run(["systemd-analyze", "--user", "verify", str(candidate)],
+                           check=True, capture_output=True, text=True)
+            os.replace(candidate, target)
+        subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
     return {"unit": str(target), "enabled_by_this_command": False, "started_by_this_command": False}
 
 def main():
@@ -537,15 +672,22 @@ def main():
     p = sub.add_parser("stage")
     p.add_argument("--project", type=Path, required=True)
     p.add_argument("--binary", type=Path, required=True)
-    p.add_argument("--config", type=Path, required=True)
+    p.add_argument("--config", type=Path, help="profile YAML (default: config/cloud-local.yaml under --project)")
     p.add_argument("--release", required=True)
-    for name in ("verify", "activate"):
-        p = sub.add_parser(name); p.add_argument("--release", required=(name == "activate"))
+    p.add_argument("--local-config", type=Path, help="also stage a local profile with the primary cloud profile")
+    p = sub.add_parser("verify")
+    p.add_argument("--release")
+    p.add_argument("--profile", choices=("local", "cloud"))
+    p = sub.add_parser("activate")
+    p.add_argument("--release", required=True)
+    p = sub.add_parser("select-profile")
+    p.add_argument("profile", choices=("local", "cloud"))
     sub.add_parser("rollback"); sub.add_parser("status")
     p = sub.add_parser("serve")
     p.add_argument("--release"); p.add_argument("--run-id"); p.add_argument("--mock", action="store_true")
     p = sub.add_parser("send"); p.add_argument("command", choices=sorted(COMMANDS))
     p = sub.add_parser("install-service"); p.add_argument("--template", type=Path, required=True)
+    p.add_argument("--replace", action="store_true")
     p = sub.add_parser("_exec", help=argparse.SUPPRESS)
     for name in ("binary", "config", "output", "proof"): p.add_argument("--" + name, type=Path, required=True)
     p.add_argument("--lock-path", type=Path, required=True)
@@ -553,16 +695,23 @@ def main():
     args = parser.parse_args()
     try:
         if args.action == "_exec": offline_exec(args)
-        elif args.action == "stage": print(json.dumps(stage(args.root,args.project,args.binary,args.config,args.release)))
-        elif args.action == "verify": print(json.dumps(verify(args.root,args.release)))
+        elif args.action == "stage":
+            print(json.dumps(stage(args.root, args.project, args.binary, args.config, args.release, args.local_config)))
+        elif args.action == "verify": print(json.dumps(verify(args.root, args.release, args.profile)))
+        elif args.action == "select-profile": print(json.dumps(select_profile(args.root, args.profile)))
         elif args.action == "activate": print(json.dumps(activate(args.root,args.release)))
         elif args.action == "rollback": print(json.dumps(rollback(args.root)))
         elif args.action == "serve": return serve(args.root,args.release,args.run_id,args.mock)
         elif args.action == "send": send(args.root,args.command)
-        elif args.action == "install-service": print(json.dumps(install_service(args.root,args.template)))
+        elif args.action == "install-service": print(json.dumps(install_service(args.root,args.template,args.replace)))
         elif args.action == "status":
             root = initialize(args.root)
             data = {name: ((root/name).resolve().name if (root/name).is_symlink() else None) for name in ("current","previous")}
+            if data["current"]:
+                release, info = release_info(root)
+                _, backends = selected_config(root, release, info)
+                data["backends"] = backends
+                data["available_profiles"] = sorted(info.get("profiles", {backends["profile"]: None}))
             data["last_run"] = json.loads((root/"status.json").read_text()) if (root/"status.json").exists() else None
             print(json.dumps(data))
         return 0

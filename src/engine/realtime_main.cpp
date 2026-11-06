@@ -92,8 +92,23 @@ int run_realtime_control(const Config& config, const std::string& run_id,
         logger.write("error", "startup_low_memory", 1, 0, "ERROR", {{"mem_available_kib", initial_memory}});
         return 4;
     }
+    const bool cloud_mode = config.backends.cloud();
+    auto backend_identity = [&](const ModelRef& local, const CloudService& cloud) {
+        return cloud_mode ? nlohmann::json{{"provider", cloud.provider}, {"protocol", cloud.protocol},
+                                           {"model", cloud.model},
+                                           {"transport", cloud.endpoint.compare(0, 6, "wss://") == 0 ? "wss" :
+                                                         cloud.endpoint.compare(0, 7, "http://") == 0 ? "lan_http" : "https"}}
+                          : nlohmann::json{{"provider", "local"}, {"model", local.id}};
+    };
+    const nlohmann::json backends = {
+        {"asr", backend_identity(config.models.asr, config.cloud.asr)},
+        {"llm", backend_identity(config.models.llm, config.cloud.llm)},
+        {"tts", backend_identity(config.models.tts, config.cloud.tts)}
+    };
     logger.write("info", "startup", 1, 0, "STARTING",
-        {{"backend", "pulse"}, {"models", config.dialogue.wake_enabled ?
+        {{"backend", "pulse"}, {"backend_profile", cloud_mode ? "cloud" : "local"},
+         {"engine_version", VOICE_ENGINE_VERSION}, {"backends", backends},
+         {"models", config.dialogue.wake_enabled ?
              nlohmann::json({"vad", "asr", "llm", "tts", "kws"}) : nlohmann::json({"vad", "asr", "llm", "tts"})},
          {"barge_in", config.dialogue.barge_in}, {"barge_in_min_ms", config.dialogue.barge_in_min_ms},
          {"wake_enabled", config.dialogue.wake_enabled}, {"dialogue_window_ms", config.dialogue.window_ms},
@@ -143,7 +158,8 @@ int run_realtime_control(const Config& config, const std::string& run_id,
         if (line == "help") std::cout << "COMMANDS start stop cancel new-session status help quit\n";
         if (line == "status") std::cout << "STATUS state=" << realtime_state_name(status.state)
             << " session_id=" << status.context.session_id << " generation_id=" << status.context.generation_id
-            << " wake_listening=" << status.wake_listening << '\n';
+            << " wake_listening=" << status.wake_listening
+            << " profile=" << (cloud_mode ? "cloud" : "local") << " backends=" << backends.dump() << '\n';
         // Never echo unrecognized input, which may be private speech or text.
         std::cout << (accepted ? "OK command" : oversized ? "ERROR line_too_long" : "ERROR command_rejected")
                   << " state=" << realtime_state_name(status.state) << std::endl;

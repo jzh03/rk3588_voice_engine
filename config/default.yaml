@@ -14,6 +14,13 @@ logging:
 
 # 以下分组均可省略；旧 local.yaml 沿用这些缺省值，无需复制模板。
 # 仅定义参数和启动校验；mock 不执行录放、模型、端点或超时处理。
+# Local profile and field reference. Realtime startup without --config
+# uses private cloud-local.yaml. See cloud-bailian.yaml and cloud.yaml for templates.
+backends:
+  asr: local
+  llm: local
+  tts: local
+
 models:
   vad: {enabled: false, id: ""}
   asr: {enabled: false, id: ""}

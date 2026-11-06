@@ -5,6 +5,15 @@
 #include "voice_engine/llm.hpp"
 #include "voice_engine/probe_support.hpp"
 #include "voice_engine/tts_stream.hpp"
+#if VOICE_ENGINE_HAS_CLOUD
+#include "../cloud/backends.hpp"
+#if VOICE_ENGINE_HAS_STREAMING_TTS
+#include "../cloud/tts_websocket.hpp"
+#endif
+#endif
+#if VOICE_ENGINE_HAS_STREAMING_ASR
+#include "../cloud/asr_stream.hpp"
+#endif
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -28,9 +37,20 @@ class ModelPipeline final : public RealtimePipeline {
     std::atomic<std::int64_t> kws_call_ns_{0};
     std::unique_ptr<BargeInDetector> barge_detector_;
     std::unique_ptr<BargeInMonitor> barge_;
+#if VOICE_ENGINE_HAS_LOCAL
     std::unique_ptr<ZipformerAsr> asr_;
-    std::unique_ptr<SileroVad> vad_;
     std::unique_ptr<MeloTts> model_;
+#endif
+#if VOICE_ENGINE_HAS_CLOUD
+    std::optional<cloud::Utterance> utterance_;
+    std::size_t buffered_asr_samples_ = 0;
+    std::shared_ptr<Cancellation> upload_cancellation_;
+    bool endpoint_confirmed_ = false;
+#endif
+#if VOICE_ENGINE_HAS_STREAMING_ASR
+    std::unique_ptr<cloud::StreamingAsr> streaming_asr_;
+#endif
+    std::unique_ptr<SileroVad> vad_;
     std::unique_ptr<LlmAdapter> llm_;
     std::unique_ptr<ListeningAsr> listening_;
     std::unique_ptr<TtsStreamWorker> tts_;
@@ -69,6 +89,9 @@ class ModelPipeline final : public RealtimePipeline {
         events_.push_back(std::move(e));
     }
     void cancel_locked() {
+#if VOICE_ENGINE_HAS_CLOUD
+        if (upload_cancellation_) upload_cancellation_->cancel();
+#endif
         if (barge_) barge_->stop();
         valid_ = false; accepting_ = false; responding_ = false;
         capture_.clear(); events_.clear(); input_end_ = true;
@@ -106,7 +129,17 @@ class ModelPipeline final : public RealtimePipeline {
     }
     void turn(AudioContext id) {
         if (!llm_->idle() || !tts_->wait_idle(0)) throw std::logic_error("NPU/producer not idle before ASR");
+        const bool cloud_mode = config_.backends.cloud();
+#if VOICE_ENGINE_HAS_CLOUD
+        if (utterance_) utterance_->reset();
+#endif
+#if VOICE_ENGINE_HAS_STREAMING_ASR
+        if (cloud_mode && config_.cloud.asr.streaming())
+            streaming_asr_ = std::make_unique<cloud::StreamingAsr>(
+                config_.cloud.asr, config_.queues.llm_text_bytes, *upload_cancellation_);
+#endif
         auto opening_deadline = listening_deadline_ns_;
+        bool manual_endpoint = false;
         asr_call([&] { listening_->begin(nullptr, 0, opening_deadline); });
         while (alive(id)) {
             AudioFrame frame;
@@ -123,7 +156,10 @@ class ModelPipeline final : public RealtimePipeline {
             }
             if (have) asr_call([&] { listening_->accept(frame.samples.data(), frame.valid_samples); });
             if (end) {
-                event(id, RealtimeEvent::Kind::endpoint, "manual_stop", {{"endpoint_ns", now_ns()}, {"end_reason", "manual_stop"}});
+                manual_endpoint = true;
+                if (!cloud_mode)
+                    event(id, RealtimeEvent::Kind::endpoint, "manual_stop",
+                          {{"endpoint_ns", now_ns()}, {"end_reason", "manual_stop"}});
                 asr_call([&] { listening_->finish(); });
             }
             if (opening_deadline && now_ns() >= opening_deadline) {
@@ -133,7 +169,7 @@ class ModelPipeline final : public RealtimePipeline {
             if (listening_->state() == ListeningState::final) break;
         }
         if (!alive(id)) { asr_call([&] { listening_->cancel(); }); return; }
-        const auto result = listening_->result();
+        auto result = listening_->result();
         {
             std::lock_guard<std::mutex> lock(gate_);
             if (!current(id)) return;
@@ -141,16 +177,59 @@ class ModelPipeline final : public RealtimePipeline {
         }
         // ListeningAsr may synchronously finalize during accept(). The independent
         // asr_call watchdog covers that path as well as explicit finish().
-        if (result.reason != ListeningEnd::input_finished)
-            event(id, RealtimeEvent::Kind::endpoint, listening_end_name(result.reason),
-                  {{"end_reason", listening_end_name(result.reason)},
-                   {"endpoint_ns", now_ns() - static_cast<std::int64_t>(result.endpoint_to_final_sec * 1e9)},
+        const auto endpoint_ns = now_ns() - static_cast<std::int64_t>(result.endpoint_to_final_sec * 1e9);
+        if (!manual_endpoint || cloud_mode) {
+            const auto* reason = manual_endpoint && result.reason == ListeningEnd::input_finished ?
+                "manual_stop" : listening_end_name(result.reason);
+            event(id, RealtimeEvent::Kind::endpoint, reason,
+                  {{"end_reason", reason}, {"endpoint_ns", endpoint_ns},
                    {"endpoint_time_method", "asr_completion_minus_finish_duration_estimate"},
                    {"endpoint_sample", result.endpoint_sample}});
+        }
+        nlohmann::json asr_data = nlohmann::json::object();
+#if VOICE_ENGINE_HAS_CLOUD
+        if (cloud_mode) {
+            {
+                std::unique_lock<std::mutex> lock(gate_);
+                cv_.wait(lock, [&] { return endpoint_confirmed_ || !current(id); });
+                if (!current(id)) return;
+            }
+            try {
+                if (utterance_) {
+                    const auto wav = utterance_->finish(result, config_.vad);
+                    if (!wav.empty()) {
+                        result.hypothesis = asr_call([&] {
+                            return cloud::transcribe(config_.cloud.asr, wav, config_.queues.llm_text_bytes,
+                                                     *upload_cancellation_);
+                        });
+                    }
+                }
+#if VOICE_ENGINE_HAS_STREAMING_ASR
+                if (streaming_asr_) {
+                    if (result.asr_finish_called) {
+                        auto stream = asr_call([&] { return streaming_asr_->finish(); });
+                        result.hypothesis = std::move(stream.text);
+                        asr_data = {{"transport", "wss"}, {"stream_audio_bytes", stream.audio_bytes},
+                                    {"stream_task_ready_ns", stream.task_ready_ns},
+                                    {"stream_first_audio_sent_ns", stream.first_audio_sent_ns},
+                                    {"stream_finish_sent_ns", stream.finish_sent_ns},
+                                    {"stream_pre_roll_ms", config_.cloud.asr.stream_pre_roll_ms}};
+                    }
+                    streaming_asr_.reset();
+                }
+#endif
+            } catch (const cloud::Error& error) {
+                event(id, RealtimeEvent::Kind::error, "cloud_asr_error", {{"detail", error.what()}});
+                return;
+            }
+            result.endpoint_to_final_sec = (now_ns() - endpoint_ns) / 1e9;
+        }
+#endif
+        asr_data.update({{"end_reason", listening_end_name(result.reason)}, {"asr_final_ns", now_ns()},
+                         {"text_bytes", result.hypothesis.size()}, {"input_samples", result.input_samples},
+                         {"endpoint_to_final_sec", result.endpoint_to_final_sec}});
         event(id, RealtimeEvent::Kind::asr_final, result.hypothesis.empty() ? "empty" : "recognized",
-              {{"end_reason", listening_end_name(result.reason)}, {"asr_final_ns", now_ns()},
-               {"text_bytes", result.hypothesis.size()}, {"input_samples", result.input_samples},
-               {"endpoint_to_final_sec", result.endpoint_to_final_sec}});
+              std::move(asr_data));
         if (result.hypothesis.empty()) {
             event(id, RealtimeEvent::Kind::complete, "empty"); return;
         }
@@ -178,9 +257,27 @@ class ModelPipeline final : public RealtimePipeline {
                         if (!current(id)) break;
                         llm_->commit_if_current(turn_, [&] { accepted = tts_->submit(tts_id(), packet->text); });
                     }
-                    if (!accepted && alive(id)) throw std::runtime_error("TTS text queue rejected input");
+                    if (!accepted && alive(id)) {
+                        if (cloud_mode) {
+                            const auto status = llm_->snapshot(turn_);
+                            const auto tts = tts_->stats();
+                            event(id, RealtimeEvent::Kind::error,
+                                  tts.status == "failed" ? "cloud_tts_error" : "cloud_llm_output_rejected",
+                                  {{"status", status.status}, {"detail", tts.error.empty() ? status.error_detail : tts.error}});
+                            return;
+                        }
+                        throw std::runtime_error("TTS text queue rejected input");
+                    }
                 }
                 if (llm_->restart_required()) throw std::runtime_error("LLM restart_required");
+                if (cloud_mode) {
+                    const auto status = llm_->snapshot(turn_);
+                    if (status.status != "running" && status.status != "completed") {
+                        event(id, RealtimeEvent::Kind::error, "cloud_llm_error",
+                              {{"status", status.status}, {"detail", status.error_detail}});
+                        return;
+                    }
+                }
                 if (llm_->idle()) {
                     // poll once more after the idle barrier. This also flushes
                     // the adapter's final UTF-8/control-filter text atomically.
@@ -209,7 +306,11 @@ class ModelPipeline final : public RealtimePipeline {
             }
             const bool tts_idle = tts_->wait_idle(0);
             const auto stats = tts_->stats();
-            if (stats.status == "failed") throw std::runtime_error("TTS " + stats.error);
+            if (stats.status == "failed") {
+                if (!cloud_mode) throw std::runtime_error("TTS " + stats.error);
+                event(id, RealtimeEvent::Kind::error, "cloud_tts_error", {{"detail", stats.error}});
+                return;
+            }
             if (llm_done && tts_idle && stats.current_pcm_frames == 0) {
                 if (stats.status != "completed" || stats.frames == 0)
                     throw std::runtime_error("TTS incomplete or empty output");
@@ -253,7 +354,7 @@ class ModelPipeline final : public RealtimePipeline {
                          {"tts_first_min_chars",config_.tts.first_segment ? config_.tts.first_segment->min_chars : config_.tts.min_chars},
                          {"tts_first_target_chars",config_.tts.first_segment ? config_.tts.first_segment->target_chars : config_.tts.target_chars},
                          {"tts_first_boundary_lookahead_chars",config_.tts.first_segment ? config_.tts.first_segment->boundary_lookahead_chars : config_.tts.boundary_lookahead_chars},
-                        {"tts_speed", config_.tts.speed},
+                        {"tts_speed", config_.backends.cloud() ? config_.cloud.tts.speed : config_.tts.speed},
                          {"tts_sentence_mode", config_.tts.sentence_mode},
                           {"tts_join_short_sentences", config_.tts.join_short_sentences},
                          {"tts_boundary_lookahead_chars", config_.tts.boundary_lookahead_chars},
@@ -293,10 +394,18 @@ class ModelPipeline final : public RealtimePipeline {
                 pending_ = false; id = context_;
             }
             try { if (wake_mode_) wake_turn(id); else turn(id); }
+#if VOICE_ENGINE_HAS_STREAMING_ASR
+            catch (const cloud::Error& error) {
+                event(id, RealtimeEvent::Kind::error, "cloud_asr_error", {{"detail", error.what()}});
+            }
+#endif
             catch (const std::exception& error) {
                 event(id, RealtimeEvent::Kind::error, "model_failure", {{"detail", error.what()}});
                 // The main controller owns invalidation and publishes the error.
             }
+#if VOICE_ENGINE_HAS_STREAMING_ASR
+            streaming_asr_.reset();
+#endif
             {
                 std::lock_guard<std::mutex> lock(gate_); busy_ = false; cv_.notify_all();
             }
@@ -314,7 +423,7 @@ public:
             for (const auto& model : manifest.at("models")) if (model.at("id") == id) return model;
             throw ConfigError("model absent from validated manifest: " + id);
         };
-        const auto asr = selected(c.models.asr.id), vad = selected(c.models.vad.id);
+        const auto vad = selected(c.models.vad.id);
         auto path = [&](const nlohmann::json& model, const std::string& name) {
             bool declared = false;
             for (const auto& file : model.at("files")) if (file.at("path") == name) declared = true;
@@ -325,9 +434,6 @@ public:
                 throw ConfigError("model role outside validated files");
             return result;
         };
-        auto role = [&](const std::string& key) { return path(asr, asr.at("roles").at(key).get<std::string>()); };
-        asr_ = std::make_unique<ZipformerAsr>(ZipformerFiles{role("encoder"), role("decoder"), role("joiner"),
-                                                            role("vocabulary"), role("feature_config")});
         auto listening_config = c.vad;
         if (c.dialogue.wake_enabled) listening_config.start_timeout_ms = c.dialogue.window_ms;
         vad_ = std::make_unique<SileroVad>(path(vad, vad.at("model_path").get<std::string>()), listening_config, c.threads.vad);
@@ -338,41 +444,105 @@ public:
             barge_ = std::make_unique<BargeInMonitor>(
                 [this] { barge_detector_->reset(); },
                 [this](const float* p, std::size_t n) { return barge_detector_->accept(p, n); },
-                c.timeouts.asr_final_ms);
+                c.backends.cloud() ? TimeoutsConfig{}.asr_final_ms : c.timeouts.asr_final_ms);
         }
-        model_ = std::make_unique<MeloTts>(c, c.threads.tts);
-        auto options = llm_options_from_config(c);
-        llm_ = std::make_unique<LlmAdapter>(make_rkllm_backend(resolve_rkllm_assets(c), options), options);
-        listening_ = std::make_unique<ListeningAsr>(*asr_, *vad_, listening_config);
+        std::unique_ptr<LlmBackend> llm_backend;
+        TtsStreamWorker::CancellableGenerate generate;
+        int tts_rate = 44100;
+#if VOICE_ENGINE_HAS_CLOUD
+        if (c.backends.cloud()) {
+            if (!c.cloud.asr.streaming()) utterance_.emplace(c.cloud.asr.wav_bytes);
+            ListeningBackends adapters{
+                [this](std::size_t prefix) { vad_->reset(prefix); buffered_asr_samples_ = 0; },
+                [this](const float* pcm, std::size_t n) {
+                    if (utterance_) utterance_->append(pcm, n);
+#if VOICE_ENGINE_HAS_STREAMING_ASR
+                    if (streaming_asr_) streaming_asr_->append(pcm, n, vad_->stats().speech_detected);
+#endif
+                    buffered_asr_samples_ += n;
+                },
+                [this](const float* pcm, std::size_t n) { vad_->accept(pcm, n); },
+                [this] { vad_->finish(); },
+                [] { return std::string(); }, // Upload after publishing the endpoint.
+                [] { return std::string(); },
+                [this] { AsrStats stats; stats.input_samples = buffered_asr_samples_; return stats; },
+                [this] { return vad_->stats(); },
+                [this] { return vad_->segments(); }
+            };
+            listening_ = std::make_unique<ListeningAsr>(std::move(adapters), listening_config);
+            llm_backend = cloud::make_llm(c.cloud.llm);
+            tts_rate = c.cloud.tts.sample_rate;
+            generate = [this](const std::string& text, const std::shared_ptr<TtsCancellation>& cancellation) {
+                return cloud::synthesize(config_.cloud.tts, text, config_.queues.max_tts_audio_ms,
+                                         *cancellation);
+            };
+        }
+#endif
+        const auto options = llm_options_from_config(c);
+#if VOICE_ENGINE_HAS_LOCAL
+        if (!c.backends.cloud()) {
+            const auto asr = selected(c.models.asr.id);
+            auto role = [&](const std::string& key) { return path(asr, asr.at("roles").at(key).get<std::string>()); };
+            asr_ = std::make_unique<ZipformerAsr>(ZipformerFiles{role("encoder"), role("decoder"), role("joiner"),
+                                                                role("vocabulary"), role("feature_config")});
+            model_ = std::make_unique<MeloTts>(c, c.threads.tts);
+            llm_backend = make_rkllm_backend(resolve_rkllm_assets(c), options);
+            listening_ = std::make_unique<ListeningAsr>(*asr_, *vad_, listening_config);
+            generate = [this](const std::string& text, const std::shared_ptr<TtsCancellation>& cancellation) {
+                return model_->generate(text, cancellation);
+            };
+        }
+#endif
+        llm_ = std::make_unique<LlmAdapter>(std::move(llm_backend), options);
         auto tts_queues = c.queues;
         tts_queues.playback_ms = static_cast<int>(budget_.playback_tts_frames) * 20;
-        tts_ = std::make_unique<TtsStreamWorker>([this](const std::string& text,
+#if VOICE_ENGINE_HAS_STREAMING_TTS
+        if (c.backends.cloud() && c.cloud.tts.streaming()) {
+            tts_ = std::make_unique<TtsStreamWorker>(
+                [this](const std::string& text, const std::shared_ptr<TtsCancellation>& cancellation,
+                       const TtsStreamWorker::PcmSink& sink) {
+                    tts_call_ns_ = now_ns();
+                    try {
+                        cloud::stream_speech(config_.cloud.tts, text, config_.queues.max_tts_audio_ms,
+                                             *cancellation, sink);
+                        tts_call_ns_ = 0;
+                    } catch (...) { tts_call_ns_ = 0; throw; }
+                }, c.tts, tts_queues, c.timeouts.tts_segment_ms, tts_rate);
+        } else
+#endif
+        tts_ = std::make_unique<TtsStreamWorker>([this, generate = std::move(generate)](const std::string& text,
                 const std::shared_ptr<TtsCancellation>& cancellation) {
             tts_call_ns_ = now_ns();
-            try { auto pcm = model_->generate(text, cancellation); tts_call_ns_ = 0; return pcm; }
+            try { auto pcm = generate(text, cancellation); tts_call_ns_ = 0; return pcm; }
             catch (...) { tts_call_ns_ = 0; throw; }
-        }, c.tts, tts_queues, c.timeouts.tts_segment_ms);
+        }, c.tts, tts_queues, c.timeouts.tts_segment_ms, tts_rate);
         worker_ = std::thread([this] { loop(); });
     }
     ~ModelPipeline() override {
         { std::lock_guard<std::mutex> lock(gate_); cancel_locked(); stop_ = true; cv_.notify_all(); }
         if (worker_.joinable()) worker_.join();
+        tts_.reset();
         llm_->close();
     }
-    void begin(AudioContext id) override { begin_mode(id, false); }
+    void begin(AudioContext id, std::int64_t opening_deadline_ns) override {
+        begin_mode(id, false, opening_deadline_ns);
+    }
     void begin_wake(AudioContext id) override {
         if (!kws_) throw ConfigError("KWS unavailable");
-        begin_mode(id, true);
+        begin_mode(id, true, 0);
     }
-    void begin_mode(AudioContext id, bool wake) {
+    void begin_mode(AudioContext id, bool wake, std::int64_t opening_deadline_ns) {
         std::lock_guard<std::mutex> lock(gate_);
         if (busy_ || (barge_ && !barge_->idle()) || !llm_->idle() || !tts_->wait_idle(0))
             throw std::logic_error("begin requires all model workers idle");
         const bool handoff = wake_mode_ && !wake && current(id);
         if (!handoff) { capture_.clear(); capture_peak_ = 0; }
         context_ = id; wake_mode_ = wake; events_.clear();
-        listening_deadline_ns_ = !wake && config_.dialogue.wake_enabled ?
-            now_ns() + std::int64_t(config_.dialogue.window_ms) * 1000000 : 0;
+        listening_deadline_ns_ = opening_deadline_ns;
+#if VOICE_ENGINE_HAS_CLOUD
+        if (config_.backends.cloud() && !wake) upload_cancellation_ = std::make_shared<Cancellation>();
+        endpoint_confirmed_ = false;
+#endif
         valid_ = busy_ = pending_ = accepting_ = true;
         input_end_ = responding_ = have_llm_ = completed_ = watchdog_reported_ = false;
         cv_.notify_all();
@@ -401,6 +571,17 @@ public:
         capture_.push_back(frame); capture_peak_ = std::max(capture_peak_, capture_.size()); cv_.notify_all(); return true;
     }
     void finish_input() override { std::lock_guard<std::mutex> lock(gate_); input_end_ = true; cv_.notify_all(); }
+    void confirm_endpoint(AudioContext id) override {
+#if VOICE_ENGINE_HAS_CLOUD
+        std::lock_guard<std::mutex> lock(gate_);
+        if (config_.backends.cloud() && current(id)) {
+            endpoint_confirmed_ = true;
+            cv_.notify_all();
+        }
+#else
+        (void)id;
+#endif
+    }
     void cancel() override { std::lock_guard<std::mutex> lock(gate_); cancel_locked(); }
     void new_session() override { std::lock_guard<std::mutex> lock(gate_); llm_->new_session(); }
     bool idle() const override {
@@ -423,7 +604,7 @@ public:
                          {"tts_first_min_chars",config_.tts.first_segment ? config_.tts.first_segment->min_chars : config_.tts.min_chars},
                          {"tts_first_target_chars",config_.tts.first_segment ? config_.tts.first_segment->target_chars : config_.tts.target_chars},
                          {"tts_first_boundary_lookahead_chars",config_.tts.first_segment ? config_.tts.first_segment->boundary_lookahead_chars : config_.tts.boundary_lookahead_chars},
-                        {"tts_speed", config_.tts.speed},
+                        {"tts_speed", config_.backends.cloud() ? config_.cloud.tts.speed : config_.tts.speed},
                          {"tts_sentence_mode", config_.tts.sentence_mode},
                           {"tts_join_short_sentences", config_.tts.join_short_sentences},
                          {"tts_boundary_lookahead_chars", config_.tts.boundary_lookahead_chars},
@@ -489,8 +670,21 @@ public:
 }
 void validate_realtime_config(const Config& c) {
     realtime_queue_budget(c);
-    if (!c.models.vad.enabled || !c.models.asr.enabled || !c.models.llm.enabled || !c.models.tts.enabled)
-        throw ConfigError("realtime requires VAD/ASR/LLM/TTS enabled");
+    if (c.backends.cloud()) {
+#if VOICE_ENGINE_HAS_CLOUD
+        if (!c.models.vad.enabled) throw ConfigError("cloud realtime requires models.vad.enabled");
+        cloud::validate_services(c.cloud);
+#else
+        throw ConfigError("cloud realtime requires VOICE_ENGINE_BUILD_CLOUD=ON");
+#endif
+    } else {
+#if VOICE_ENGINE_HAS_LOCAL
+        if (!c.models.vad.enabled || !c.models.asr.enabled || !c.models.llm.enabled || !c.models.tts.enabled)
+            throw ConfigError("realtime requires VAD/ASR/LLM/TTS enabled");
+#else
+        throw ConfigError("local realtime requires ASR, LLM and TTS model build options");
+#endif
+    }
     if (c.models.kws.enabled != c.dialogue.wake_enabled)
         throw ConfigError("realtime KWS and wake_enabled must be enabled together");
     if (c.dialogue.wake_enabled && c.dialogue.keywords_file.empty())

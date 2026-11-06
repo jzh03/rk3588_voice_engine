@@ -1,4 +1,5 @@
 #include "voice_engine/llm.hpp"
+#include "voice_engine/config.hpp"
 #include <algorithm>
 #include <chrono>
 #include <condition_variable>
@@ -133,7 +134,8 @@ namespace llm_detail {
 struct Turn {
     LlmResult result;
     std::weak_ptr<void> owner;
-    std::string input, prompt;
+    std::string input;
+    LlmRequest request;
     int first_timeout_ms = 0, total_timeout_ms = 0;
     std::deque<LlmPacket> queue;
     std::size_t queue_bytes = 0;
@@ -149,6 +151,7 @@ struct LlmAdapter::Impl {
         std::condition_variable cv;
         std::unique_ptr<LlmBackend> backend;
         LlmOptions options;
+        bool role_messages = false;
         std::shared_ptr<llm_detail::Turn> current;
         std::vector<std::pair<std::string,std::string>> history;
         std::uint64_t session = 1, generation = 0;
@@ -176,8 +179,12 @@ struct LlmAdapter::Impl {
                t->result.generation_id == s.generation && !s.poisoned && !s.stopping;
     }
     explicit Impl(std::unique_ptr<LlmBackend> b, LlmOptions o) : s(std::make_shared<Shared>()) {
-        if (!b || o.context_tokens != 2048 || o.max_output_tokens < 1 ||
-            o.max_output_tokens > 128 || o.margin_tokens < 64 ||
+        s->role_messages = b && b->uses_role_messages();
+        const bool valid_context = s->role_messages ?
+            (o.context_tokens >= 256 && o.context_tokens <= 262144 && o.max_output_tokens <= 8192 &&
+             o.margin_tokens >= 32) :
+            (o.context_tokens == 2048 && o.max_output_tokens <= 128 && o.margin_tokens >= 64);
+        if (!b || !valid_context || o.max_output_tokens < 1 ||
             o.max_output_tokens + o.margin_tokens >= o.context_tokens ||
             o.queue_bytes < 1 || o.queue_bytes > 1024*1024 ||
             o.first_token_timeout_ms < 1 || o.total_timeout_ms < o.first_token_timeout_ms ||
@@ -209,8 +216,10 @@ struct LlmAdapter::Impl {
         }
         if (e.kind == LlmBackendEvent::Kind::error) {
             ++r.callback_errors;
-            if (current(*state,t) && !t->done) invalidate(*state, t, "model_error");
-            else ++r.stale_callbacks;
+            if (current(*state,t) && !t->done) {
+                r.error_detail = e.error_detail;
+                invalidate(*state, t, "model_error");
+            } else ++r.stale_callbacks;
             return;
         }
         if (e.token_id >= 0) {
@@ -264,7 +273,7 @@ struct LlmAdapter::Impl {
             if (execute) {
                 try {
                     const std::weak_ptr<Shared> weak = state;
-                    run_rc = state->backend->run(t->prompt,t->result.output_budget,
+                    run_rc = state->backend->run_request(t->request,
                         [weak,t](const LlmBackendEvent& e){callback(weak,t,e);});
                 } catch (...) { run_rc = -1; }
             }
@@ -338,8 +347,8 @@ struct LlmAdapter::Impl {
                 if (!t || t->done) continue;
                 const auto now = now_ns();
                 const auto elapsed = (now-t->result.submit_ns)/1000000;
-                if (t->valid && !t->result.first_token_ns &&
-                    elapsed >= t->first_timeout_ms)
+                const auto first_output_ns = state->role_messages ? t->result.first_text_ns : t->result.first_token_ns;
+                if (t->valid && !first_output_ns && elapsed >= t->first_timeout_ms)
                     invalidate(*state,t,"first_token_timeout");
                 if (t->valid && elapsed >= t->total_timeout_ms)
                     invalidate(*state,t,"total_timeout");
@@ -419,6 +428,17 @@ struct LlmAdapter::Impl {
     }
 };
 
+LlmOptions llm_options_from_config(const Config& c) {
+    LlmOptions o;
+    const bool cloud = c.backends.cloud();
+    o.context_tokens = cloud ? c.cloud.llm.context_tokens : c.llm.context_tokens;
+    o.max_output_tokens = cloud ? c.cloud.llm.max_output_tokens : c.llm.max_output_tokens;
+    o.margin_tokens = cloud ? c.cloud.llm.margin_tokens : c.llm.margin_tokens;
+    o.queue_bytes=static_cast<std::size_t>(c.queues.llm_text_bytes);
+    o.first_token_timeout_ms=c.timeouts.llm_first_token_ms;
+    o.total_timeout_ms=c.timeouts.llm_total_ms; o.cancel_timeout_ms=c.timeouts.cancel_ms;
+    return o;
+}
 LlmAdapter::LlmAdapter(std::unique_ptr<LlmBackend> b,LlmOptions o)
     : impl_(std::make_unique<Impl>(std::move(b),o)) {}
 LlmAdapter::~LlmAdapter() { impl_->close(); }
@@ -444,23 +464,51 @@ LlmTurn LlmAdapter::start(const std::string& text,int max_tokens,int first_timeo
         first_timeout > s->options.first_token_timeout_ms || total_timeout > s->options.total_timeout_ms)
         throw std::invalid_argument("invalid LLM request deadline");
     auto history = s->history;
-    std::size_t dropped = 0;
-    std::string prompt = llm_render_prompt(history,text);
-    while (prompt.size()+max_tokens+s->options.margin_tokens >
-           static_cast<std::size_t>(s->options.context_tokens) && !history.empty()) {
-        history.erase(history.begin()); ++dropped; prompt = llm_render_prompt(history,text);
+    LlmRequest request;
+    std::size_t estimated = 0, dropped = 0;
+    const auto input_budget = static_cast<std::size_t>(s->options.context_tokens -
+                                                       max_tokens - s->options.margin_tokens);
+    if (s->role_messages) {
+        const std::string system = "你是中文语音问答助手，只能提供文字回答。"
+            "用简短完整的纯文本回答，不使用 Markdown，不输出思考过程，不声称执行过外部操作。";
+        const auto message_cost = [](const std::string& content) { return content.size() + 16; };
+        estimated = message_cost(system) + message_cost(text);
+        for (const auto& pair : history)
+            estimated += message_cost(pair.first) + message_cost(pair.second);
+        while (estimated > input_budget && dropped < history.size()) {
+            const auto& pair = history[dropped++];
+            estimated -= message_cost(pair.first) + message_cost(pair.second);
+        }
+        request.messages.push_back({"system", system});
+        for (std::size_t n = dropped; n < history.size(); ++n) {
+            request.messages.push_back({"user", history[n].first});
+            request.messages.push_back({"assistant", history[n].second});
+        }
+        request.messages.push_back({"user", text});
+    } else {
+        request.rendered_prompt = llm_render_prompt(history, text);
+        while (request.rendered_prompt.size() > input_budget && !history.empty()) {
+            history.erase(history.begin());
+            ++dropped;
+            request.rendered_prompt = llm_render_prompt(history, text);
+        }
+        estimated = request.rendered_prompt.size();
     }
-    if (prompt.size()+max_tokens+s->options.margin_tokens >
-        static_cast<std::size_t>(s->options.context_tokens))
+    if (estimated > input_budget)
         throw std::length_error("LLM input exceeds conservative UTF-8 byte budget; shorten input");
-    s->history = std::move(history);
+    // Preserve local prompt/history behavior. Cloud admission trims the
+    // request only; the shared history is committed after playback.
+    if (!s->role_messages) s->history = std::move(history);
     auto t = std::make_shared<llm_detail::Turn>();
     t->owner = s;
-    t->input = text; t->prompt = std::move(prompt);
+    t->input = text;
     t->first_timeout_ms = first_timeout; t->total_timeout_ms = total_timeout;
-    t->result.session_id = s->session; t->result.generation_id = ++s->generation;
+    t->result.session_id = request.session_id = s->session;
+    t->result.generation_id = request.generation_id = ++s->generation;
+    request.max_tokens = max_tokens;
+    t->request = std::move(request);
     t->result.status = "running"; t->result.submit_ns = now_ns();
-    t->result.prompt_estimated_tokens = t->prompt.size();
+    t->result.prompt_estimated_tokens = estimated;
     t->result.dropped_history_pairs = dropped; t->result.output_budget = max_tokens;
     s->current = t; s->job = true; s->cv.notify_all();
     LlmTurn turn; turn.session_id = t->result.session_id;

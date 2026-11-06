@@ -57,6 +57,8 @@ struct RealtimeController::Impl {
     bool draining = false, empty_turn = false, buffered_start = false, pending_stop = false;
     bool wake_triggered = false, dialogue_open = false, wake_fault = false;
     std::int64_t deadline = 0, listen_started = 0, memory_kib = -1, low_since = 0, playback_blocked_since = 0;
+    std::int64_t cloud_turn_deadline = 0, dialogue_deadline_ns = 0;
+    bool retry_empty_turn = false;
     std::uint64_t capture_overflows = 0, capture_holes = 0, dropped_events = 0;
     std::optional<RealtimeEvent> pending_pcm;
     Impl(const Config& c, LiveAudioBackend& a, RealtimePipeline& p, Log l)
@@ -82,6 +84,7 @@ struct RealtimeController::Impl {
         buffered_start = false; pending_stop = false;
         barge_listening = awaiting_barge_playback = false; preroll.clear();
         snap.wake_listening = false; wake_triggered = false; dialogue_open = false;
+        dialogue_deadline_ns = 0;
         // The controller is single-threaded; invalidation and downstream flush
         // finish before another playback submission can be attempted.
         pipeline.cancel(); audio.cancel();
@@ -134,6 +137,7 @@ struct RealtimeController::Impl {
         ++snap.context.generation_id;
         pending_pcm.reset(); playback_blocked_since = 0; draining = empty_turn = false;
         pending_stop = false; barge_listening = awaiting_barge_playback = false;
+        dialogue_deadline_ns = 0;
         // Invalidate all model output first. Only playback is flushed; capture
         // remains continuous and is admitted to ASR after both idle barriers.
         pipeline.cancel();
@@ -222,19 +226,24 @@ struct RealtimeController::Impl {
         if (memory_kib < memory_floor_kib) { snap.pending_start = false; low_memory = true; state(RealtimeState::error); return; }
         if (!buffered_start) buffer_pending(now);
         if (!buffered_start) return;
-        pipeline.begin(snap.context);
         dialogue_open = config.dialogue.wake_enabled;
+        if (dialogue_open && !dialogue_deadline_ns)
+            dialogue_deadline_ns = now + std::int64_t(config.dialogue.window_ms) * 1000000;
+        pipeline.begin(snap.context, dialogue_deadline_ns);
         // Reuse the pending audio session and its bounded capture ring. Starting
         // it again here would flush the beginning of the user's new utterance.
         buffered_start = false;
         input_finished = false; draining = false; empty_turn = false;
+        cloud_turn_deadline = 0;
+        retry_empty_turn = false;
         snap.pending_start = false;
         state(pending_stop ? RealtimeState::finalizing : RealtimeState::listening);
         if (pending_stop) deadline = now + std::int64_t(config.timeouts.asr_final_ms) * 1000000;
         pending_stop = false;
         log("turn_started");
         if (dialogue_open) log("dialogue_window_opened",
-            {{"window_ms", config.dialogue.window_ms}, {"opened_ns", now}});
+            {{"window_ms", std::max<std::int64_t>(0, (dialogue_deadline_ns - now) / 1000000)},
+             {"opened_ns", now}, {"deadline_ns", dialogue_deadline_ns}});
     }
     void tick(std::int64_t now, std::int64_t available) {
         if (snap.stopping) return;
@@ -326,6 +335,17 @@ struct RealtimeController::Impl {
                 fail(now, "capture_stalled"); return;
             }
         }
+        if (cloud_turn_deadline && now >= cloud_turn_deadline) {
+            fail(now, "cloud_turn_timeout"); return;
+        }
+        if (config.backends.cloud() && config.dialogue.barge_in &&
+            snap.state == RealtimeState::finalizing && input_finished) {
+            // Keep duplex capture live for response barge-in while discarding
+            // the post-endpoint tail during the longer remote ASR request.
+            AudioFrame discarded;
+            const auto limit = config.queues.capture_ms / config.audio.frame_ms;
+            for (int n = 0; n < limit && audio.try_capture_frame(discarded); ++n) {}
+        }
         if (snap.state == RealtimeState::finalizing && now >= deadline) {
             fail(now, "asr_final_timeout"); return;
         }
@@ -346,7 +366,19 @@ struct RealtimeController::Impl {
                 input_finished = true;
                 state(RealtimeState::finalizing);
                 deadline = now + std::int64_t(config.timeouts.asr_final_ms) * 1000000;
-                log("endpoint", e->data); break;
+                if (config.backends.cloud()) {
+                    const auto capture = audio.status();
+                    if (capture.state == LiveAudioState::device_wait || capture.capture_overflows > capture_overflows ||
+                        capture.capture_holes > capture_holes || capture.dropped_events > dropped_events) {
+                        fail(now, "audio_capture_discontinuity"); return;
+                    }
+                    const auto endpoint_ns = e->data.value("endpoint_ns", now);
+                    deadline = endpoint_ns + std::int64_t(config.timeouts.asr_final_ms) * 1000000;
+                    cloud_turn_deadline = endpoint_ns + std::int64_t(config.cloud.turn_timeout_ms) * 1000000;
+                }
+                log("endpoint", e->data);
+                if (config.backends.cloud()) pipeline.confirm_endpoint(snap.context);
+                break;
             case RealtimeEvent::Kind::asr_final:
                 if (snap.state != RealtimeState::finalizing) { fail(now, "invalid_pipeline_order"); return; }
                 if (!config.dialogue.barge_in) audio.stop_capture();
@@ -354,6 +386,10 @@ struct RealtimeController::Impl {
                 { AudioFrame discarded; while(audio.try_capture_frame(discarded)) {} }
                 preroll.clear();
                 empty_turn = e->reason == "empty";
+                if (config.backends.cloud() && dialogue_open && empty_turn) {
+                    const auto reason = e->data.value("end_reason", "");
+                    retry_empty_turn = reason == "vad_silence" || reason == "max_speech";
+                }
                 state(RealtimeState::responding); log("asr_final", e->data);
                 awaiting_barge_playback = config.dialogue.barge_in && !empty_turn;
                 if (awaiting_barge_playback)
@@ -425,8 +461,16 @@ struct RealtimeController::Impl {
                 log("turn_completed", {{"history_committed", committed}, {"empty_input", empty_turn},
                                        {"playback_drained_ns", now}});
                 draining = false; state(RealtimeState::idle);
-                if (dialogue_open && !empty_turn) {
-                    if (config.dialogue.barge_in) {
+                const bool retry = retry_empty_turn && now < dialogue_deadline_ns;
+                if (dialogue_open && (!empty_turn || retry)) {
+                    if (retry) {
+                        log("dialogue_empty_retry", {{"deadline_ns", dialogue_deadline_ns}});
+                    } else {
+                        dialogue_deadline_ns = 0;
+                    }
+                    // A normal cloud follow-up starts with fresh capture.
+                    // Only a detected insertion carries the playback-era prefix into cloud ASR.
+                    if (config.dialogue.barge_in && !config.backends.cloud()) {
                         ++snap.context.generation_id;
                         if (!preserve_capture(now)) return;
                     }
@@ -435,7 +479,7 @@ struct RealtimeController::Impl {
                     preroll.clear();
                     if (config.dialogue.barge_in) audio.stop_capture();
                     if (dialogue_open) {
-                        dialogue_open = false;
+                        dialogue_open = false; dialogue_deadline_ns = 0;
                         log("dialogue_window_closed", {{"reason", "empty_input"}});
                     }
                 }

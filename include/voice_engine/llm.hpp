@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace voice_engine {
@@ -30,6 +31,16 @@ struct LlmBackendEvent {
     int token_id = -1;
     std::string text;
     LlmPerf perf;
+    std::string error_detail;
+};
+struct LlmMessage {
+    std::string role, content;
+};
+struct LlmRequest {
+    std::uint64_t session_id = 0, generation_id = 0;
+    int max_tokens = 0;
+    std::string rendered_prompt;
+    std::vector<LlmMessage> messages;
 };
 // initialize/run/clear/shutdown execute on one persistent worker. abort/running
 // may run concurrently on the supervisor, as required by RKLLM's abort API.
@@ -40,7 +51,11 @@ public:
     using Callback = std::function<void(const LlmBackendEvent&)>;
     virtual ~LlmBackend() = default;
     virtual void initialize() = 0;
-    virtual int run(const std::string& rendered_prompt, int max_tokens, Callback callback) = 0;
+    virtual bool uses_role_messages() const noexcept { return false; }
+    virtual int run(const std::string&, int, Callback) { return -1; }
+    virtual int run_request(const LlmRequest& request, Callback callback) {
+        return run(request.rendered_prompt, request.max_tokens, std::move(callback));
+    }
     virtual int abort() = 0;
     virtual int running() = 0;
     virtual int clear() = 0;
@@ -64,7 +79,7 @@ struct LlmPacket {
 };
 struct LlmResult {
     std::uint64_t session_id = 0, generation_id = 0;
-    std::string status, text, raw_text;
+    std::string status, text, raw_text, error_detail;
     // Byte-based conservative admission estimate, NOT an exact tokenizer count.
     std::size_t prompt_estimated_tokens = 0, dropped_history_pairs = 0;
     int output_budget = 0, run_rc = -999, clear_rc = -999, abort_rc = -999;

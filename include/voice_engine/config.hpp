@@ -109,6 +109,40 @@ struct DialogueConfig {
     int barge_in_min_ms = 250;
 };
 
+enum class Backend { local, cloud };
+struct BackendsConfig {
+    Backend asr = Backend::local, llm = Backend::local, tts = Backend::local;
+    bool cloud() const { return asr == Backend::cloud; } // The loader rejects mixed modes.
+};
+
+struct CloudService {
+    std::string provider, protocol, endpoint, model, api_key_env;
+    bool allow_http = false, bearer_auth = true;
+    int connect_ms = 3000, first_response_ms = 10000, idle_ms = 5000, total_ms = 15000;
+    int max_request_bytes = 1024 * 1024, max_response_bytes = 64 * 1024;
+};
+struct CloudAsrConfig : CloudService {
+    std::string language = "zh";
+    int wav_bytes = 512 * 1024;
+    int stream_pre_roll_ms = 300, stream_queue_ms = 2000;
+    bool streaming() const { return protocol == "dashscope_asr_ws"; }
+};
+struct CloudLlmConfig : CloudService {
+    int context_tokens = 8192, max_output_tokens = 128, margin_tokens = 128;
+};
+struct CloudTtsConfig : CloudService {
+    std::string voice;
+    double speed = 1.0;
+    int sample_rate = 24000;
+    bool streaming() const { return protocol == "dashscope_tts_ws"; }
+};
+struct CloudConfig {
+    CloudAsrConfig asr;
+    CloudLlmConfig llm;
+    CloudTtsConfig tts;
+    int turn_timeout_ms = 90000;
+};
+
 struct Config {
     AudioConfig audio;
     LoggingConfig logging;
@@ -122,6 +156,8 @@ struct Config {
     TimeoutsConfig timeouts;
     DialogueConfig dialogue;
     std::filesystem::path source_path;
+    BackendsConfig backends;
+    CloudConfig cloud;
 };
 
 class ConfigError : public std::runtime_error {
@@ -129,6 +165,8 @@ public:
     using std::runtime_error::runtime_error;
 };
 
+// Resolve one service's credential without exposing its value in diagnostics.
+std::string cloud_api_key(const CloudService&);
 Config load_config(const std::string& path);
 
 }  // namespace voice_engine
