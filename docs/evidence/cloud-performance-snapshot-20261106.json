@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "measurement_date_local": "2026-11-06",
+  "board": "Orange Pi 5 / RK3588S",
+  "deployment": "dual-bailian-20261106-r4",
+  "engine_reported_version": "0.2.0",
+  "backend": "bailian_streaming",
+  "source_log_sha256": "f295280cdf3ed2688d8147d483f3747b2f72d832864819ff42c1cd1a1c51c2af",
+  "sample_type": "one_human_headset_session_excerpt",
+  "metric": "estimated_vad_endpoint_to_first_playback_submit",
+  "completed_turns": 10,
+  "barge_in_cancellations": 2,
+  "recorded_counter_maxima": {
+    "capture_holes": 0,
+    "capture_overflows": 0,
+    "dropped_events": 0,
+    "playback_overflows": 0,
+    "playback_underruns": 0
+  },
+  "turns": [
+    {
+      "ordinal": 1,
+      "first_playback_submit_offset_ns": 2101430266
+    },
+    {
+      "ordinal": 2,
+      "first_playback_submit_offset_ns": 1851037601
+    },
+    {
+      "ordinal": 3,
+      "first_playback_submit_offset_ns": 1787701611
+    },
+    {
+      "ordinal": 4,
+      "first_playback_submit_offset_ns": 1624252560
+    },
+    {
+      "ordinal": 5,
+      "first_playback_submit_offset_ns": 2291167261
+    },
+    {
+      "ordinal": 6,
+      "first_playback_submit_offset_ns": 1703532033
+    },
+    {
+      "ordinal": 7,
+      "first_playback_submit_offset_ns": 1380670171
+    },
+    {
+      "ordinal": 8,
+      "first_playback_submit_offset_ns": 1735721783
+    },
+    {
+      "ordinal": 9,
+      "first_playback_submit_offset_ns": 1610108326
+    },
+    {
+      "ordinal": 10,
+      "first_playback_submit_offset_ns": 1524421812
+    }
+  ]
+}
